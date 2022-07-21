@@ -1,0 +1,85 @@
+[
+{
+    "name" : "fanniemae_2016Q4",
+    "url" : "https://ursa-qa.s3.amazonaws.com/fanniemae_loanperf/2016Q4.csv.gz",
+    "delim" : "|",
+    "dim" : [22180168, 31],
+    "format" : "csv",
+    "file-compression" : "gz",
+    "schema" : {
+        "a0": "int64",
+        "a1": "string",
+        "a2": "string",
+        "a3": "double",
+        "a4": "double",
+        "a5": "int64",
+        "a6": "int64",
+        "a7": "int64",
+        "a8": "string",
+        "b0": "int64",
+        "b1": "string",
+        "b2": "string",
+        "b3": "int64",
+        "b4": "string",
+        "b5": "string",
+        "b6": "string",
+        "b7": "string",
+        "b8": "double",
+        "c0": "double",
+        "c1": "double",
+        "c2": "double",
+        "c3": "double",
+        "c4": "double",
+        "c5": "double",
+        "c6": "double",
+        "c7": "double",
+        "c8": "double",
+        "d0": "null",
+        "d1": "string",
+        "d2": "null",
+        "d3": "string"
+    }
+}, {
+    "name" : "nyctaxi_2010-01",
+    "url" : "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
+    "delim" : ",",
+    "dim" : [14863778, 18],
+    "format" : "csv",
+    "file-compression" : "gz"
+}, {
+    "name" : "chi_traffic_2020_Q1",
+    "url" : "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
+    "dim" : [13038291, 23],
+    "format" : "parquet"
+}, {
+    "name" : "type_strings",
+    "url" : "https://ursa-qa.s3.amazonaws.com/single_types/type_strings.parquet",
+    "dim" : [1000000, 5],
+    "format" : "parquet"
+}, {
+    "name" : "type_dict",
+    "url" : "https://ursa-qa.s3.amazonaws.com/single_types/type_dict.parquet",
+    "dim" : [1000000, 5],
+    "format" : "parquet"
+}, {
+    "name" : "type_integers",
+    "url" : "https://ursa-qa.s3.amazonaws.com/single_types/type_integers.parquet",
+    "dim" : [1000000, 5],
+    "format" : "parquet"
+}, {
+    "name" : "type_floats",
+    "url" : "https://ursa-qa.s3.amazonaws.com/single_types/type_floats.parquet",
+    "dim" : [1000000, 5],
+    "format" : "parquet"
+}, {
+    "name" : "type_nested",
+    "url" : "https://ursa-qa.s3.amazonaws.com/single_types/type_nested.parquet",
+    "dim" : [1000000, 4],
+    "format" : "parquet"
+}, {
+    "name" : "type_simple_features",
+    "url" : "https://ursa-qa.s3.amazonaws.com/single_types/type_simple_features.parquet",
+    "dim" : [1000000, 5],
+    "format" : "parquet"
+}
+]
