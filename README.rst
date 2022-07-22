@@ -91,6 +91,7 @@ Clone the repo::
 Install ``datalogistik`` dependencies::
 
     poetry install
+    source $(poetry env info --path)/bin/activate
     pre-commit install
 
 Run the checks that will be run in CI::

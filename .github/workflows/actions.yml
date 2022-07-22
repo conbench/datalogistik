@@ -33,7 +33,7 @@ jobs:
       - name: Create poetry environment
         run: poetry install --no-root
       - name: Lint
-        run: pre-commit run --all-files
+        run: poetry run pre-commit run --all-files
   unit-tests:
     strategy:
       matrix:
@@ -52,7 +52,7 @@ jobs:
       - name: Create poetry environment
         run: poetry install
       - name: Run tests
-        run: pytest
+        run: poetry run pytest
   build-wheel:
     runs-on: ubuntu-latest
     steps:
