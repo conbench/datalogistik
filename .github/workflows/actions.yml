@@ -21,6 +21,24 @@ on:
   pull_request:
 
 jobs:
+  check-copyright:
+    runs-on: ubuntu-latest
+    env:
+      RAT_JAR: https://repo1.maven.org/maven2/org/apache/rat/apache-rat/0.14/apache-rat-0.14.jar
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 8
+      - name: Download Rat jar
+        run: wget $RAT_JAR -O apache-rat.jar
+      - name: Check for copyright/license headers
+        run: python ci/check_copyright.py --rat-jar apache-rat.jar
   lint:
     runs-on: ubuntu-latest
     steps:
