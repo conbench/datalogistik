@@ -23,9 +23,7 @@ import pyarrow as pa
 from pyarrow import csv
 from pyarrow import dataset as ds
 
-from datalogistik import __version__
-from datalogistik import util
-from datalogistik import config
+from datalogistik import __version__, config, util
 
 
 def test_version():

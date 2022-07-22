@@ -91,10 +91,16 @@ Clone the repo::
 Install ``datalogistik`` dependencies::
 
     poetry install
+    pre-commit install
 
-Run ``datalogistik``::
+Run the checks that will be run in CI::
 
-    datalogistik -d type_floats -f csv
+    # Lint the repo
+    pre-commit run --all-files
+    # Run unit tests
+    pytest
+    # Run integration test
+    datalogistik -d tpc-h -f parquet
 
 Caching
 -------

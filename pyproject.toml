@@ -26,6 +26,10 @@ structlog = "^21.5.0"
 urllib3 = "^1.26.9"
 
 [tool.poetry.dev-dependencies]
+black = "22.6.0"
+flake8 = "4.0.1"
+isort = "5.10.1"
+pre-commit = "^2.20.0"
 pytest = "^6.2.5"
 
 [tool.poetry.scripts]
