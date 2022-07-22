@@ -1,0 +1,102 @@
+# Copyright (c) 2022, Voltron Data.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  unit-tests:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+      - name: Lint (black)
+        uses: psf/black@stable
+        with:
+          options: --check --diff
+          src: .
+      - name: Install Poetry
+        run: pip install poetry
+      - name: Create poetry environment
+        run: poetry install
+      - name: Run tests
+        run: poetry run pytest
+  build-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+      - name: Install Poetry
+        run: pip install poetry
+      - name: Build artifacts
+        run: |
+          poetry install
+          poetry build
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: poetry-build-artifacts
+          path: dist
+  test-convert-without-repo:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        installer:
+          - pip
+          - pipx
+        installee:
+          - ./datalogistik-0.1.0-py3-none-any.whl
+          - git+https://github.com/conbench/datalogistik.git@${{ github.sha }}
+    needs: build-wheel
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Add msbuild to PATH
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.1
+      - name: Setup Python
+        uses: actions/setup-python@v2
+      - name: Install pipx
+        if: matrix.installer == 'pipx'
+        run: |
+          pip install pipx
+          pipx ensurepath
+      - name: Download Wheel
+        if: contains(matrix.installee, '.whl')
+        uses: actions/download-artifact@v3
+        with:
+          name: poetry-build-artifacts
+      - name: Install package
+        shell: bash
+        run: ${{ matrix.installer }} install "${{ matrix.installee }}"
+      - name: Test generating and converting a dataset
+        run: datalogistik -d tpc-h -f parquet
