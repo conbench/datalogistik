@@ -22,7 +22,6 @@ include = ["repo.json"]
 [tool.poetry.dependencies]
 python = "^3.8"
 pyarrow = "^7.0.0"
-structlog = "^21.5.0"
 urllib3 = "^1.26.9"
 
 [tool.poetry.dev-dependencies]
