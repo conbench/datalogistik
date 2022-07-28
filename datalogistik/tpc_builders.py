@@ -76,7 +76,6 @@ class _TPCBuilder(abc.ABC):
     repo_commit: str
     repo_local_path: pathlib.Path
     repo_build_path: pathlib.Path
-    makefile_arg: str
 
     def __init__(self, executable_path: Optional[pathlib.Path]):
         self.system = platform.system()
@@ -139,19 +138,17 @@ class _TPCBuilder(abc.ABC):
         _run("git", "clone", self.repo_uri, self.repo_local_path)
         _run("git", "checkout", self.repo_commit, cwd=self.repo_local_path)
 
-        if self.system == "Linux":
-            _run("make", f"{self.makefile_arg}=LINUX", cwd=self.repo_build_path)
-        elif self.system == "Darwin":
-            _run("make", f"{self.makefile_arg}=MAC", cwd=self.repo_build_path)
-        elif self.system == "Windows":
+        if self.system == "Windows":
             self._build_executable_windows()
         else:
-            msg = f"System '{self.system}' is not supported yet."
-            log.error(msg)
-            raise NotImplementedError(msg)
+            self._build_executable_unix()
 
         assert self.executable_path.exists()
         log.info(f"Executable created at {self.executable_path}")
+
+    @abc.abstractmethod
+    def _build_executable_unix(self):
+        """Build the executable using 'make' on a UNIX-based system."""
 
     @abc.abstractmethod
     def _build_executable_windows(self):
@@ -177,7 +174,6 @@ class DBGen(_TPCBuilder):
     repo_commit = "32f1c1b92d1664dba542e927d23d86ffa57aa253"
     repo_local_path = repo_root / "dbgen_tool"
     repo_build_path = repo_root / "dbgen_tool"
-    makefile_arg = "MACHINE"
 
     def _get_default_executable_path(self):
         """Return the executable path for this generator if one isn't given."""
@@ -185,6 +181,13 @@ class DBGen(_TPCBuilder):
             return self.repo_build_path / "Debug" / "dbgen.exe"
         else:
             return self.repo_build_path / "dbgen"
+
+    def _build_executable_unix(self):
+        """Build the executable using 'make' on a UNIX-based system."""
+        if self.system == "Darwin":
+            _run("make", "MACHINE=MAC", cwd=self.repo_build_path)
+        else:
+            _run("make", "MACHINE=LINUX", cwd=self.repo_build_path)
 
     def _build_executable_windows(self):
         """Build the executable using 'MSBuild' on a Windows system."""
@@ -220,7 +223,6 @@ class DSDGen(_TPCBuilder):
     repo_commit = "5a3a81796992b725c2a8b216767e142609966752"
     repo_local_path = repo_root / "dsdgen_tool"
     repo_build_path = repo_root / "dsdgen_tool" / "tools"
-    makefile_arg = "OS"
 
     def _get_default_executable_path(self):
         """Return the executable path for this generator if one isn't given."""
@@ -228,6 +230,13 @@ class DSDGen(_TPCBuilder):
             return self.repo_build_path / "dsdgen.exe"
         else:
             return self.repo_build_path / "dsdgen"
+
+    def _build_executable_unix(self):
+        """Build the executable using 'make' on a UNIX-based system."""
+        if self.system == "Darwin":
+            _run("make", "OS=MACOS", cwd=self.repo_build_path)
+        else:
+            _run("make", "OS=LINUX", cwd=self.repo_build_path)
 
     def _build_executable_windows(self):
         """Build the executable using 'MSBuild' on a Windows system."""

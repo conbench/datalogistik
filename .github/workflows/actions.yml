@@ -91,7 +91,6 @@ jobs:
           path: dist
   test-convert-without-repo:
     strategy:
-      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -124,7 +123,6 @@ jobs:
         run: datalogistik -d type_floats -f parquet
   test-tpc-integration:
     strategy:
-      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
