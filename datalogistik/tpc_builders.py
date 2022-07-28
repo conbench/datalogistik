@@ -23,7 +23,7 @@ from typing import List, Optional
 from .log import log
 from .tpc_info import tpc_table_names
 
-repo_root = pathlib.Path(__file__).parent.resolve()
+local_package_root = pathlib.Path(__file__).parent.resolve()
 
 
 def _run(*args, **kwargs) -> str:
@@ -68,10 +68,13 @@ class _TPCBuilder(abc.ABC):
     executable_path: Optional[pathlib.Path] = None
     system: str = None
 
+    # details about the generator
     force_flag: str
     scale_flag: str
     file_extension: str
     table_names: List[str]
+
+    # details about the repo to clone if necessary
     repo_uri: str
     repo_commit: str
     repo_local_path: pathlib.Path
@@ -172,8 +175,8 @@ class DBGen(_TPCBuilder):
     table_names = tpc_table_names["tpc-h"]
     repo_uri = "https://github.com/electrum/tpch-dbgen.git"
     repo_commit = "32f1c1b92d1664dba542e927d23d86ffa57aa253"
-    repo_local_path = repo_root / "dbgen_tool"
-    repo_build_path = repo_root / "dbgen_tool"
+    repo_local_path = local_package_root / "dbgen_tool"
+    repo_build_path = local_package_root / "dbgen_tool"
 
     def _get_default_executable_path(self):
         """Return the executable path for this generator if one isn't given."""
@@ -221,8 +224,8 @@ class DSDGen(_TPCBuilder):
     table_names = tpc_table_names["tpc-ds"]
     repo_uri = "https://github.com/gregrahn/tpcds-kit.git"
     repo_commit = "5a3a81796992b725c2a8b216767e142609966752"
-    repo_local_path = repo_root / "dsdgen_tool"
-    repo_build_path = repo_root / "dsdgen_tool" / "tools"
+    repo_local_path = local_package_root / "dsdgen_tool"
+    repo_build_path = local_package_root / "dsdgen_tool" / "tools"
 
     def _get_default_executable_path(self):
         """Return the executable path for this generator if one isn't given."""
