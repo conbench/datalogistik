@@ -16,11 +16,10 @@ import argparse
 import json
 import os
 import sys
+
 import urllib3
 
-from . import config
-from . import tpc_info
-from . import util
+from . import config, tpc_info, util
 
 
 def parse_args():
@@ -87,7 +86,7 @@ def parse_args_and_get_dataset_info():
             http = urllib3.PoolManager()
             r = http.request("GET", repo_location)
             dataset_sources = json.loads(r.data.decode("utf-8"))
-        except:
+        except Exception:
             print(f"Error: unable to download from '{repo_location}'")
             raise
     else:
@@ -104,7 +103,7 @@ def parse_args_and_get_dataset_info():
         if dataset_source["name"] == opts.dataset:
             dataset_info = dataset_source
             break
-    if dataset_info == None and opts.dataset not in tpc_info.tpc_datasets:
+    if dataset_info is None and opts.dataset not in tpc_info.tpc_datasets:
         print(
             f"Dataset '{opts.dataset}' not found in repository or list of supported generators."
         )
@@ -117,7 +116,7 @@ def parse_args_and_get_dataset_info():
             print("  " + generator)
         sys.exit(-1)
 
-    if opts.compression != None:
+    if opts.compression is not None:
         if opts.format != "parquet":
             sys.exit("Error: compression is only supported for parquet format")
 

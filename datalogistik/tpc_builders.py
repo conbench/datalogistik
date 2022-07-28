@@ -22,7 +22,6 @@ from typing import List, Optional
 
 from .tpc_info import tpc_table_names
 
-
 DBGEN_REPO_URI = "https://github.com/electrum/tpch-dbgen"
 DBGEN_REPO_COMMIT = "32f1c1b92d1664dba542e927d23d86ffa57aa253"
 DBGEN_REPO_MAKEFILE_NAME = "makefile"

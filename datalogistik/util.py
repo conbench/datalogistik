@@ -19,18 +19,17 @@ import json
 import os
 import pathlib
 import shutil
-import structlog
 import sys
 import time
-import urllib3
 
 import pyarrow as pa
-from pyarrow import dataset as ds
+import structlog
+import urllib3
 from pyarrow import csv
+from pyarrow import dataset as ds
 
+from . import config, tpc_info
 from .tpc_builders import DBGen, DSDGen
-from . import config
-from . import tpc_info
 
 log = structlog.get_logger()
 
@@ -169,7 +168,7 @@ def get_dataset(input_file, dataset_info, table_name=None):
         if "delim" in dataset_info:
             po = csv.ParseOptions(delimiter=dataset_info["delim"])
         if dataset_info["name"] in tpc_info.tpc_datasets:
-            if table_name == None:
+            if table_name is None:
                 raise ValueError(
                     "dataset is in tpc_datasets but table_name (needed to look up the schema) is 'None'"
                 )
@@ -244,7 +243,7 @@ def convert_dataset(
             write_options = None  # Default
             if new_format == "parquet":
                 dataset_write_format = ds.ParquetFileFormat()
-                if parquet_compression == None:
+                if parquet_compression is None:
                     parquet_compression = "snappy"  # Use snappy by default
                 write_options = dataset_write_format.make_write_options(
                     compression=parquet_compression
@@ -281,11 +280,11 @@ def convert_dataset(
         dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
-        if parquet_compression != None:
+        if parquet_compression is not None:
             dataset_info["parquet-compression"] = parquet_compression
         write_metadata(dataset_info, output_dir)
 
-    except:
+    except Exception:
         print("An error occurred during conversion.")
         clean_cache_dir(output_dir)
         raise
@@ -329,7 +328,7 @@ def generate_dataset(dataset_info, argument_info, local_cache_location):
         dataset_info["tables"] = metadata_table_list
         write_metadata(dataset_info, cached_dataset_path)
 
-    except:
+    except Exception:
         print("An error occurred during generation.")
         clean_cache_dir(cached_dataset_path)
         raise
@@ -338,7 +337,7 @@ def generate_dataset(dataset_info, argument_info, local_cache_location):
 
 
 def decompress(cached_dataset_path, dataset_file_name, compression):
-    if compression == None:
+    if compression is None:
         return
     print("Decompressing dataset in cache...")
     decomp_start = time.perf_counter()
@@ -388,7 +387,7 @@ def download_dataset(dataset_info, argument_info, local_cache_location):
             dataset_file_path, "wb"
         ) as out_file:
             shutil.copyfileobj(r, out_file)  # Performs a chunked copy
-    except:
+    except Exception:
         print(f"Error: unable to download from '{url}'")
         clean_cache_dir(cached_dataset_path)
         raise
@@ -410,8 +409,8 @@ def download_dataset(dataset_info, argument_info, local_cache_location):
         ]
         write_metadata(dataset_info, cached_dataset_path)
 
-    except:
-        print(f"Error: pyarrow.dataset is unable to read downloaded file")
+    except Exception:
+        print("Error: pyarrow.dataset is unable to read downloaded file")
         clean_cache_dir(cached_dataset_path)
         raise
 
