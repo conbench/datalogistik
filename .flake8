@@ -1,0 +1,6 @@
+[flake8]
+ignore =
+    # (Line over 79 characters) Would rather use black format
+    E501,
+    # (Line break occurred before a binary operator) Would rather use black format
+    W503

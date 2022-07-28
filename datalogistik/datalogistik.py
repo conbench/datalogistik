@@ -17,10 +17,7 @@ import pathlib
 import sys
 import time
 
-from . import cli
-from . import config
-from . import tpc_info
-from . import util
+from . import cli, config, tpc_info, util
 
 total_start = time.perf_counter()
 
