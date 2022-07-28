@@ -15,11 +15,11 @@
 import argparse
 import json
 import os
-import sys
 
 import urllib3
 
-from . import config, tpc_info, util
+from . import config, tpc_info
+from .log import log
 
 
 def parse_args():
@@ -81,18 +81,17 @@ def parse_args_and_get_dataset_info():
     # Set up repository (local or remote)
     repo_location = os.getenv("DATALOGISTIK_REPO", config.default_repo_file)
     if repo_location[0:4] == "http":
-        util.debug_print("Fetching repo from " + repo_location)
+        log.debug(f"Fetching repo from {repo_location}")
         try:
             http = urllib3.PoolManager()
             r = http.request("GET", repo_location)
             dataset_sources = json.loads(r.data.decode("utf-8"))
         except Exception:
-            print(f"Error: unable to download from '{repo_location}'")
+            log.error(f"Unable to download from '{repo_location}'")
             raise
     else:
-        util.debug_print("Using local repo at " + repo_location)
+        log.debug(f"Using local repo at {repo_location}")
         dataset_sources = json.load(open(repo_location))
-    # util.debug_print(repo)
 
     # Parse and check cmdline options
     opts = parse_args()
@@ -104,24 +103,25 @@ def parse_args_and_get_dataset_info():
             dataset_info = dataset_source
             break
     if dataset_info is None and opts.dataset not in tpc_info.tpc_datasets:
-        print(
-            f"Dataset '{opts.dataset}' not found in repository or list of supported generators."
+        msg = (
+            f"Dataset '{opts.dataset}' not found in repository or list of supported "
+            "generators.\n\nDatasets found in repository: "
+            f"{[source['name'] for source in dataset_sources]}\nSupported generators: "
+            f"{tpc_info.tpc_datasets}"
         )
-        print("Datasets found in repository:")
-        for dataset_source in dataset_sources:
-            print("  " + dataset_source["name"])
-
-        print("Supported generators:")
-        for generator in tpc_info.tpc_datasets:
-            print("  " + generator)
-        sys.exit(-1)
+        log.error(msg)
+        raise ValueError(msg)
 
     if opts.compression is not None:
         if opts.format != "parquet":
-            sys.exit("Error: compression is only supported for parquet format")
+            msg = "Compression is only supported for parquet format"
+            log.error(msg)
+            raise ValueError(msg)
 
     if opts.scale_factor != "" and opts.dataset not in tpc_info.tpc_datasets:
-        sys.exit("Error: scale-factor is only supported for TPC datasets")
+        msg = "scale-factor is only supported for TPC datasets"
+        log.error(msg)
+        raise ValueError(msg)
     if opts.scale_factor == "" and opts.dataset in tpc_info.tpc_datasets:
         opts.scale_factor = "1"
 
@@ -136,10 +136,12 @@ def parse_args_and_get_dataset_info():
         }
 
     if opts.format not in config.supported_formats:
-        print(f"Format '{opts.format}' not supported.")
-        print("Supported formats: ")
-        print(config.supported_formats)
-        sys.exit(-1)
+        msg = (
+            f"Format '{opts.format}' not supported. Supported formats: "
+            f"{config.supported_formats}"
+        )
+        log.error(msg)
+        raise ValueError(msg)
 
     if "partitioning-nrows" not in dataset_info:
         dataset_info["partitioning-nrows"] = 0  # Default: no partitioning

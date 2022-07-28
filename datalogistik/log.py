@@ -12,28 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[tool.poetry]
-name = "datalogistik"
-version = "0.1.0"
-description = ""
-authors = ["Joost Hoozemans <joost@voltrondata.com>", "Austin Dickey <austin@voltrondata.com>"]
-include = ["repo.json"]
+import logging
 
-[tool.poetry.dependencies]
-python = "^3.8"
-pyarrow = "^7.0.0"
-urllib3 = "^1.26.9"
+from .config import debug
 
-[tool.poetry.dev-dependencies]
-black = "22.6.0"
-flake8 = "4.0.1"
-isort = "5.10.1"
-pre-commit = "^2.20.0"
-pytest = "^6.2.5"
-
-[tool.poetry.scripts]
-datalogistik = "datalogistik.datalogistik:main"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+logging.basicConfig(
+    format="%(levelname)s [%(asctime)s] %(message)s",
+    level=logging.DEBUG if debug else logging.INFO,
+)
+log = logging.getLogger(__name__)

@@ -19,24 +19,16 @@ import json
 import os
 import pathlib
 import shutil
-import sys
 import time
 
 import pyarrow as pa
-import structlog
 import urllib3
 from pyarrow import csv
 from pyarrow import dataset as ds
 
 from . import config, tpc_info
+from .log import log
 from .tpc_builders import DBGen, DSDGen
-
-log = structlog.get_logger()
-
-
-def debug_print(s):
-    if config.debug:
-        log.debug(s)
 
 
 def removesuffix(string, suffix):
@@ -54,8 +46,8 @@ def peek_line(fd):
 
 
 def file_visitor(written_file):
-    print(f"path={written_file.path}")
-    print(f"metadata={written_file.metadata}")
+    log.debug(f"path={written_file.path}")
+    log.debug(f"metadata={written_file.metadata}")
 
 
 # For each item in the itemlist, add it to metadata if it exists in dataset_info
@@ -124,15 +116,16 @@ def write_metadata(dataset_info, path):
 # Performs cleanup if something happens while creating an entry in the cache
 def clean_cache_dir(path):
     path = pathlib.Path(path)
-    debug_print(f"Cleaning incomplete cache entry '{path}'")
+    log.debug(f"Cleaning incomplete cache entry '{path}'")
     local_cache_location = pathlib.Path(
         os.getenv("DATALOGISTIK_CACHE", config.default_cache_location),
         config.cache_dir_name,
     )  # Duplicate
     cache_root = pathlib.Path(local_cache_location)
     if cache_root not in path.parents:
-        print("Error! Refusing to clean a directory outside of the local cache")
-        sys.exit(-1)
+        msg = "Refusing to clean a directory outside of the local cache"
+        log.error(msg)
+        raise RuntimeError(msg)
 
     # Delete the cache entry itself
     shutil.rmtree(path, ignore_errors=True)
@@ -143,7 +136,7 @@ def clean_cache_dir(path):
         try:
             next(path.iterdir())
         except StopIteration:
-            debug_print(f"Removing empty parent path '{path}'")
+            log.debug(f"Removing empty parent path '{path}'")
             os.rmdir(path)
 
 
@@ -169,9 +162,12 @@ def get_dataset(input_file, dataset_info, table_name=None):
             po = csv.ParseOptions(delimiter=dataset_info["delim"])
         if dataset_info["name"] in tpc_info.tpc_datasets:
             if table_name is None:
-                raise ValueError(
-                    "dataset is in tpc_datasets but table_name (needed to look up the schema) is 'None'"
+                msg = (
+                    "dataset is in tpc_datasets but table_name (needed to look up the "
+                    "schema) is 'None'"
                 )
+                log.error(msg)
+                raise ValueError(msg)
             column_types = tpc_info.col_dicts[dataset_info["name"]][table_name]
             column_list = list(column_types.keys())
 
@@ -202,8 +198,9 @@ def convert_dataset(
     old_nrows,
     new_nrows,
 ):
-    print(
-        f"Converting and caching dataset from {old_format}, {old_nrows} rows per partition to {new_format}, {new_nrows} rows per partition..."
+    log.info(
+        f"Converting and caching dataset from {old_format}, {old_nrows} rows per "
+        f"partition to {new_format}, {new_nrows} rows per partition..."
     )
     conv_start = time.perf_counter()
     dataset_name = dataset_info["name"]
@@ -220,11 +217,12 @@ def convert_dataset(
         cached_dataset_path, config.metadata_filename
     )
     if not cached_dataset_metadata_file.exists():
-        print("Error: could not find source dataset")
-        sys.exit(-1)
+        msg = "Could not find source dataset"
+        log.error(msg)
+        raise ValueError(msg)
     dataset_metadata = json.load(open(cached_dataset_metadata_file))
     if (dataset_metadata["format"] == new_format) and (old_nrows == new_nrows):
-        print("Conversion not needed.")
+        log.info("Conversion not needed.")
         return cached_dataset_path
 
     metadata_table_list = []
@@ -251,9 +249,9 @@ def convert_dataset(
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
 
-            # TODO write_dataset creates a directory with part-### files, also for single partitions.
-            # convert that to a single file to have the same behavior for datasets that were
-            # downloaded/generated directly.
+            # TODO write_dataset creates a directory with part-### files, also for
+            # single partitions. Convert that to a single file to have the same behavior
+            # for datasets that were downloaded/generated directly.
             ds.write_dataset(
                 scanner,
                 output_file,
@@ -272,11 +270,12 @@ def convert_dataset(
 
             # TODO: The dataset API does a poor job at detecting the schema.
             # Would be nice to be able to fall back to read/write_csv etc.
-            # Another option is to store the schema as metadata in the repo and pass it to dataset
+            # Another option is to store the schema as metadata in the repo and pass it
+            # to dataset
 
         conv_time = time.perf_counter() - conv_start
-        print("Finished conversion.")
-        debug_print(f"conversion took {conv_time:0.2f} s")
+        log.info("Finished conversion.")
+        log.debug(f"conversion took {conv_time:0.2f} s")
         dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
@@ -285,7 +284,7 @@ def convert_dataset(
         write_metadata(dataset_info, output_dir)
 
     except Exception:
-        print("An error occurred during conversion.")
+        log.error("An error occurred during conversion.")
         clean_cache_dir(output_dir)
         raise
 
@@ -294,7 +293,7 @@ def convert_dataset(
 
 def generate_dataset(dataset_info, argument_info, local_cache_location):
     dataset_name = argument_info.dataset
-    print(f"Generating {dataset_name} data to cache...")
+    log.info(f"Generating {dataset_name} data to cache...")
     gen_start = time.perf_counter()
     cached_dataset_path = pathlib.Path(
         local_cache_location,
@@ -323,13 +322,13 @@ def generate_dataset(dataset_info, argument_info, local_cache_location):
             )
 
         gen_time = time.perf_counter() - gen_start
-        print("Finished generating.")
-        debug_print(f"generation took {gen_time:0.2f} s")
+        log.info("Finished generating.")
+        log.debug(f"generation took {gen_time:0.2f} s")
         dataset_info["tables"] = metadata_table_list
         write_metadata(dataset_info, cached_dataset_path)
 
     except Exception:
-        print("An error occurred during generation.")
+        log.error("An error occurred during generation.")
         clean_cache_dir(cached_dataset_path)
         raise
 
@@ -339,29 +338,31 @@ def generate_dataset(dataset_info, argument_info, local_cache_location):
 def decompress(cached_dataset_path, dataset_file_name, compression):
     if compression is None:
         return
-    print("Decompressing dataset in cache...")
+    log.info("Decompressing dataset in cache...")
     decomp_start = time.perf_counter()
     if compression == "gz":
         compressed_file_name = dataset_file_name
         compressed_file_path = pathlib.Path(cached_dataset_path, compressed_file_name)
         decompressed_file_path = removesuffix(compressed_file_path, ".gz")
-        debug_print(
-            f"Decompressing GZip file {compressed_file_path} into {decompressed_file_path}"
+        log.debug(
+            f"Decompressing GZip file {compressed_file_path} into "
+            f"{decompressed_file_path}"
         )
         with gzip.open(compressed_file_path, "rb") as input_file:
             with open(decompressed_file_path, "wb") as output_file:
                 shutil.copyfileobj(input_file, output_file)
     else:
-        print(f"Error: unsupported compression type ({compression}).")
+        msg = f"Unsupported compression type ({compression})."
+        log.error(msg)
         clean_cache_dir(cached_dataset_path)
-        sys.exit(-1)
+        raise ValueError(msg)
     decomp_time = time.perf_counter() - decomp_start
-    print("Finished decompressing.")
-    debug_print(f"decompression took {decomp_time:0.2f} s")
+    log.info("Finished decompressing.")
+    log.debug(f"decompression took {decomp_time:0.2f} s")
 
 
 def download_dataset(dataset_info, argument_info, local_cache_location):
-    print("Downloading to cache...")
+    log.info("Downloading to cache...")
     down_start = time.perf_counter()
     cached_dataset_path = pathlib.Path(
         local_cache_location,
@@ -378,7 +379,7 @@ def download_dataset(dataset_info, argument_info, local_cache_location):
     # It doesn't have a metadata file (otherwise, the cache would have hit),
     # so something could have gone wrong while downloading/converting previously
     if dataset_file_path.exists():
-        debug_print(f"Removing existing file '{dataset_file_path}'")
+        log.debug(f"Removing existing file '{dataset_file_path}'")
         dataset_file_path.rmdir()
     url = dataset_info["url"]
     try:
@@ -388,12 +389,12 @@ def download_dataset(dataset_info, argument_info, local_cache_location):
         ) as out_file:
             shutil.copyfileobj(r, out_file)  # Performs a chunked copy
     except Exception:
-        print(f"Error: unable to download from '{url}'")
+        log.error(f"Unable to download from '{url}'")
         clean_cache_dir(cached_dataset_path)
         raise
     down_time = time.perf_counter() - down_start
-    debug_print(f"download took {down_time:0.2f} s")
-    print("Finished downloading.")
+    log.debug(f"download took {down_time:0.2f} s")
+    log.info("Finished downloading.")
 
     # Decompress if necessary
     if "file-compression" in dataset_info:
@@ -410,7 +411,7 @@ def download_dataset(dataset_info, argument_info, local_cache_location):
         write_metadata(dataset_info, cached_dataset_path)
 
     except Exception:
-        print("Error: pyarrow.dataset is unable to read downloaded file")
+        log.error("pyarrow.dataset is unable to read downloaded file")
         clean_cache_dir(cached_dataset_path)
         raise
 
@@ -418,7 +419,7 @@ def download_dataset(dataset_info, argument_info, local_cache_location):
 
 
 def copy_from_cache(cached_dataset_path, name):
-    print("Copying dataset from cache...")
+    log.info("Copying dataset from cache...")
     copy_start = time.perf_counter()
     dest_path = f"./{name}"
     cached_dataset_path.mkdir(parents=True, exist_ok=True)
@@ -426,5 +427,5 @@ def copy_from_cache(cached_dataset_path, name):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(cached_dataset_path, dest_path)
     copy_time = time.perf_counter() - copy_start
-    print("Finished Copying.")
-    debug_print(f"copy took {copy_time:0.2f} s")
+    log.info("Finished Copying.")
+    log.debug(f"copy took {copy_time:0.2f} s")
