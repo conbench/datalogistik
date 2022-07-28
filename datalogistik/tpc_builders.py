@@ -23,41 +23,37 @@ from typing import List, Optional
 from .log import log
 from .tpc_info import tpc_table_names
 
-DBGEN_REPO_URI = "https://github.com/electrum/tpch-dbgen"
-DBGEN_REPO_COMMIT = "32f1c1b92d1664dba542e927d23d86ffa57aa253"
-DBGEN_REPO_MAKEFILE_NAME = "makefile"
-DBGEN_REPO_MAKEFILE_MACHINE_LINE = "MACHINE = MAC"
-
-local_dbgen_repo = pathlib.Path(__file__).parent.resolve() / "dbgen_tool"
+repo_root = pathlib.Path(__file__).parent.resolve()
 
 
-def _run(*args, return_output=False, **kwargs) -> str:
-    """Run a command in the shell, checking its return code and maybe returning output.
+def _run(*args, **kwargs) -> str:
+    """Run a command in the shell, checking its return code and returning output.
 
     Parameters
     ----------
     *args
         Command to execute
-    return_output
-        Whether to return stdout/stderr as a string. Default False so the command prints
-        as it runs instead of after it completes.
     **kwargs
         Keyword args to subprocess.run()
     """
-    if return_output:
+    log.debug(f"Calling {args}")
+    try:
         res = subprocess.run(
             args,
             **kwargs,
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            capture_output=True,
             text=True,
         )
-        output = res.stdout.strip()
-        print(output)
-        return output
-    else:
-        subprocess.run(args, **kwargs, check=True)
+        stdout = res.stdout.strip()
+        stderr = res.stderr.strip()
+        log.debug(f"Done calling {args}.\nstdout:\n{stdout}\nstderr:\n{stderr}\n<end>")
+        return stdout
+    except subprocess.CalledProcessError as e:
+        log.error("An exception was raised during a subprocess. Details:")
+        for key, value in e.__dict__.items():
+            log.error(f"{key}:\n    {value}")
+        raise
 
 
 class _TPCBuilder(abc.ABC):
@@ -70,13 +66,21 @@ class _TPCBuilder(abc.ABC):
     """
 
     executable_path: Optional[pathlib.Path] = None
+    system: str = None
 
     force_flag: str
     scale_flag: str
     file_extension: str
     table_names: List[str]
+    repo_uri: str
+    repo_commit: str
+    repo_local_path: pathlib.Path
+    repo_build_path: pathlib.Path
+    makefile_arg: str
 
     def __init__(self, executable_path: Optional[pathlib.Path]):
+        self.system = platform.system()
+
         if executable_path:
             executable_path = pathlib.Path(executable_path).resolve()
             if not executable_path.exists():
@@ -84,6 +88,12 @@ class _TPCBuilder(abc.ABC):
                 log.error(msg)
                 raise ValueError(msg)
             self.executable_path = executable_path
+        else:
+            self.executable_path = self._get_default_executable_path()
+
+    @abc.abstractmethod
+    def _get_default_executable_path(self):
+        """Return the executable path for this generator if one isn't given."""
 
     def create_dataset(self, out_dir: pathlib.Path, scale_factor: int = 1):
         """Call the executable to generate the TPC database.
@@ -93,7 +103,7 @@ class _TPCBuilder(abc.ABC):
         out_dir
             The directory to place the CSVs in.
         scale_factor
-            The scale factor to use when building the database.
+            The scale factor to use when building the database. Default 1.
         """
         if not self.executable_path or not self.executable_path.exists():
             log.info("Could not find an executable. Attempting to create one.")
@@ -117,9 +127,35 @@ class _TPCBuilder(abc.ABC):
             os.chmod(new_file, 0o444)
             log.debug(f"Created {new_file}")
 
-    @abc.abstractmethod
     def _make_executable(self):
         """Clone the repo and build the executable."""
+        if self.repo_local_path.exists():
+            msg = (
+                f"Please delete the directory at {self.repo_local_path} and try again."
+            )
+            log.error(msg)
+            raise FileExistsError(msg)
+
+        _run("git", "clone", self.repo_uri, self.repo_local_path)
+        _run("git", "checkout", self.repo_commit, cwd=self.repo_local_path)
+
+        if self.system == "Linux":
+            _run("make", f"{self.makefile_arg}=LINUX", cwd=self.repo_build_path)
+        elif self.system == "Darwin":
+            _run("make", f"{self.makefile_arg}=MAC", cwd=self.repo_build_path)
+        elif self.system == "Windows":
+            self._build_executable_windows()
+        else:
+            msg = f"System '{self.system}' is not supported yet."
+            log.error(msg)
+            raise NotImplementedError(msg)
+
+        assert self.executable_path.exists()
+        log.info(f"Executable created at {self.executable_path}")
+
+    @abc.abstractmethod
+    def _build_executable_windows(self):
+        """Build the executable using 'MSBuild' on a Windows system."""
 
 
 class DBGen(_TPCBuilder):
@@ -137,76 +173,32 @@ class DBGen(_TPCBuilder):
     scale_flag = "-s"
     file_extension = ".tbl"
     table_names = tpc_table_names["tpc-h"]
+    repo_uri = "https://github.com/electrum/tpch-dbgen.git"
+    repo_commit = "32f1c1b92d1664dba542e927d23d86ffa57aa253"
+    repo_local_path = repo_root / "dbgen_tool"
+    repo_build_path = repo_root / "dbgen_tool"
+    makefile_arg = "MACHINE"
 
-    def __init__(self, executable_path: Optional[pathlib.Path] = None):
-        super().__init__(executable_path=executable_path)
-        self.system = platform.system()
-
-        # If not given, clone the repo into datalogistik's module directory
-        if not self.executable_path:
-            if self.system == "Windows":
-                self.executable_path = local_dbgen_repo / "Debug" / "dbgen.exe"
-            else:
-                self.executable_path = local_dbgen_repo / "dbgen"
-
-    def _make_executable(self):
-        """Clone the repo and build the executable."""
-        if local_dbgen_repo.exists():
-            msg = f"Please delete the directory at {local_dbgen_repo} and try again."
-            log.error(msg)
-            raise FileExistsError(msg)
-
-        _run("git", "clone", DBGEN_REPO_URI, local_dbgen_repo)
-        _run("git", "checkout", DBGEN_REPO_COMMIT, cwd=local_dbgen_repo)
-
-        if self.system == "Linux":
-            self._build_executable_unix(machine="LINUX")
-        elif self.system == "Darwin":
-            self._build_executable_unix(machine="MAC")
-        elif self.system == "Windows":
-            self._build_executable_windows()
+    def _get_default_executable_path(self):
+        """Return the executable path for this generator if one isn't given."""
+        if self.system == "Windows":
+            return self.repo_build_path / "Debug" / "dbgen.exe"
         else:
-            msg = f"System '{self.system}' is not supported yet."
-            log.error(msg)
-            raise NotImplementedError(msg)
-
-        assert self.executable_path.exists()
-        log.info(f"Executable created at {self.executable_path}")
-
-    def _build_executable_unix(self, machine: str):
-        """Modify the Makefile, and build the executable using 'make' on a UNIX-based
-        system.
-
-        Parameters
-        ----------
-        machine
-            The 'MACHINE' choice for the Makefile.
-        """
-        makefile_path = local_dbgen_repo / DBGEN_REPO_MAKEFILE_NAME
-        with open(makefile_path, "r") as f:
-            makefile_contents = f.read()
-        with open(makefile_path, "w") as f:
-            f.write(
-                makefile_contents.replace(
-                    DBGEN_REPO_MAKEFILE_MACHINE_LINE, f"MACHINE = {machine}"
-                )
-            )
-
-        _run("make", cwd=local_dbgen_repo)
+            return self.repo_build_path / "dbgen"
 
     def _build_executable_windows(self):
         """Build the executable using 'MSBuild' on a Windows system."""
         log.info("Upgrading the solution file; this could take a few minutes...")
-        solution_file = local_dbgen_repo / "tpch.sln"
-        devenv = _run("vswhere", "-property", "productPath", return_output=True)
+        solution_file = self.repo_build_path / "tpch.sln"
+        devenv = _run("vswhere", "-property", "productPath")
         _run(devenv, solution_file, "/upgrade")
 
         log.info("Building the executable")
-        _run("msbuild", solution_file, cwd=local_dbgen_repo)
+        _run("msbuild", solution_file, cwd=self.repo_build_path)
 
         # have to move this file for the executable to work
-        distributions_file = local_dbgen_repo / "dists.dss"
-        distributions_file.replace(local_dbgen_repo / "Debug" / "dists.dss")
+        distributions_file = self.repo_build_path / "dists.dss"
+        distributions_file.replace(self.repo_build_path / "Debug" / "dists.dss")
 
 
 class DSDGen(_TPCBuilder):
@@ -215,16 +207,49 @@ class DSDGen(_TPCBuilder):
     Parameters
     ----------
     executable_path
-        Path to the ``dsdgen`` executable. Required for now.
+        Path to the ``dsdgen`` executable. If not given, ``datalogistik`` will attempt
+        to make it by cloning a repo (requires ``git`` on your PATH) and building the
+        tool (requires ``make`` for UNIX or ``msbuild`` for Windows on your PATH).
     """
 
     force_flag = "-FORCE"
     scale_flag = "-SCALE"
     file_extension = ".dat"
     table_names = tpc_table_names["tpc-ds"]
+    repo_uri = "https://github.com/gregrahn/tpcds-kit.git"
+    repo_commit = "5a3a81796992b725c2a8b216767e142609966752"
+    repo_local_path = repo_root / "dsdgen_tool"
+    repo_build_path = repo_root / "dsdgen_tool" / "tools"
+    makefile_arg = "OS"
 
-    def _make_executable(self):
-        """Clone the repo and build the executable."""
-        msg = "datalogistik cannot build dsdgen for you yet."
-        log.error(msg)
-        raise NotImplementedError(msg)
+    def _get_default_executable_path(self):
+        """Return the executable path for this generator if one isn't given."""
+        if self.system == "Windows":
+            return self.repo_build_path / "dsdgen.exe"
+        else:
+            return self.repo_build_path / "dsdgen"
+
+    def _build_executable_windows(self):
+        """Build the executable using 'MSBuild' on a Windows system."""
+        log.info("Upgrading the solution file; this could take a few minutes...")
+        solution_file = self.repo_build_path / "dbgen2.sln"
+
+        # Remove unnecessary projects from this file
+        with open(solution_file, "r") as f:
+            new_solution = "".join(
+                line
+                for line in f
+                if not any(
+                    uuid in line for uuid in ("59EBAD48", "3EA62CB9", "6540812A")
+                )
+            )
+            new_solution = new_solution.replace("EndProject\nEndProject", "EndProject")
+            new_solution = new_solution.replace("EndProject\nEndProject", "EndProject")
+        with open(solution_file, "w") as f:
+            f.writelines(new_solution)
+
+        devenv = _run("vswhere", "-property", "productPath")
+        _run(devenv, solution_file, "/upgrade")
+
+        log.info("Building the executable")
+        _run("msbuild", solution_file, cwd=self.repo_build_path)
