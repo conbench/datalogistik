@@ -20,6 +20,7 @@ import shutil
 import subprocess
 from typing import List, Optional
 
+from .log import log
 from .tpc_info import tpc_table_names
 
 DBGEN_REPO_URI = "https://github.com/electrum/tpch-dbgen"
@@ -79,9 +80,9 @@ class _TPCBuilder(abc.ABC):
         if executable_path:
             executable_path = pathlib.Path(executable_path).resolve()
             if not executable_path.exists():
-                raise ValueError(
-                    f"The given executable_path '{executable_path}' does not exist."
-                )
+                msg = f"The given executable_path '{executable_path}' does not exist."
+                log.error(msg)
+                raise ValueError(msg)
             self.executable_path = executable_path
 
     def create_dataset(self, out_dir: pathlib.Path, scale_factor: int = 1):
@@ -95,7 +96,7 @@ class _TPCBuilder(abc.ABC):
             The scale factor to use when building the database.
         """
         if not self.executable_path or not self.executable_path.exists():
-            print("Could not find an executable. Attempting to create one.")
+            log.info("Could not find an executable. Attempting to create one.")
             self._make_executable()
 
         _run(
@@ -114,7 +115,7 @@ class _TPCBuilder(abc.ABC):
             shutil.move(old_file, new_file)
             # reset permissions to read-only
             os.chmod(new_file, 0o444)
-            print("Created", new_file)
+            log.debug(f"Created {new_file}")
 
     @abc.abstractmethod
     def _make_executable(self):
@@ -151,9 +152,9 @@ class DBGen(_TPCBuilder):
     def _make_executable(self):
         """Clone the repo and build the executable."""
         if local_dbgen_repo.exists():
-            raise FileExistsError(
-                f"Please delete the directory at {local_dbgen_repo} and try again."
-            )
+            msg = f"Please delete the directory at {local_dbgen_repo} and try again."
+            log.error(msg)
+            raise FileExistsError(msg)
 
         _run("git", "clone", DBGEN_REPO_URI, local_dbgen_repo)
         _run("git", "checkout", DBGEN_REPO_COMMIT, cwd=local_dbgen_repo)
@@ -165,10 +166,12 @@ class DBGen(_TPCBuilder):
         elif self.system == "Windows":
             self._build_executable_windows()
         else:
-            raise NotImplementedError(f"System '{self.system}' is not supported yet.")
+            msg = f"System '{self.system}' is not supported yet."
+            log.error(msg)
+            raise NotImplementedError(msg)
 
         assert self.executable_path.exists()
-        print(f"Executable created at {self.executable_path}")
+        log.info(f"Executable created at {self.executable_path}")
 
     def _build_executable_unix(self, machine: str):
         """Modify the Makefile, and build the executable using 'make' on a UNIX-based
@@ -193,12 +196,12 @@ class DBGen(_TPCBuilder):
 
     def _build_executable_windows(self):
         """Build the executable using 'MSBuild' on a Windows system."""
-        print("Upgrading the solution file; this could take a few minutes...")
+        log.info("Upgrading the solution file; this could take a few minutes...")
         solution_file = local_dbgen_repo / "tpch.sln"
         devenv = _run("vswhere", "-property", "productPath", return_output=True)
         _run(devenv, solution_file, "/upgrade")
 
-        print("Building the executable")
+        log.info("Building the executable")
         _run("msbuild", solution_file, cwd=local_dbgen_repo)
 
         # have to move this file for the executable to work
@@ -222,4 +225,6 @@ class DSDGen(_TPCBuilder):
 
     def _make_executable(self):
         """Clone the repo and build the executable."""
-        raise NotImplementedError("datalogistik cannot build dsdgen for you yet.")
+        msg = "datalogistik cannot build dsdgen for you yet."
+        log.error(msg)
+        raise NotImplementedError(msg)
