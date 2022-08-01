@@ -91,7 +91,6 @@ jobs:
           path: dist
   test-convert-without-repo:
     strategy:
-      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -106,9 +105,6 @@ jobs:
     needs: build-wheel
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Add msbuild to PATH
-        if: matrix.os == 'windows-latest'
-        uses: microsoft/setup-msbuild@v1.1
       - name: Set up Python
         uses: actions/setup-python@v2
       - name: Install pipx
@@ -122,7 +118,31 @@ jobs:
         with:
           name: poetry-build-artifacts
       - name: Install package
-        shell: bash
-        run: ${{ matrix.installer }} install "${{ matrix.installee }}"
+        run: ${{ matrix.installer }} install '${{ matrix.installee }}'
       - name: Test generating and converting a dataset
-        run: datalogistik -d tpc-h -f parquet
+        run: datalogistik -d type_floats -f parquet
+  test-tpc-integration:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        dataset:
+          - tpc-h
+          - tpc-ds
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Add msbuild to PATH
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.1
+      - name: Check out repo
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Install poetry
+        run: pip install poetry
+      - name: Create poetry environment
+        run: poetry install
+      - name: Run integration test
+        run: poetry run datalogistik -d ${{ matrix.dataset }} -f parquet
