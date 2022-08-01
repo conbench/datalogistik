@@ -246,7 +246,9 @@ class DSDGen(_TPCBuilder):
         log.info("Upgrading the solution file; this could take a few minutes...")
         solution_file = self.repo_build_path / "dbgen2.sln"
 
-        # Remove unnecessary projects from this file
+        # See https://github.com/gregrahn/tpcds-kit/blob/5a3a817/tools/dbgen2.sln
+        # Some of these projects (dsqgen, checksum, and grammar) don't upgrade nicely.
+        # We don't need them, so delete all references to them from this file.
         with open(solution_file, "r") as f:
             new_solution = "".join(
                 line
@@ -258,7 +260,7 @@ class DSDGen(_TPCBuilder):
             new_solution = new_solution.replace("EndProject\nEndProject", "EndProject")
             new_solution = new_solution.replace("EndProject\nEndProject", "EndProject")
         with open(solution_file, "w") as f:
-            f.writelines(new_solution)
+            f.write(new_solution)
 
         devenv = _run("vswhere", "-property", "productPath")
         _run(devenv, solution_file, "/upgrade")
