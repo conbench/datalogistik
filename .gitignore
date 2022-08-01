@@ -15,4 +15,5 @@
 __pycache__
 *datalogistik_cache*
 datalogistik/dbgen_tool
+datalogistik/dsdgen_tool
 .DS_Store
