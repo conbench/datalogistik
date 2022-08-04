@@ -73,6 +73,12 @@ Supported formats: Parquet, csv",
         default=0,
         help="Partition the dataset using this maximum number of rows per file",
     )
+    parser.add_argument(
+        "-b",
+        "--bypass-cache",
+        action="store_true",
+        help="Do not store any copies of the dataset in the cache",
+    )
 
     return parser.parse_args()
 
