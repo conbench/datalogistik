@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import pathlib
 
 debug = True
@@ -22,3 +23,10 @@ cache_dir_name = "datalogistik_cache"
 metadata_filename = "datalogistik_metadata.ini"
 supported_formats = ["parquet", "csv"]
 hashing_chunk_size = 16384
+
+
+def get_cache_location():
+    return pathlib.Path(
+        os.getenv("DATALOGISTIK_CACHE", default_cache_location),
+        cache_dir_name,
+    )

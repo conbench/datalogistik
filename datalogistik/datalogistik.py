@@ -31,10 +31,7 @@ def finish():
     sys.exit(0)
 
 
-local_cache_location = pathlib.Path(
-    os.getenv("DATALOGISTIK_CACHE", config.default_cache_location),
-    config.cache_dir_name,
-)
+local_cache_location = config.get_cache_location()
 
 
 def main():

@@ -117,11 +117,7 @@ def write_metadata(dataset_info, path):
 def clean_cache_dir(path):
     path = pathlib.Path(path)
     log.debug(f"Cleaning incomplete cache entry '{path}'")
-    local_cache_location = pathlib.Path(
-        os.getenv("DATALOGISTIK_CACHE", config.default_cache_location),
-        config.cache_dir_name,
-    )  # Duplicate
-    cache_root = pathlib.Path(local_cache_location)
+    cache_root = config.get_cache_location()
     if cache_root not in path.parents:
         msg = "Refusing to clean a directory outside of the local cache"
         log.error(msg)
@@ -138,6 +134,51 @@ def clean_cache_dir(path):
         except StopIteration:
             log.debug(f"Removing empty parent path '{path}'")
             os.rmdir(path)
+
+
+def clean_cache():
+    cache_root = config.get_cache_location()
+    log.info(f"Cleaning cache at {cache_root}")
+    for dirpath, dirnames, _ in os.walk(cache_root):
+        if pathlib.Path(dirpath) == cache_root:
+            continue
+        if not dirnames:
+            # walk up the directory tree up to the root to find a metadatafile
+            walking_path = pathlib.Path(dirpath)
+            valid_metadata_file_found = False
+            while walking_path.parent != cache_root:
+                metadata_file = pathlib.Path(walking_path, config.metadata_filename)
+                if metadata_file.exists():
+                    metadata = json.load(open(metadata_file))
+                    if metadata.get("files"):
+                        valid_metadata_file_found = True
+                        break
+                walking_path = walking_path.parent
+
+            if not valid_metadata_file_found:
+                clean_cache_dir(dirpath)
+
+
+def prune_cache_entry(sub_path):
+    log.debug(f"Pruning cache entries below cache subdir '{sub_path}'")
+    local_cache_location = config.get_cache_location()
+    cache_root = pathlib.Path(local_cache_location)
+    path = pathlib.Path(cache_root, sub_path)
+    if not path.exists():
+        log.info(f"Directory {path} does not exist")
+        return
+    else:
+        log.info(f"Pruning Directory {path}")
+    if cache_root not in path.parents:
+        msg = "Refusing to prune a directory outside of the local cache"
+        log.error(msg)
+        raise RuntimeError(msg)
+
+    # Delete the cache entry itself
+    shutil.rmtree(path, ignore_errors=True)
+
+    # Use util function to clean up any superfluous directories
+    clean_cache_dir(path)
 
 
 def schema_to_dict(schema):
