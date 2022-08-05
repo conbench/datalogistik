@@ -165,10 +165,36 @@ def prune_cache_entry(sub_path):
     cache_root = pathlib.Path(local_cache_location)
     path = pathlib.Path(cache_root, sub_path)
     if not path.exists():
-        log.info(f"Directory {path} does not exist")
-        return
+        msg = f"Path '{path}' does not exist"
+        log.error(msg)
+        raise RuntimeError(msg)
+    if not path.is_dir():
+        msg = f"Path '{path}' is not a directory"
+        log.error(msg)
+        raise RuntimeError(msg)
+
+    metadata_file = pathlib.Path(path, config.metadata_filename)
+    if metadata_file.exists() and json.load(open(metadata_file)).get("files"):
+        # This is a valid dataset, continue pruning
+        pass
     else:
-        log.info(f"Pruning Directory {path}")
+        # Not a valid dataset, check if this path is a subdir of a valid dataset
+        walking_path = pathlib.Path(path).parent
+        valid_metadata_file_found = False
+        while walking_path != cache_root:
+            metadata_file = pathlib.Path(walking_path, config.metadata_filename)
+            if metadata_file.exists():
+                metadata = json.load(open(metadata_file))
+                if metadata.get("files"):
+                    valid_metadata_file_found = True
+                    break
+            walking_path = walking_path.parent
+        if valid_metadata_file_found:
+            msg = f"Path '{path}' seems to be a subdirectory of a valid dataset, refusing to remove it."
+            log.error(msg)
+            raise RuntimeError(msg)
+
+    log.info(f"Pruning Directory {path}")
     if cache_root not in path.parents:
         msg = "Refusing to prune a directory outside of the local cache"
         log.error(msg)
