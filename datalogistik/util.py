@@ -93,6 +93,70 @@ def add_file_listing(metadata, path):
     metadata["files"] = file_list
 
 
+# Validate that the integrity of the files in the dataset at given path is ok, using the metadata file
+def validate(path):
+    path = pathlib.Path(path)
+    if not path.exists():
+        msg = f"Path '{path}' does not exist"
+        log.error(msg)
+        raise RuntimeError(msg)
+    if not path.is_dir():
+        msg = f"Path '{path}' is not a directory"
+        log.error(msg)
+        raise RuntimeError(msg)
+    metadata_file = pathlib.Path(path, config.metadata_filename)
+    dataset_found = False
+    if metadata_file.exists():
+        orig_file_listing = json.load(open(metadata_file)).get("files")
+        if orig_file_listing:
+            dataset_found = True
+
+    if not dataset_found:
+        msg = f"No valid dataset was found at '{path}'"
+        log.error(msg)
+        raise RuntimeError(msg)
+    else:
+        log.debug(f"Validating dataset at path '{path}'")
+        new_file_listing = {}
+        add_file_listing(new_file_listing, path)
+        new_file_listing = new_file_listing.get("files")
+        # we can't perform a simple equality check, because the orig_file_listing does not contain the metadata file
+        listings_are_equal = True
+        for orig_file in orig_file_listing:
+            found = None
+            for new_file in new_file_listing:
+                if new_file["file_path"] == orig_file["file_path"]:
+                    found = new_file
+                    break
+            if found is None:
+                orig_file_path = orig_file["file_path"]
+                log.error(f"Missing file: {orig_file_path}")
+                listings_are_equal = False
+            if orig_file != new_file:
+                log.error("File integrity compromised: (top:original bottom:new)")
+                log.error(orig_file)
+                log.error(new_file)
+                listings_are_equal = False
+        if listings_are_equal:
+            log.info("Dataset is valid")
+            return True
+        else:
+            log.error("Dataset is NOT valid!")
+            return False
+
+
+# TODO: consider merging with clean_cache (mostly duplicate code)
+def validate_cache():
+    cache_root = config.get_cache_location()
+    log.info(f"Validating cache at {cache_root}")
+    for dirpath, dirnames, filenames in os.walk(cache_root):
+        if config.metadata_filename in filenames:
+            # Dataset found, validate
+            if not validate(dirpath):
+                log.info(f"Found invalid cache entry at {dirpath}, pruning...")
+                prune_cache_entry(pathlib.Path(dirpath).relative_to(cache_root))
+
+
 def write_metadata(dataset_info, path):
     metadata = {
         "local-creation-date": datetime.datetime.now()
@@ -119,6 +183,7 @@ def write_metadata(dataset_info, path):
         metadata,
     )
     add_file_listing(metadata, path)
+    # TODO: if checksums are present in dataset_info, verify the file listing we just created against them
     json_string = json.dumps(metadata)
     with open(pathlib.Path(path, config.metadata_filename), "w") as metadata_file:
         metadata_file.write(json_string)
