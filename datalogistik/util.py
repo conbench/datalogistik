@@ -149,10 +149,11 @@ def clean_cache():
             while walking_path.parent != cache_root:
                 metadata_file = pathlib.Path(walking_path, config.metadata_filename)
                 if metadata_file.exists():
-                    metadata = json.load(open(metadata_file))
-                    if metadata.get("files"):
-                        valid_metadata_file_found = True
-                        break
+                    with open(metadata_file) as f:
+                        metadata = json.load(f)
+                        if metadata.get("files"):
+                            valid_metadata_file_found = True
+                            break
                 walking_path = walking_path.parent
 
             if not valid_metadata_file_found:
@@ -174,20 +175,23 @@ def prune_cache_entry(sub_path):
         raise RuntimeError(msg)
 
     metadata_file = pathlib.Path(path, config.metadata_filename)
-    if metadata_file.exists() and json.load(open(metadata_file)).get("files"):
-        # This is a valid dataset, continue pruning
-        pass
-    else:
-        # Not a valid dataset, check if this path is a subdir of a valid dataset
+    if metadata_file.exists():
+        with open(metadata_file) as f:
+            if json.load(f).get("files"):
+                valid_dataset = True
+
+    if not valid_dataset:
+        # check if this path is a subdir of a valid dataset
         walking_path = pathlib.Path(path).parent
         valid_metadata_file_found = False
         while walking_path != cache_root:
             metadata_file = pathlib.Path(walking_path, config.metadata_filename)
             if metadata_file.exists():
-                metadata = json.load(open(metadata_file))
-                if metadata.get("files"):
-                    valid_metadata_file_found = True
-                    break
+                with open(metadata_file) as f:
+                    metadata = json.load(f)
+                    if metadata.get("files"):
+                        valid_metadata_file_found = True
+                        break
             walking_path = walking_path.parent
         if valid_metadata_file_found:
             msg = f"Path '{path}' seems to be a subdirectory of a valid dataset, refusing to remove it."
@@ -195,10 +199,6 @@ def prune_cache_entry(sub_path):
             raise RuntimeError(msg)
 
     log.info(f"Pruning Directory {path}")
-    if cache_root not in path.parents:
-        msg = "Refusing to prune a directory outside of the local cache"
-        log.error(msg)
-        raise RuntimeError(msg)
 
     # Delete the cache entry itself
     shutil.rmtree(path, ignore_errors=True)
@@ -287,7 +287,10 @@ def convert_dataset(
         msg = "Could not find source dataset"
         log.error(msg)
         raise ValueError(msg)
-    dataset_metadata = json.load(open(cached_dataset_metadata_file))
+
+    with open(cached_dataset_metadata_file) as f:
+        dataset_metadata = json.load(f)
+
     if (dataset_metadata["format"] == new_format) and (old_nrows == new_nrows):
         log.info("Conversion not needed.")
         return cached_dataset_path
