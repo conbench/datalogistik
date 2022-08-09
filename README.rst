@@ -9,7 +9,7 @@ generate some datasets such as TPC-H by calling their (external) generator progr
 
 Usage::
 
-    datalogistik generate <generate|cache>
+    datalogistik <generate|cache>
 
     datalogistik generate [-h] \
         -d DATASET \
