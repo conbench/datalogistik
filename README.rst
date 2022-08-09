@@ -17,6 +17,7 @@ Usage::
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
         [-p PARTITION_MAX_ROWS]
+        [-b, --bypass-cache]
 
     datalogistik cache [-h] \
         [--clean] \
@@ -44,6 +45,9 @@ Usage::
 ``PARTITION_MAX_ROWS``
     Partition the dataset using this value as the maximum number of rows per partition.
     Default 0, which means no partitioning.
+
+``bypass-cache``
+    Do not store any copies of the dataset in the cache
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
