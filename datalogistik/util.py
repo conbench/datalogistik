@@ -117,33 +117,36 @@ def validate(path):
         log.error(msg)
         raise RuntimeError(msg)
     else:
-        log.debug(f"Validating dataset at path '{path}'")
-        new_file_listing = {}
-        add_file_listing(new_file_listing, path)
-        new_file_listing = new_file_listing.get("files")
-        # we can't perform a simple equality check, because the orig_file_listing does not contain the metadata file
-        listings_are_equal = True
-        for orig_file in orig_file_listing:
-            found = None
-            for new_file in new_file_listing:
-                if new_file["file_path"] == orig_file["file_path"]:
-                    found = new_file
-                    break
-            if found is None:
-                orig_file_path = orig_file["file_path"]
-                log.error(f"Missing file: {orig_file_path}")
-                listings_are_equal = False
-            if orig_file != new_file:
-                log.error("File integrity compromised: (top:original bottom:new)")
-                log.error(orig_file)
-                log.error(new_file)
-                listings_are_equal = False
-        if listings_are_equal:
-            log.info("Dataset is valid")
-            return True
-        else:
-            log.error("Dataset is NOT valid!")
-            return False
+        return validate_files(path, orig_file_listing)
+
+
+def validate_files(path, file_listing):
+    new_file_listing = {}
+    add_file_listing(new_file_listing, path)
+    new_file_listing = new_file_listing.get("files")
+    # we can't perform a simple equality check, because the orig_file_listing does not contain the metadata file
+    listings_are_equal = True
+    for orig_file in file_listing:
+        found = None
+        for new_file in new_file_listing:
+            if new_file["file_path"] == orig_file["file_path"]:
+                found = new_file
+                break
+        if found is None:
+            orig_file_path = orig_file["file_path"]
+            log.error(f"Missing file: {orig_file_path}")
+            listings_are_equal = False
+        if orig_file != new_file:
+            log.error("File integrity compromised: (top:original bottom:new)")
+            log.error(orig_file)
+            log.error(new_file)
+            listings_are_equal = False
+    if listings_are_equal:
+        log.info("Dataset is valid")
+        return True
+    else:
+        log.error("Dataset is NOT valid!")
+        return False
 
 
 # TODO: consider merging with clean_cache (mostly duplicate code)
