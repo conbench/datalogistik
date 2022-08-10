@@ -53,6 +53,8 @@ def file_visitor(written_file):
 # Construct a path to a dataset entry in the cache (possibly not existing yet)
 def create_cached_dataset_path(name, scale_factor, format, partitioning_nrows):
     local_cache_location = config.get_cache_location()
+    scale_factor = f"scalefactor_{scale_factor}" if scale_factor != "" else ""
+    partitioning_nrows = f"partitioning_{partitioning_nrows}"
     return pathlib.Path(
         local_cache_location, name, scale_factor, format, partitioning_nrows
     )

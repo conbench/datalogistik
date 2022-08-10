@@ -70,7 +70,7 @@ def main():
             other_format_path = pathlib.Path(
                 local_cache_location,
                 argument_info.dataset,
-                argument_info.scale_factor,
+                f"scalefactor_{argument_info.scale_factor}",
                 cached_file_format,
             )
             if other_format_path.exists():
