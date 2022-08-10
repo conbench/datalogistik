@@ -429,7 +429,9 @@ def convert_dataset(
             # TODO: The dataset API does a poor job at detecting the schema.
             # Would be nice to be able to fall back to read/write_csv etc.
             # Another option is to store the schema as metadata in the repo and pass it
-            # to dataset
+            # to dataset.
+            # It would also be nice to detect/provide option whether the first line
+            # contains column names.
 
         conv_time = time.perf_counter() - conv_start
         log.info("Finished conversion.")
