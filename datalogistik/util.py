@@ -567,13 +567,12 @@ def download_dataset(dataset_info, argument_info):
         dataset_info["tables"] = [
             {"table": str(dataset_file_name), "schema": schema_to_dict(dataset.schema)}
         ]
-        write_metadata(dataset_info, cached_dataset_path)
-
     except Exception:
         log.error("pyarrow.dataset is unable to read downloaded file")
         clean_cache_dir(cached_dataset_path)
         raise
 
+    write_metadata(dataset_info, cached_dataset_path)
     return cached_dataset_path
 
 
