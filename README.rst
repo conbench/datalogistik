@@ -233,6 +233,9 @@ datalogistik_metadata.ini
 ``url``
     The location where this dataset was downloaded.
 
+``homepage``
+    Location where more information about the origins of dataset can be found.
+
 ``parquet-compression``
     When the parquet format is used, what compression standard was used internally. Note
     that this is different from file-compression.
