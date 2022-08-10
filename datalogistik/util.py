@@ -186,8 +186,16 @@ def write_metadata(dataset_info, path):
         dataset_info,
         metadata,
     )
-    add_file_listing(metadata, path)
-    # TODO: if checksums are present in dataset_info, verify the file listing we just created against them
+    if metadata.get("files"):
+        # In this case, the dataset info contained checksums. Check them
+        if not validate_files(path, metadata.get("files")):
+            clean_cache_dir(path)
+            msg = "File integrity check for newly created dataset failed."
+            log.error(msg)
+            raise RuntimeError(msg)
+    else:
+        add_file_listing(metadata, path)
+
     json_string = json.dumps(metadata)
     with open(pathlib.Path(path, config.metadata_filename), "w") as metadata_file:
         metadata_file.write(json_string)
