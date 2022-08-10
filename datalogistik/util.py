@@ -302,7 +302,7 @@ def get_dataset(input_file, dataset_info, table_name=None):
     if dataset_info["format"] == "csv":
         # defaults
         po = csv.ParseOptions()
-        ro = csv.ReadOptions()
+        ro = csv.ReadOptions(autogenerate_column_names=True)
         co = csv.ConvertOptions()
 
         if "delim" in dataset_info:
