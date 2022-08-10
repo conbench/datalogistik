@@ -47,8 +47,7 @@ def main():
     # check if an existing dataset is still valid.
 
     log.debug(f"Checking local cache at {local_cache_location}")
-    cached_dataset_path = pathlib.Path(
-        local_cache_location,
+    cached_dataset_path = util.create_cached_dataset_path(
         argument_info.dataset,
         argument_info.scale_factor,
         argument_info.format,
@@ -97,7 +96,6 @@ def main():
                             f"Metadata file located at '{cached_dataset_metadata_file}'"
                         )
                         cached_dataset_path = util.convert_dataset(
-                            local_cache_location,
                             dataset_info,
                             argument_info.compression,
                             cached_file_format,
@@ -122,20 +120,15 @@ def main():
     log.info("Dataset not found in local cache.")
 
     if argument_info.dataset in tpc_info.tpc_datasets:
-        cached_dataset_path = util.generate_dataset(
-            dataset_info, argument_info, local_cache_location
-        )
+        cached_dataset_path = util.generate_dataset(dataset_info, argument_info)
     else:
-        cached_dataset_path = util.download_dataset(
-            dataset_info, argument_info, local_cache_location
-        )
+        cached_dataset_path = util.download_dataset(dataset_info, argument_info)
 
     # Convert to the requested format if necessary
     if (dataset_info["format"] != argument_info.format) or (
         dataset_info["partitioning-nrows"] != argument_info.partition_max_rows
     ):
         cached_dataset_path = util.convert_dataset(
-            local_cache_location,
             dataset_info,
             argument_info.compression,
             dataset_info["format"],

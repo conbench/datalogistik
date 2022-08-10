@@ -50,6 +50,14 @@ def file_visitor(written_file):
     log.debug(f"metadata={written_file.metadata}")
 
 
+# Construct a path to a dataset entry in the cache (possibly not existing yet)
+def create_cached_dataset_path(name, scale_factor, format, partitioning_nrows):
+    local_cache_location = config.get_cache_location()
+    return pathlib.Path(
+        local_cache_location, name, scale_factor, format, partitioning_nrows
+    )
+
+
 # For each item in the itemlist, add it to metadata if it exists in dataset_info
 def add_if_present(itemlist, dataset_info, metadata):
     for item in itemlist:
@@ -249,7 +257,6 @@ def get_dataset(input_file, dataset_info, table_name=None):
 
 # Convert a cached dataset into another format, return the new directory path
 def convert_dataset(
-    local_cache_location,
     dataset_info,
     parquet_compression,
     old_format,
@@ -269,8 +276,8 @@ def convert_dataset(
     else:
         dataset_file_name = dataset_info["url"].split("/")[-1]
         file_names = [dataset_file_name.split(".")[0]]
-    cached_dataset_path = pathlib.Path(
-        local_cache_location, dataset_name, scale_factor, old_format, str(old_nrows)
+    cached_dataset_path = create_cached_dataset_path(
+        dataset_name, scale_factor, old_format, str(old_nrows)
     )
     cached_dataset_metadata_file = pathlib.Path(
         cached_dataset_path, config.metadata_filename
@@ -289,8 +296,8 @@ def convert_dataset(
 
     metadata_table_list = []
     try:
-        output_dir = pathlib.Path(
-            local_cache_location, dataset_name, scale_factor, new_format, str(new_nrows)
+        output_dir = create_cached_dataset_path(
+            dataset_name, scale_factor, new_format, str(new_nrows)
         )
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -353,12 +360,11 @@ def convert_dataset(
     return output_dir
 
 
-def generate_dataset(dataset_info, argument_info, local_cache_location):
+def generate_dataset(dataset_info, argument_info):
     dataset_name = argument_info.dataset
     log.info(f"Generating {dataset_name} data to cache...")
     gen_start = time.perf_counter()
-    cached_dataset_path = pathlib.Path(
-        local_cache_location,
+    cached_dataset_path = create_cached_dataset_path(
         dataset_name,
         argument_info.scale_factor,
         dataset_info["format"],
@@ -423,12 +429,12 @@ def decompress(cached_dataset_path, dataset_file_name, compression):
     log.debug(f"decompression took {decomp_time:0.2f} s")
 
 
-def download_dataset(dataset_info, argument_info, local_cache_location):
+def download_dataset(dataset_info, argument_info):
     log.info("Downloading to cache...")
     down_start = time.perf_counter()
-    cached_dataset_path = pathlib.Path(
-        local_cache_location,
+    cached_dataset_path = create_cached_dataset_path(
         argument_info.dataset,
+        "",  # no scale_factor
         dataset_info["format"],
         str(dataset_info["partitioning-nrows"]),
     )
