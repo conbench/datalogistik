@@ -153,38 +153,6 @@ jobs:
         run: ${{ matrix.installer }} install '${{ matrix.installee }}'
       - name: Test generating and converting a dataset
         run: datalogistik generate -d type_floats -f csv
-  test-download-convert-c2p-without-repo:
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
-        installer:
-          - pip
-          - pipx
-        installee:
-          - ./datalogistik-0.1.0-py3-none-any.whl
-          - git+https://github.com/conbench/datalogistik.git@${{ github.sha }}
-    needs: build-wheel
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Set up Python
-        uses: actions/setup-python@v2
-      - name: Install pipx
-        if: matrix.installer == 'pipx'
-        run: |
-          pip install pipx
-          pipx ensurepath
-      - name: Download Wheel
-        if: contains(matrix.installee, '.whl')
-        uses: actions/download-artifact@v3
-        with:
-          name: poetry-build-artifacts
-      - name: Install package
-        run: ${{ matrix.installer }} install '${{ matrix.installee }}'
-      - name: Test generating and converting a dataset
-        run: datalogistik generate -d nyctaxi_2010-01 -f parquet
   test-tpc-integration:
     strategy:
       matrix:
