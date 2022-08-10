@@ -285,7 +285,7 @@ def convert_dataset(
         cached_dataset_path, config.metadata_filename
     )
     if not cached_dataset_metadata_file.exists():
-        msg = "Could not find source dataset"
+        msg = f"Could not find source dataset at {str(cached_dataset_metadata_file)}"
         log.error(msg)
         raise ValueError(msg)
 
@@ -320,9 +320,6 @@ def convert_dataset(
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
 
-            # TODO write_dataset creates a directory with part-### files, also for
-            # single partitions. Convert that to a single file to have the same behavior
-            # for datasets that were downloaded/generated directly.
             ds.write_dataset(
                 scanner,
                 output_file,
@@ -332,6 +329,18 @@ def convert_dataset(
                 max_rows_per_group=new_nrows if new_nrows != 0 else None,
                 file_visitor=file_visitor if config.debug else None,
             )
+            if new_nrows == 0:
+                # Convert from name.format/part-0.format to simply a file name.format
+                # To stay consistent with downloaded/generated datasets (without partitioning)
+                tmp_dir_name = pathlib.Path(
+                    output_file.parent, f"{file_name}.{new_format}.tmp"
+                )
+                os.rename(output_file, tmp_dir_name)
+                os.rename(
+                    pathlib.Path(tmp_dir_name, f"part-0.{new_format}"), output_file
+                )
+                tmp_dir_name.rmdir()
+
             metadata_table_list.append(
                 {
                     "table": f"{file_name}.{new_format}",
