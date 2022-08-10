@@ -563,7 +563,7 @@ def download_dataset(dataset_info, argument_info):
     try:
         dataset, scanner = get_dataset(dataset_file_path, dataset_info)
         dataset_info["tables"] = [
-            {"table": dataset_file_name, "schema": schema_to_dict(dataset.schema)}
+            {"table": str(dataset_file_name), "schema": schema_to_dict(dataset.schema)}
         ]
         write_metadata(dataset_info, cached_dataset_path)
 
