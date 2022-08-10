@@ -84,6 +84,7 @@ def main():
                 ]
                 for cached_nrows in subfolders:
                     other_nrows_path = pathlib.Path(other_format_path, cached_nrows)
+                    cached_nrows = cached_nrows.split("_")[-1]
                     cached_dataset_metadata_file = pathlib.Path(
                         other_nrows_path, config.metadata_filename
                     )
