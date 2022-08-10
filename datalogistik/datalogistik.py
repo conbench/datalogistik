@@ -14,6 +14,7 @@
 
 import os
 import pathlib
+import shutil
 import sys
 import time
 
@@ -30,10 +31,7 @@ def finish():
     sys.exit(0)
 
 
-local_cache_location = pathlib.Path(
-    os.getenv("DATALOGISTIK_CACHE", config.default_cache_location),
-    config.cache_dir_name,
-)
+local_cache_location = config.get_cache_location()
 
 
 def main():
@@ -108,6 +106,10 @@ def main():
                             argument_info.partition_max_rows,
                         )
                         util.copy_from_cache(cached_dataset_path, argument_info.dataset)
+                        if argument_info.bypass_cache:
+                            log.info("Removing cache entry")
+                            shutil.rmtree(cached_dataset_path, ignore_errors=True)
+                            util.clean_cache_dir(cached_dataset_path)
                         finish()
                     else:
                         log.info(
@@ -144,6 +146,10 @@ def main():
 
     # Copy to the actual output location
     util.copy_from_cache(cached_dataset_path, argument_info.dataset)
+    if argument_info.bypass_cache:
+        log.info("Removing cache entry")
+        shutil.rmtree(cached_dataset_path, ignore_errors=True)
+        util.clean_cache_dir(cached_dataset_path)
     finish()
 
 

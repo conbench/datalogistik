@@ -9,12 +9,20 @@ generate some datasets such as TPC-H by calling their (external) generator progr
 
 Usage::
 
-    datalogistik [-h] \
+    datalogistik <generate|cache>
+
+    datalogistik generate [-h] \
         -d DATASET \
         -f FORMAT \
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
         [-p PARTITION_MAX_ROWS]
+        [-b, --bypass-cache]
+
+    datalogistik cache [-h] \
+        [--clean] \
+        [--prune-entry ENTRY]
+
 
 ``DATASET``
     Name of the dataset as specified in the repository, or one of the supported
@@ -37,6 +45,20 @@ Usage::
 ``PARTITION_MAX_ROWS``
     Partition the dataset using this value as the maximum number of rows per partition.
     Default 0, which means no partitioning.
+
+``bypass-cache``
+    Do not store any copies of the dataset in the cache
+
+``clean``
+    Perform a clean-up of the cache, checking whether all of the subdirectories 
+    are part of a dataset that contains a valid metadata file. 
+    Otherwise, they will be removed.
+    This option is helpful after manually removing directories from the cache.
+
+``prune-entry``
+    Remove a given subdirectory from the cache. The user can specify a certain
+    particular dataset (e.g. ``tpc-h/1/parquet/0``), or a directory higher in the hierarchy
+    (e.g. ``tpc-h/100``)
 
 Installing using ``pipx`` (recommended)
 ---------------------------------------

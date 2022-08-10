@@ -15,10 +15,11 @@
 import argparse
 import json
 import os
+import sys
 
 import urllib3
 
-from . import config, tpc_info
+from . import config, tpc_info, util
 from .log import log
 
 
@@ -27,15 +28,31 @@ def parse_args():
         prog=__file__,
         description="Dataset cacher/converter and generator",
     )
+    sub_parsers = parser.add_subparsers(dest="command")
+    cache_parser = sub_parsers.add_parser("cache")
+    gen_parser = sub_parsers.add_parser("generate")
 
-    parser.add_argument(
+    cache_group = cache_parser.add_mutually_exclusive_group()
+    cache_group.add_argument(
+        "--prune-entry",
+        type=str,
+        default=None,
+        help="Remove entry or entries, specified by their relative path, from the cache",
+    )
+    cache_group.add_argument(
+        "--clean",
+        action="store_true",
+        help="Remove any incomplete/left-over directories from the cache",
+    )
+
+    gen_parser.add_argument(
         "-d",
         "--dataset",
         type=str,
         required=True,
         help="Name of the dataset to instantiate",
     )
-    parser.add_argument(
+    gen_parser.add_argument(
         "-f",
         "--format",
         type=str,
@@ -43,20 +60,20 @@ def parse_args():
         help="Format for the dataset (convert if necessary). \
 Supported formats: Parquet, csv",
     )
-    parser.add_argument(
+    gen_parser.add_argument(
         "-c",
         "--compression",
         type=str,
         help="Internal compression (passed to parquet writer)",
     )
-    parser.add_argument(
+    gen_parser.add_argument(
         "-s",
         "--scale-factor",
         type=str,
         default="",
         help="Scale factor for TPC datasets",
     )
-    parser.add_argument(
+    gen_parser.add_argument(
         "-g",
         "--generator-path",
         type=str,
@@ -66,18 +83,37 @@ Supported formats: Parquet, csv",
         "git on your PATH) and building the tool (requires make for UNIX or msbuild "
         "for Windows on your PATH).",
     )
-    parser.add_argument(
+    gen_parser.add_argument(
         "-p",
         "--partition-max-rows",
         type=int,
         default=0,
         help="Partition the dataset using this maximum number of rows per file",
     )
-
+    gen_parser.add_argument(
+        "-b",
+        "--bypass-cache",
+        action="store_true",
+        help="Do not store any copies of the dataset in the cache",
+    )
     return parser.parse_args()
 
 
+def handle_cache_command(cache_opts):
+    if cache_opts.prune_entry:
+        util.prune_cache_entry(cache_opts.prune_entry)
+
+    if cache_opts.clean:
+        util.clean_cache()
+
+
 def parse_args_and_get_dataset_info():
+    # Parse and check cmdline options
+    opts = parse_args()
+    if opts.command == "cache":
+        handle_cache_command(opts)
+        sys.exit(0)
+
     # Set up repository (local or remote)
     repo_location = os.getenv("DATALOGISTIK_REPO", config.default_repo_file)
     if repo_location[0:4] == "http":
@@ -92,9 +128,6 @@ def parse_args_and_get_dataset_info():
     else:
         log.debug(f"Using local repo at {repo_location}")
         dataset_sources = json.load(open(repo_location))
-
-    # Parse and check cmdline options
-    opts = parse_args()
 
     # Find requested dataset in repository, then in the list of generators
     dataset_info = None

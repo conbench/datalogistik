@@ -120,7 +120,7 @@ jobs:
       - name: Install package
         run: ${{ matrix.installer }} install '${{ matrix.installee }}'
       - name: Test generating and converting a dataset
-        run: datalogistik -d type_floats -f parquet
+        run: datalogistik generate -d type_floats -f parquet
   test-tpc-integration:
     strategy:
       matrix:
@@ -145,4 +145,4 @@ jobs:
       - name: Create poetry environment
         run: poetry install
       - name: Run integration test
-        run: poetry run datalogistik -d ${{ matrix.dataset }} -f parquet
+        run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet

@@ -113,15 +113,26 @@ def write_metadata(dataset_info, path):
         metadata_file.write(json_string)
 
 
+# walk up the directory tree up to the root to find a metadatafile
+def valid_metadata_in_parent_dirs(dirpath):
+    walking_path = pathlib.Path(dirpath)
+    cache_root = config.get_cache_location()
+    while walking_path != cache_root:
+        metadata_file = pathlib.Path(walking_path, config.metadata_filename)
+        if metadata_file.exists():
+            with open(metadata_file) as f:
+                metadata = json.load(f)
+                if metadata.get("files"):
+                    return True
+        walking_path = walking_path.parent
+    return False
+
+
 # Performs cleanup if something happens while creating an entry in the cache
 def clean_cache_dir(path):
     path = pathlib.Path(path)
     log.debug(f"Cleaning incomplete cache entry '{path}'")
-    local_cache_location = pathlib.Path(
-        os.getenv("DATALOGISTIK_CACHE", config.default_cache_location),
-        config.cache_dir_name,
-    )  # Duplicate
-    cache_root = pathlib.Path(local_cache_location)
+    cache_root = config.get_cache_location()
     if cache_root not in path.parents:
         msg = "Refusing to clean a directory outside of the local cache"
         log.error(msg)
@@ -138,6 +149,54 @@ def clean_cache_dir(path):
         except StopIteration:
             log.debug(f"Removing empty parent path '{path}'")
             os.rmdir(path)
+
+
+def clean_cache():
+    cache_root = config.get_cache_location()
+    log.info(f"Cleaning cache at {cache_root}")
+    for dirpath, dirnames, _ in os.walk(cache_root):
+        if pathlib.Path(dirpath) == cache_root:
+            continue
+        if not dirnames:
+            if not valid_metadata_in_parent_dirs(dirpath):
+                clean_cache_dir(dirpath)
+
+
+def prune_cache_entry(sub_path):
+    log.debug(f"Pruning cache entries below cache subdir '{sub_path}'")
+    local_cache_location = config.get_cache_location()
+    cache_root = pathlib.Path(local_cache_location)
+    path = pathlib.Path(cache_root, sub_path)
+    if not path.exists():
+        msg = f"Path '{path}' does not exist"
+        log.error(msg)
+        raise RuntimeError(msg)
+    if not path.is_dir():
+        msg = f"Path '{path}' is not a directory"
+        log.error(msg)
+        raise RuntimeError(msg)
+
+    valid_dataset = False
+    metadata_file = pathlib.Path(path, config.metadata_filename)
+    if metadata_file.exists():
+        with open(metadata_file) as f:
+            if json.load(f).get("files"):
+                valid_dataset = True
+
+    if not valid_dataset:
+        # check if this path is a subdir of a valid dataset
+        if valid_metadata_in_parent_dirs(path.parent):
+            msg = f"Path '{path}' seems to be a subdirectory of a valid dataset, refusing to remove it."
+            log.error(msg)
+            raise RuntimeError(msg)
+
+    log.info(f"Pruning Directory {path}")
+
+    # Delete the cache entry itself
+    shutil.rmtree(path, ignore_errors=True)
+
+    # Use util function to clean up any superfluous directories
+    clean_cache_dir(path)
 
 
 def schema_to_dict(schema):
@@ -220,7 +279,10 @@ def convert_dataset(
         msg = "Could not find source dataset"
         log.error(msg)
         raise ValueError(msg)
-    dataset_metadata = json.load(open(cached_dataset_metadata_file))
+
+    with open(cached_dataset_metadata_file) as f:
+        dataset_metadata = json.load(f)
+
     if (dataset_metadata["format"] == new_format) and (old_nrows == new_nrows):
         log.info("Conversion not needed.")
         return cached_dataset_path
