@@ -31,11 +31,12 @@ from .log import log
 from .tpc_builders import DBGen, DSDGen
 
 
-def removesuffix(string, suffix):
-    if string.endswith(suffix):
-        return string[: -len(suffix)]
+def removesuffix(orig_path, suffix):
+    path = pathlib.Path(orig_path)
+    if path.suffix == suffix:
+        return path.parent / path.stem
     else:
-        return string
+        return orig_path
 
 
 def peek_line(fd):
