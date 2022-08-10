@@ -7,7 +7,7 @@
     "dim" : [22180168, 31],
     "format" : "csv",
     "file-compression" : "gz",
-    "tables": ["table" : "fanniemae_2016Q4.csv", "schema" : {
+    "tables": [{"table" : "fanniemae_2016Q4.csv", "schema" : {
         "a0": "int64",
         "a1": "string",
         "a2": "string",
@@ -39,7 +39,7 @@
         "d1": "string",
         "d2": "null",
         "d3": "string"
-    }]
+    }}]
 }, {
     "name" : "nyctaxi_2010-01",
     "url" : "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
@@ -47,7 +47,8 @@
     "delim" : ",",
     "dim" : [14863778, 18],
     "format" : "csv",
-    "file-compression" : "gz"
+    "file-compression" : "gz",
+    "files": [{"file_path": "yellow_tripdata_2010-01.csv", "file_size": 2728058790, "md5": "ac3b683361a0b3b7519616c1d2fd7dec"}, {"file_path": "yellow_tripdata_2010-01.csv.gz", "file_size": 591876633, "md5": "22bd86bf54da91faf26fa8a243644a9f"}]
 }, {
     "name" : "chi_traffic_2020_Q1",
     "url" : "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
