@@ -7,7 +7,7 @@
     "dim" : [22180168, 31],
     "format" : "csv",
     "file-compression" : "gz",
-    "schema" : {
+    "tables": ["table" : "fanniemae_2016Q4.csv", "schema" : {
         "a0": "int64",
         "a1": "string",
         "a2": "string",
@@ -39,7 +39,7 @@
         "d1": "string",
         "d2": "null",
         "d3": "string"
-    }
+    }]
 }, {
     "name" : "nyctaxi_2010-01",
     "url" : "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
