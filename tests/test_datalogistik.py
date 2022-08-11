@@ -21,6 +21,7 @@ import tempfile
 import pyarrow as pa
 from pyarrow import csv
 from pyarrow import dataset as ds
+from pyarrow import parquet as pq
 
 from datalogistik import __version__, config, util
 
@@ -71,7 +72,7 @@ def test_write_metadata():
         assert written_metadata == expected_metadata
 
 
-# TODO: test parquet->csv, partitioning conversion
+# TODO: test partitioning conversion
 def test_convert_dataset_csv_to_parquet():
     cache_root = config.get_cache_location()
     path = pathlib.Path(cache_root, "test_csv/csv/partitioning_0/")
@@ -100,3 +101,35 @@ def test_convert_dataset_csv_to_parquet():
     print(converted_table.schema)
     assert converted_table == orig_table
     util.prune_cache_entry("test_csv")
+
+
+def test_convert_dataset_parquet_to_csv():
+    cache_root = config.get_cache_location()
+    path = pathlib.Path(cache_root, "test_parquet/parquet/partitioning_0/")
+    test_filename = "convtest"
+    test_csv_file = test_filename + ".csv"
+    test_parquet_file = test_filename + ".parquet"
+    test_parquet_file_path = pathlib.Path(path, test_parquet_file)
+    path.mkdir(parents=True, exist_ok=True)
+    dataset_info = {
+        "name": "test_parquet",
+        "url": "convtest.parquet",
+        "format": "parquet",
+        "partitioning-nrows": 0,
+    }
+    pydict = {"int": [1, 2], "str": ["a", "b"]}
+    orig_table = pa.Table.from_pydict(pydict)
+    print(orig_table.schema)
+    pq.write_table(orig_table, test_parquet_file_path)
+    util.write_metadata(dataset_info, path)
+    written_table = pq.read_table(test_parquet_file_path)
+    print(written_table.schema)
+    assert written_table == orig_table
+    converted_path = util.convert_dataset(dataset_info, None, "parquet", "csv", 0, 0)
+    test_csv_file_path = pathlib.Path(converted_path, test_csv_file)
+    converted_table = ds.dataset(
+        test_csv_file_path, format=ds.CsvFileFormat()
+    ).to_table()
+    print(converted_table.schema)
+    assert converted_table == orig_table
+    util.prune_cache_entry("test_parquet")
