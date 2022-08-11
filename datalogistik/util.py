@@ -117,6 +117,7 @@ def contains_dataset(path):
 # Validate that the integrity of the files in the dataset at given path is ok, using the metadata file.
 # Return true if the dataset passed the integrity check.
 def validate(path):
+    path = pathlib.Path(path)
     dataset_found = contains_dataset(path)
     if not dataset_found:
         msg = f"No valid dataset was found at '{path}'"
