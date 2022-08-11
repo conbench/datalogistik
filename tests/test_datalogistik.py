@@ -30,46 +30,67 @@ def test_version():
     assert __version__ == "0.1.0"
 
 
-def test_write_metadata():
-    dataset_info = {
-        "name": "hypothetical_dataset",
-        "format": "csv",
-        "delim": "|",
-        "scale_factor": 1,  # N.B. This should NOT be in the metadata because name != tpc-h
-        "partitioning-nrows": 0,
-    }
-    expected_metadata = {
-        "name": dataset_info["name"],
-        "format": dataset_info["format"],
-        "delim": "|",
-        "partitioning-nrows": dataset_info["partitioning-nrows"],
-        "local-creation-date": datetime.datetime.now()
-        .astimezone()
-        .strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "files": [
-            {
-                "file_path": "tmpfile",
-                "file_size": 18,
-                "md5": "891bcd3700619af5151bf95b836ff9b1",
-            },
-            {
-                "file_path": os.path.join("tmp2", "tmpfile2"),
-                "file_size": 20,
-                "md5": "0ccc9b1a435e7d40a91ac7dd04c67fe8",
-            },
-        ],
-    }
-    with tempfile.TemporaryDirectory() as path:
-        with open(os.path.join(path, "tmpfile"), "w") as tmpfile:
-            tmpfile.write("test file contents")
+dataset_info = {
+    "name": "hypothetical_dataset",
+    "format": "csv",
+    "delim": "|",
+    "scale_factor": 1,  # N.B. This should NOT be in the metadata because name != tpc-h
+    "partitioning-nrows": 0,
+}
+expected_metadata = {
+    "name": dataset_info["name"],
+    "format": dataset_info["format"],
+    "delim": "|",
+    "partitioning-nrows": dataset_info["partitioning-nrows"],
+    "local-creation-date": datetime.datetime.now()
+    .astimezone()
+    .strftime("%Y-%m-%dT%H:%M:%S%z"),
+    "files": [
+        {
+            "file_path": "tmpfile",
+            "file_size": 18,
+            "md5": "891bcd3700619af5151bf95b836ff9b1",
+        },
+        {
+            "file_path": os.path.join("tmp2", "tmpfile2"),
+            "file_size": 20,
+            "md5": "0ccc9b1a435e7d40a91ac7dd04c67fe8",
+        },
+    ],
+}
+
+
+def create_test_dataset(path):
+    with open(os.path.join(path, "tmpfile"), "w") as tmpfile:
+        tmpfile.write("test file contents")
         path2 = os.path.join(path, "tmp2")
         os.mkdir(path2)
         with open(os.path.join(path2, "tmpfile2"), "w") as tmpfile2:
             tmpfile2.write("test file 2 contents")
-        util.write_metadata(dataset_info, path)
+    util.write_metadata(dataset_info, path)
+
+
+def test_write_metadata():
+    with tempfile.TemporaryDirectory() as path:
+        create_test_dataset(path)
         metadata_file_path = os.path.join(path, config.metadata_filename)
-        written_metadata = json.load(open(metadata_file_path))
-        assert written_metadata == expected_metadata
+        with open(metadata_file_path) as f:
+            written_metadata = json.load(f)
+            assert written_metadata == expected_metadata
+
+
+def test_validate():
+    with tempfile.TemporaryDirectory() as path:
+        create_test_dataset(path)
+        assert util.validate(path) is True
+        metadata_file_path = os.path.join(path, config.metadata_filename)
+        with open(metadata_file_path) as f:
+            written_metadata = json.load(f)
+            file_listing = written_metadata["files"]
+            assert util.validate_files(path, file_listing) is True
+            # Now change an md5sum in the metadata and check if the validation fails:
+            file_listing[0]["md5"] = "00000000000000000000000000000000"
+            assert util.validate_files(path, file_listing) is False
 
 
 # TODO: test partitioning conversion
