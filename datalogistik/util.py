@@ -110,6 +110,7 @@ def write_metadata(dataset_info, path):
             "dim",
             "delim",
             "url",
+            "homepage",
             "tables",
             "parquet-compression",
             "files",
