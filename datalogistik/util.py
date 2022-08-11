@@ -467,18 +467,31 @@ def generate_dataset(dataset_info, argument_info):
             out_dir=cached_dataset_path, scale_factor=argument_info.scale_factor
         )
 
-        metadata_table_list = []
-        for table in tpc_info.tpc_table_names[dataset_name]:
-            input_file = pathlib.Path(cached_dataset_path, table + ".csv")
-            dataset, scanner = get_dataset(input_file, dataset_info, table)
-            metadata_table_list.append(
-                {"table": table + ".csv", "schema": schema_to_dict(dataset.schema)}
-            )
+        # If the entry in the repo file does not specify the schema, try to detect it
+        if not dataset_info.get("tables"):
+            metadata_table_list = []
+            for table in tpc_info.tpc_table_names[dataset_name]:
+                input_file = pathlib.Path(cached_dataset_path, table + ".csv")
+                try:
+                    dataset, scanner = get_dataset(input_file, dataset_info, table)
+                    metadata_table_list.append(
+                        {
+                            "table": table + ".csv",
+                            "schema": schema_to_dict(dataset.schema),
+                        }
+                    )
+                except Exception:
+                    log.error(
+                        f"pyarrow.dataset is unable to read schema from generated file {input_file}"
+                    )
+                    clean_cache_dir(cached_dataset_path)
+                    raise
+
+        dataset_info["tables"] = metadata_table_list
 
         gen_time = time.perf_counter() - gen_start
         log.info("Finished generating.")
         log.debug(f"generation took {gen_time:0.2f} s")
-        dataset_info["tables"] = metadata_table_list
         write_metadata(dataset_info, cached_dataset_path)
 
     except Exception:
@@ -557,15 +570,20 @@ def download_dataset(dataset_info, argument_info):
         dataset_file_name = removesuffix(dataset_file_name, "." + compression)
         dataset_file_path = removesuffix(dataset_file_path, "." + compression)
 
-    try:
-        dataset, scanner = get_dataset(dataset_file_path, dataset_info)
-        dataset_info["tables"] = [
-            {"table": str(dataset_file_name), "schema": schema_to_dict(dataset.schema)}
-        ]
-    except Exception:
-        log.error("pyarrow.dataset is unable to read downloaded file")
-        clean_cache_dir(cached_dataset_path)
-        raise
+    # If the entry in the repo file does not specify the schema, try to detect it
+    if not dataset_info.get("tables"):
+        try:
+            dataset, scanner = get_dataset(dataset_file_path, dataset_info)
+            dataset_info["tables"] = [
+                {
+                    "table": str(dataset_file_name),
+                    "schema": schema_to_dict(dataset.schema),
+                }
+            ]
+        except Exception:
+            log.error("pyarrow.dataset is unable to read schema from downloaded file")
+            clean_cache_dir(cached_dataset_path)
+            raise
 
     if dataset_info.get("files"):
         # In this case, the dataset info contained checksums. Check them
