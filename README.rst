@@ -9,7 +9,7 @@ generate some datasets such as TPC-H by calling their (external) generator progr
 
 Usage::
 
-    datalogistik <generate|cache>
+    datalogistik <generate|cache|validate>
 
     datalogistik generate [-h] \
         -d DATASET \
@@ -22,6 +22,10 @@ Usage::
     datalogistik cache [-h] \
         [--clean] \
         [--prune-entry ENTRY]
+
+    datalogistik validate [-h] \
+        -d PATH_TO_DATASET \
+        [-c, --cache]
 
 
 ``DATASET``
@@ -47,7 +51,7 @@ Usage::
     Default 0, which means no partitioning.
 
 ``bypass-cache``
-    Do not store any copies of the dataset in the cache
+    Do not store any copies of the dataset in the cache.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
@@ -58,7 +62,13 @@ Usage::
 ``prune-entry``
     Remove a given subdirectory from the cache. The user can specify a certain
     particular dataset (e.g. ``tpc-h/1/parquet/0``), or a directory higher in the hierarchy
-    (e.g. ``tpc-h/100``)
+    (e.g. ``tpc-h/100``).
+
+``PATH_TO_DATASET``
+    Path to a previously created dataset instance that is to be validated for file integrity.
+
+``cache``
+    Validate all entries in the cache for file integrity.
 
 Installing using ``pipx`` (recommended)
 ---------------------------------------
