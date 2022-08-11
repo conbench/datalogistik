@@ -108,9 +108,10 @@ def validate(path):
     metadata_file = pathlib.Path(path, config.metadata_filename)
     dataset_found = False
     if metadata_file.exists():
-        orig_file_listing = json.load(open(metadata_file)).get("files")
-        if orig_file_listing:
-            dataset_found = True
+        with open(metadata_file) as f:
+            orig_file_listing = json.load(f).get("files")
+            if orig_file_listing:
+                dataset_found = True
 
     if not dataset_found:
         msg = f"No valid dataset was found at '{path}'"
