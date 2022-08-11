@@ -138,7 +138,9 @@ def validate_files(path, file_listing):
             log.error(f"Missing file: {orig_file_path}")
             listings_are_equal = False
         if orig_file != new_file:
-            log.error("File integrity compromised: (top:original bottom:new)")
+            log.error(
+                "File integrity compromised: (top:properties in metadata bottom:calculated properties)"
+            )
             log.error(orig_file)
             log.error(new_file)
             listings_are_equal = False
