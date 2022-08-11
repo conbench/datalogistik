@@ -114,7 +114,8 @@ def contains_dataset(path):
     return False
 
 
-# Validate that the integrity of the files in the dataset at given path is ok, using the metadata file
+# Validate that the integrity of the files in the dataset at given path is ok, using the metadata file.
+# Return true if the dataset passed the integrity check.
 def validate(path):
     dataset_found = contains_dataset(path)
     if not dataset_found:
@@ -127,11 +128,15 @@ def validate(path):
     return validate_files(path, orig_file_listing)
 
 
+# Validate the files in the given path for integrity using the given file listing.
+# Return true if the files passed the integrity check.
 def validate_files(path, file_listing):
     new_file_listing = {}
     add_file_listing(new_file_listing, path)
     new_file_listing = new_file_listing.get("files")
-    # we can't perform a simple equality check, because the orig_file_listing does not contain the metadata file
+    # we can't perform a simple equality check on the whole listing,
+    # because the orig_file_listing does not contain the metadata file.
+    # Also, it would be nice to show the user which files failed.
     listings_are_equal = True
     for orig_file in file_listing:
         found = None
@@ -158,7 +163,7 @@ def validate_files(path, file_listing):
         return False
 
 
-# TODO: consider merging with clean_cache (mostly duplicate code)
+# Validate all entries in the cache
 def validate_cache():
     cache_root = config.get_cache_location()
     log.info(f"Validating cache at {cache_root}")
@@ -170,6 +175,8 @@ def validate_cache():
                 prune_cache_entry(pathlib.Path(dirpath).relative_to(cache_root))
 
 
+# Write the metadata about a newly created dataset instance at path,
+# using the information in dataset_info in addition to some locally generated info.
 def write_metadata(dataset_info, path):
     metadata = {
         "local-creation-date": datetime.datetime.now()
@@ -275,6 +282,7 @@ def prune_cache_entry(sub_path):
     clean_cache_dir(path)
 
 
+# Convert a pyarrow.schema to a dict that can be serialized to JSON
 def schema_to_dict(schema):
     field_dict = {}
     for field in schema:
