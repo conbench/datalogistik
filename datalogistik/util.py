@@ -426,7 +426,9 @@ def convert_dataset(
         conv_time = time.perf_counter() - conv_start
         log.info("Finished conversion.")
         log.debug(f"conversion took {conv_time:0.2f} s")
-        dataset_info["tables"] = metadata_table_list
+        # Parquet already stores the schema internally
+        if new_format == csv:
+            dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
         if parquet_compression is not None:
@@ -570,20 +572,24 @@ def download_dataset(dataset_info, argument_info):
         dataset_file_name = removesuffix(dataset_file_name, "." + compression)
         dataset_file_path = removesuffix(dataset_file_path, "." + compression)
 
-    # If the entry in the repo file does not specify the schema, try to detect it
-    if not dataset_info.get("tables"):
-        try:
-            dataset, scanner = get_dataset(dataset_file_path, dataset_info)
-            dataset_info["tables"] = [
-                {
-                    "table": str(dataset_file_name),
-                    "schema": schema_to_dict(dataset.schema),
-                }
-            ]
-        except Exception:
-            log.error("pyarrow.dataset is unable to read schema from downloaded file")
-            clean_cache_dir(cached_dataset_path)
-            raise
+    # Parquet already stores the schema internally
+    if dataset_info["format"] == "csv":
+        # If the entry in the repo file does not specify the schema, try to detect it
+        if not dataset_info.get("tables"):
+            try:
+                dataset, scanner = get_dataset(dataset_file_path, dataset_info)
+                dataset_info["tables"] = [
+                    {
+                        "table": str(dataset_file_name),
+                        "schema": schema_to_dict(dataset.schema),
+                    }
+                ]
+            except Exception:
+                log.error(
+                    "pyarrow.dataset is unable to read schema from downloaded file"
+                )
+                clean_cache_dir(cached_dataset_path)
+                raise
 
     if dataset_info.get("files"):
         # In this case, the dataset info contained checksums. Check them
