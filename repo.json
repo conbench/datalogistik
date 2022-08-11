@@ -2,6 +2,7 @@
 {
     "name" : "fanniemae_2016Q4",
     "url" : "https://ursa-qa.s3.amazonaws.com/fanniemae_loanperf/2016Q4.csv.gz",
+    "homepage" : "https://capitalmarkets.fanniemae.com/credit-risk-transfer/single-family-credit-risk-transfer/fannie-mae-single-family-loan-performance-data",
     "delim" : "|",
     "dim" : [22180168, 31],
     "format" : "csv",
@@ -42,6 +43,7 @@
 }, {
     "name" : "nyctaxi_2010-01",
     "url" : "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
+    "homepage" : "https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
     "delim" : ",",
     "dim" : [14863778, 18],
     "format" : "csv",
