@@ -16,7 +16,6 @@ import datetime
 import json
 import os
 import pathlib
-import shutil
 import tempfile
 
 import pyarrow as pa
@@ -74,7 +73,8 @@ def test_write_metadata():
 
 # TODO: test parquet->csv, partitioning conversion
 def test_convert_dataset_csv_to_parquet():
-    path = pathlib.Path("./test_csv/csv/0/")
+    cache_root = config.get_cache_location()
+    path = pathlib.Path(cache_root, "test_csv/csv/partitioning_0/")
     test_filename = "convtest"
     test_csv_file = test_filename + ".csv"
     test_parquet_file = test_filename + ".parquet"
@@ -94,15 +94,9 @@ def test_convert_dataset_csv_to_parquet():
     written_table = csv.read_csv(test_csv_file_path)
     print(written_table.schema)
     assert written_table == orig_table
-    converted_path = util.convert_dataset(
-        ".", dataset_info, None, "csv", "parquet", 0, 0
-    )
+    converted_path = util.convert_dataset(dataset_info, None, "csv", "parquet", 0, 0)
     test_parquet_file_path = pathlib.Path(converted_path, test_parquet_file)
     converted_table = ds.dataset(test_parquet_file_path).to_table()
     print(converted_table.schema)
     assert converted_table == orig_table
-    (test_csv_file_path).unlink()
-    (test_parquet_file_path / "part-0.parquet").unlink()
-    (path / config.metadata_filename).unlink()
-    (converted_path / config.metadata_filename).unlink()
-    shutil.rmtree("./test_csv", ignore_errors=True)
+    util.prune_cache_entry("test_csv")
