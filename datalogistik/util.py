@@ -20,6 +20,7 @@ import os
 import pathlib
 import shutil
 import time
+from collections import OrderedDict
 
 import pyarrow as pa
 import urllib3
@@ -284,12 +285,34 @@ def schema_to_dict(schema):
     return field_dict
 
 
+# Convert the given dict to a pyarrow.schema
+def get_arrow_schema(input_schema):
+    log.debug("Converting schema to pyarrow.schema...")
+    arrow_type_functions = {
+        "string": pa.string,
+        "int32": pa.int32,
+        "int64": pa.int64,
+        "float32": pa.float32,
+        "float64": pa.float64,
+    }
+    if input_schema is None:
+        return None
+    field_list = []
+    for (field_name, type) in input_schema.items():
+        log.debug(f"Schema: adding field {field_name}")
+        field_list.append(pa.field(field_name, arrow_type_functions[type]()))
+    return pa.schema(field_list)
+
+
 # Create Arrow Dataset for a given input file
 def get_dataset(input_file, dataset_info, table_name=None):
-    column_list = None  # Default
-    if dataset_info["format"] == "parquet":
+    # Defaults
+    column_list = None
+    schema = None
+    format = dataset_info["format"]
+    if format == "parquet":
         dataset_read_format = ds.ParquetFileFormat()
-    if dataset_info["format"] == "csv":
+    if format == "csv":
         # defaults
         po = csv.ParseOptions()
         ro = csv.ReadOptions()  # autogenerate_column_names=True)
@@ -312,15 +335,30 @@ def get_dataset(input_file, dataset_info, table_name=None):
             column_types_trailed = column_types.copy()
             column_types_trailed["trailing_columns"] = pa.string()
             ro = csv.ReadOptions(
-                column_names=column_types_trailed.keys(), encoding="ISO-8859"
+                column_names=column_types_trailed.keys(),
+                encoding="iso8859" if dataset_info["name"] == "tpc-ds" else "utf8",
             )
             co = csv.ConvertOptions(column_types=column_types_trailed)
+        else:  # not a TPC dataset
+            if dataset_info.get("tables"):
+                log.debug("Found schema information in metadata")
+                for table_entry in dataset_info.get("tables"):
+                    if (
+                        table_name is None
+                        or table_entry["table"] == f"{table_name}.{format}"
+                    ):
+                        schema = get_arrow_schema(table_entry["schema"])
+                        column_names = list(
+                            table_entry["schema"].keys()
+                        )  # TODO: does this really always preserve ordering?
+                        break
+                ro = csv.ReadOptions(column_names=column_names)
 
         dataset_read_format = ds.CsvFileFormat(
             read_options=ro, parse_options=po, convert_options=co
         )
 
-    dataset = ds.dataset(input_file, format=dataset_read_format)
+    dataset = ds.dataset(input_file, schema=schema, format=dataset_read_format)
     scanner = dataset.scanner(columns=column_list)
     return dataset, scanner
 
@@ -358,7 +396,7 @@ def convert_dataset(
         raise ValueError(msg)
 
     with open(cached_dataset_metadata_file) as f:
-        dataset_metadata = json.load(f)
+        dataset_metadata = json.load(f, object_pairs_hook=OrderedDict)
 
     if (dataset_metadata["format"] == new_format) and (old_nrows == new_nrows):
         log.info("Conversion not needed.")
