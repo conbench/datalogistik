@@ -343,10 +343,7 @@ def get_dataset(input_file, dataset_info, table_name=None):
             if dataset_info.get("tables"):
                 log.debug("Found schema information in metadata")
                 for table_entry in dataset_info.get("tables"):
-                    if (
-                        table_name is None
-                        or table_entry["table"] == f"{table_name}.{format}"
-                    ):
+                    if table_name is None or table_entry["table"] == table_name:
                         schema = get_arrow_schema(table_entry["schema"])
                         column_names = list(
                             table_entry["schema"].keys()
@@ -449,7 +446,7 @@ def convert_dataset(
 
             metadata_table_list.append(
                 {
-                    "table": f"{file_name}.{new_format}",
+                    "table": file_name,
                     "schema": schema_to_dict(dataset.schema),
                 }
             )
@@ -516,7 +513,7 @@ def generate_dataset(dataset_info, argument_info):
                     dataset, scanner = get_dataset(input_file, dataset_info, table)
                     metadata_table_list.append(
                         {
-                            "table": table + ".csv",
+                            "table": table,
                             "schema": schema_to_dict(dataset.schema),
                         }
                     )
@@ -618,7 +615,7 @@ def download_dataset(dataset_info, argument_info):
                 dataset, scanner = get_dataset(dataset_file_path, dataset_info)
                 dataset_info["tables"] = [
                     {
-                        "table": str(dataset_file_name),
+                        "table": str(pathlib.Path(dataset_file_name).stem),
                         "schema": schema_to_dict(dataset.schema),
                     }
                 ]

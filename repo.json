@@ -7,7 +7,7 @@
     "dim" : [22180168, 31],
     "format" : "csv",
     "file-compression" : "gz",
-    "tables": [{"table" : "fanniemae_2016Q4.csv", "schema" : {
+    "tables": [{"table" : "2016Q4", "schema" : {
         "LOAN_ID" : "string",
         "ACT_PERIOD" : "string",
         "SERVICER" : "string",
