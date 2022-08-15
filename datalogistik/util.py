@@ -285,6 +285,14 @@ def schema_to_dict(schema):
     return field_dict
 
 
+# Convert a given item (string or dict) to the corresponding Arrow datatype
+def arrow_type_from_json(input_type):
+    if isinstance(input_type, str):
+        # Look-up the function to create this type
+        pa_type_func = getattr(pa, input_type)
+        return pa_type_func()
+
+
 # Convert the given dict to a pyarrow.schema
 def get_arrow_schema(input_schema):
     log.debug("Converting schema to pyarrow.schema...")
@@ -293,8 +301,8 @@ def get_arrow_schema(input_schema):
     field_list = []
     for (field_name, type) in input_schema.items():
         log.debug(f"Schema: adding field {field_name}")
-        pa_func = getattr(pa, type)  # Look-up the function to create this type
-        field_list.append(pa.field(field_name, pa_func()))
+        arrow_type = arrow_type_from_json(type)
+        field_list.append(pa.field(field_name, arrow_type))
     return pa.schema(field_list)
 
 
