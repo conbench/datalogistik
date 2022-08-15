@@ -288,19 +288,13 @@ def schema_to_dict(schema):
 # Convert the given dict to a pyarrow.schema
 def get_arrow_schema(input_schema):
     log.debug("Converting schema to pyarrow.schema...")
-    arrow_type_functions = {
-        "string": pa.string,
-        "int32": pa.int32,
-        "int64": pa.int64,
-        "float32": pa.float32,
-        "float64": pa.float64,
-    }
     if input_schema is None:
         return None
     field_list = []
     for (field_name, type) in input_schema.items():
         log.debug(f"Schema: adding field {field_name}")
-        field_list.append(pa.field(field_name, arrow_type_functions[type]()))
+        pa_func = getattr(pa, type)  # Look-up the function to create this type
+        field_list.append(pa.field(field_name, pa_func()))
     return pa.schema(field_list)
 
 
