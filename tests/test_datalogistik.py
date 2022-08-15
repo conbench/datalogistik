@@ -169,3 +169,22 @@ def test_convert_dataset_parquet_to_csv():
     print(converted_table.schema)
     assert converted_table == orig_table
     util.prune_cache_entry("test_parquet")
+
+
+def test_parse_schema():
+    expected_arrow_schema = pa.schema(
+        [
+            ("a", pa.string()),
+            ("b", pa.int64()),
+            ("c", pa.float64()),
+            ("d", pa.timestamp(unit="ms")),
+        ]
+    )
+    json_schema = """{
+        "a" : "string",
+        "b" : "int64",
+        "c" : {"name": "float64"},
+        "d" : {"name": "timestamp", "arguments": {"unit": "ms"}}
+        }"""
+    arrow_schema = util.get_arrow_schema(json.loads(json_schema))
+    assert arrow_schema == expected_arrow_schema

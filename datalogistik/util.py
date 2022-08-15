@@ -326,7 +326,10 @@ def arrow_type_from_json(input_type):
         log.error(msg)
         raise ValueError(msg)
 
-    return arrow_type_function_lookup(type_name)(**kwargs)
+    if kwargs is not None:
+        return arrow_type_function_lookup(type_name)(**kwargs)
+    else:
+        return arrow_type_function_lookup(type_name)()
 
 
 # Convert the given dict to a pyarrow.schema
