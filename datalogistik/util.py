@@ -584,7 +584,7 @@ def download_dataset(dataset_info, argument_info):
     # so something could have gone wrong while downloading/converting previously
     if dataset_file_path.exists():
         log.debug(f"Removing existing file '{dataset_file_path}'")
-        dataset_file_path.rmdir()
+        dataset_file_path.unlink()
     url = dataset_info["url"]
     try:
         http = urllib3.PoolManager()
