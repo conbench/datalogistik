@@ -285,12 +285,48 @@ def schema_to_dict(schema):
     return field_dict
 
 
+# Create an instance of the pyarrow datatype with the given name
+def arrow_type_function_lookup(function_name):
+    if isinstance(function_name, str):
+        pa_type_func = getattr(pa, function_name)
+        return pa_type_func
+
+    # The argument was not a pyarrow type (maybe a nested structure?)
+    return None
+
+
 # Convert a given item (string or dict) to the corresponding Arrow datatype
 def arrow_type_from_json(input_type):
+    # Dict of all pyarrow types that take parameters to their possible parameters
+    # and whether they are optional
+    arrow_nested_types = {
+        "list_",
+        "large_list",
+        "map_",
+        "struct",
+        "dictionary",
+        # Could be useful for the user to have control over nullability
+        "field",
+    }
+
+    # In case the type is a simple string
     if isinstance(input_type, str):
-        # Look-up the function to create this type
-        pa_type_func = getattr(pa, input_type)
-        return pa_type_func()
+        return arrow_type_function_lookup(input_type)()
+
+    # Alternatively, a type can be encoded as a name:value pair
+    if not input_type.get("name"):
+        msg = "Schema field type 'name' missing"
+        log.error(msg)
+        raise ValueError(msg)
+
+    type_name = input_type.get("name")
+    kwargs = input_type.get("arguments")
+    if type_name in arrow_nested_types:
+        msg = "Nested types in schema not supported yet"
+        log.error(msg)
+        raise ValueError(msg)
+
+    return arrow_type_function_lookup(type_name)(**kwargs)
 
 
 # Convert the given dict to a pyarrow.schema
@@ -303,7 +339,9 @@ def get_arrow_schema(input_schema):
         log.debug(f"Schema: adding field {field_name}")
         arrow_type = arrow_type_from_json(type)
         field_list.append(pa.field(field_name, arrow_type))
-    return pa.schema(field_list)
+
+    output_schema = pa.schema(field_list)
+    return output_schema
 
 
 # Create Arrow Dataset for a given input file
