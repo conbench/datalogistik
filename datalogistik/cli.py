@@ -31,7 +31,6 @@ def parse_args():
     sub_parsers = parser.add_subparsers(dest="command")
     cache_parser = sub_parsers.add_parser("cache")
     gen_parser = sub_parsers.add_parser("generate")
-    valid_parser = sub_parsers.add_parser("validate")
 
     cache_group = cache_parser.add_mutually_exclusive_group()
     cache_group.add_argument(
@@ -44,6 +43,11 @@ def parse_args():
         "--clean",
         action="store_true",
         help="Remove any incomplete/left-over directories from the cache",
+    )
+    cache_group.add_argument(
+        "--validate",
+        action="store_true",
+        help="Validate all entries in the cache for file integrity",
     )
 
     gen_parser.add_argument(
@@ -98,19 +102,6 @@ Supported formats: Parquet, csv",
         help="Do not store any copies of the dataset in the cache",
     )
 
-    valid_group = valid_parser.add_mutually_exclusive_group()
-    valid_group.add_argument(
-        "-d",
-        "--dataset",
-        type=str,
-        help="Path to the dataset to Validate",
-    )
-    valid_group.add_argument(
-        "-c",
-        "--cache",
-        action="store_true",
-        help="Validate all entries in the cache",
-    )
     return parser.parse_args()
 
 
@@ -119,19 +110,10 @@ def handle_cache_command(cache_opts):
         util.prune_cache_entry(cache_opts.prune_entry)
     elif cache_opts.clean:
         util.clean_cache()
-    else:
-        msg = "Please specify a cache-specific option"
-        log.error(msg)
-        raise RuntimeError(msg)
-
-
-def handle_validate_command(validate_opts):
-    if validate_opts.dataset:
-        util.validate(validate_opts.dataset)
-    elif validate_opts.cache:
+    elif cache_opts.validate:
         util.validate_cache()
     else:
-        msg = "Please specify a validate-specific option"
+        msg = "Please specify a cache-specific option"
         log.error(msg)
         raise RuntimeError(msg)
 
@@ -141,10 +123,6 @@ def parse_args_and_get_dataset_info():
     opts = parse_args()
     if opts.command == "cache":
         handle_cache_command(opts)
-        sys.exit(0)
-
-    elif opts.command == "validate":
-        handle_validate_command(opts)
         sys.exit(0)
 
     elif opts.command == "generate":

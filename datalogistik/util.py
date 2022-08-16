@@ -126,7 +126,9 @@ def validate(path):
     metadata_file = pathlib.Path(path, config.metadata_filename)
     with open(metadata_file) as f:
         orig_file_listing = json.load(f).get("files")
-    return validate_files(path, orig_file_listing)
+    dataset_valid = validate_files(path, orig_file_listing)
+    log.info(f"Dataset at {path} is{'' if dataset_valid else ' NOT'} valid")
+    return dataset_valid
 
 
 # Validate the files in the given path for integrity using the given file listing.
@@ -156,12 +158,9 @@ def validate_files(path, file_listing):
             log.error(orig_file)
             log.error(new_file)
             listings_are_equal = False
-    if listings_are_equal:
-        log.info("Dataset is valid")
-        return True
-    else:
-        log.error("Dataset is NOT valid!")
-        return False
+
+        log.debug(f"Dataset is{'' if listings_are_equal else ' NOT'} valid!")
+        return listings_are_equal
 
 
 # Validate all entries in the cache
