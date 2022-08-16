@@ -71,6 +71,8 @@ class _TPCBuilder(abc.ABC):
     # details about the generator
     force_flag: str
     scale_flag: str
+    partitions_flag: str
+    current_segment_flag: str
     file_extension: str
     table_names: List[str]
 
@@ -97,7 +99,9 @@ class _TPCBuilder(abc.ABC):
     def _get_default_executable_path(self):
         """Return the executable path for this generator if one isn't given."""
 
-    def create_dataset(self, out_dir: pathlib.Path, scale_factor: int = 1):
+    def create_dataset(
+        self, out_dir: pathlib.Path, scale_factor: int = 1, partitions: int = 1
+    ):
         """Call the executable to generate the TPC database.
 
         Parameters
@@ -111,13 +115,20 @@ class _TPCBuilder(abc.ABC):
             log.info("Could not find an executable. Attempting to create one.")
             self._make_executable()
 
-        _run(
-            self.executable_path,
-            self.force_flag,
-            self.scale_flag,
-            str(scale_factor),
-            cwd=self.executable_path.parent,
-        )
+        partitions = 1 if partitions == 0 else partitions
+
+        for thread in range(partitions):
+            _run(
+                self.executable_path,
+                self.force_flag,
+                self.scale_flag,
+                str(scale_factor),
+                self.partitions_flag,
+                str(partitions),
+                self.current_segment_flag,
+                thread,
+                cwd=self.executable_path.parent,
+            )
 
         # Move the new files to out_dir
         out_dir = pathlib.Path(out_dir).resolve()
@@ -171,6 +182,8 @@ class DBGen(_TPCBuilder):
 
     force_flag = "-f"
     scale_flag = "-s"
+    partitions_flag = "-C"
+    current_segment_flag = "-S"
     file_extension = ".tbl"
     table_names = tpc_table_names["tpc-h"]
     repo_uri = "https://github.com/electrum/tpch-dbgen.git"
@@ -220,6 +233,8 @@ class DSDGen(_TPCBuilder):
 
     force_flag = "-FORCE"
     scale_flag = "-SCALE"
+    partitions_flag = "-PARALLEL"
+    current_segment_flag = "-CHILD"
     file_extension = ".dat"
     table_names = tpc_table_names["tpc-ds"]
     repo_uri = "https://github.com/gregrahn/tpcds-kit.git"
