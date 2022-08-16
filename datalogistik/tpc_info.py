@@ -23,7 +23,7 @@ tpch_customer_cols = {
     "c_address": pa.string(),
     "c_nationkey": pa.int32(),
     "c_phone": pa.string(),
-    "c_acctbal": pa.float64(),
+    "c_acctbal": pa.decimal128(15, 2),
     "c_mktsegment": pa.string(),
     "c_comment": pa.string(),
 }
@@ -32,10 +32,10 @@ tpch_lineitem_cols = {
     "l_partkey": pa.int32(),
     "l_suppkey": pa.int32(),
     "l_linenumber": pa.int32(),
-    "l_quantity": pa.float64(),
-    "l_extendedprice": pa.float64(),
-    "l_discount": pa.float64(),
-    "l_tax": pa.float64(),
+    "l_quantity": pa.decimal128(15, 2),
+    "l_extendedprice": pa.decimal128(15, 2),
+    "l_discount": pa.decimal128(15, 2),
+    "l_tax": pa.decimal128(15, 2),
     "l_returnflag": pa.string(),
     "l_linestatus": pa.string(),
     "l_shipdate": pa.date32(),
@@ -55,7 +55,7 @@ tpch_orders_cols = {
     "o_orderkey": pa.int64(),
     "o_custkey": pa.int32(),
     "o_orderstatus": pa.string(),
-    "o_totalprice": pa.float64(),
+    "o_totalprice": pa.decimal128(15, 2),
     "o_orderdate": pa.date32(),
     "o_orderpriority": pa.string(),
     "o_clerk": pa.string(),
@@ -70,14 +70,14 @@ tpch_part_cols = {
     "p_type": pa.string(),
     "p_size": pa.int32(),
     "p_container": pa.string(),
-    "p_retailprice": pa.float64(),
+    "p_retailprice": pa.decimal128(15, 2),
     "p_comment": pa.string(),
 }
 tpch_partsupp_cols = {
     "ps_partkey": pa.int32(),
     "ps_suppkey": pa.int32(),
     "ps_availqty": pa.int32(),
-    "ps_supplycost": pa.float64(),
+    "ps_supplycost": pa.decimal128(15, 2),
     "ps_comment": pa.string(),
 }
 region_cols = {
@@ -91,7 +91,7 @@ tpch_supplier_cols = {
     "s_address": pa.string(),
     "s_nationkey": pa.int32(),
     "s_phone": pa.string(),
-    "s_acctbal": pa.float64(),
+    "s_acctbal": pa.decimal128(15, 2),
     "s_comment": pa.string(),
 }
 
@@ -105,12 +105,6 @@ tpch_cols_dict = {
     "region": region_cols,
     "supplier": tpch_supplier_cols,
 }
-
-
-def decimal128(*args):
-    # HACK for theseus
-    return pa.float64()
-
 
 call_center_cols = {
     "cc_call_center_sk": pa.int32(),
@@ -142,8 +136,8 @@ call_center_cols = {
     "cc_state": pa.string(),
     "cc_zip": pa.string(),
     "cc_country": pa.string(),
-    "cc_gmt_offset": decimal128(5, 2),
-    "cc_tax_percentage": decimal128(5, 2),
+    "cc_gmt_offset": pa.decimal128(5, 2),
+    "cc_tax_percentage": pa.decimal128(5, 2),
 }
 
 catalog_page_cols = {
@@ -177,15 +171,15 @@ catalog_returns_cols = {
     "cr_reason_sk": pa.int32(),
     "cr_order_number": pa.int64(),
     "cr_return_quantity": pa.int32(),
-    "cr_return_amount": decimal128(7, 2),
-    "cr_return_tax": decimal128(7, 2),
-    "cr_return_amt_inc_tax": decimal128(7, 2),
-    "cr_fee": decimal128(7, 2),
-    "cr_return_ship_cost": decimal128(7, 2),
-    "cr_refunded_cash": decimal128(7, 2),
-    "cr_reversed_charge": decimal128(7, 2),
-    "cr_store_credit": decimal128(7, 2),
-    "cr_net_loss": decimal128(7, 2),
+    "cr_return_amount": pa.decimal128(7, 2),
+    "cr_return_tax": pa.decimal128(7, 2),
+    "cr_return_amt_inc_tax": pa.decimal128(7, 2),
+    "cr_fee": pa.decimal128(7, 2),
+    "cr_return_ship_cost": pa.decimal128(7, 2),
+    "cr_refunded_cash": pa.decimal128(7, 2),
+    "cr_reversed_charge": pa.decimal128(7, 2),
+    "cr_store_credit": pa.decimal128(7, 2),
+    "cr_net_loss": pa.decimal128(7, 2),
 }
 
 catalog_sales_cols = {
@@ -208,21 +202,21 @@ catalog_sales_cols = {
     "cs_promo_sk": pa.int32(),
     "cs_order_number": pa.int64(),
     "cs_quantity": pa.int32(),
-    "cs_wholesale_cost": decimal128(7, 2),
-    "cs_list_price": decimal128(7, 2),
-    "cs_sales_price": decimal128(7, 2),
-    "cs_ext_discount_amt": decimal128(7, 2),
-    "cs_ext_sales_price": decimal128(7, 2),
-    "cs_ext_wholesale_cost": decimal128(7, 2),
-    "cs_ext_list_price": decimal128(7, 2),
-    "cs_ext_tax": decimal128(7, 2),
-    "cs_coupon_amt": decimal128(7, 2),
-    "cs_ext_ship_cost": decimal128(7, 2),
-    "cs_net_paid": decimal128(7, 2),
-    "cs_net_paid_inc_tax": decimal128(7, 2),
-    "cs_net_paid_inc_ship": decimal128(7, 2),
-    "cs_net_paid_inc_ship_tax": decimal128(7, 2),
-    "cs_net_profit": decimal128(7, 2),
+    "cs_wholesale_cost": pa.decimal128(7, 2),
+    "cs_list_price": pa.decimal128(7, 2),
+    "cs_sales_price": pa.decimal128(7, 2),
+    "cs_ext_discount_amt": pa.decimal128(7, 2),
+    "cs_ext_sales_price": pa.decimal128(7, 2),
+    "cs_ext_wholesale_cost": pa.decimal128(7, 2),
+    "cs_ext_list_price": pa.decimal128(7, 2),
+    "cs_ext_tax": pa.decimal128(7, 2),
+    "cs_coupon_amt": pa.decimal128(7, 2),
+    "cs_ext_ship_cost": pa.decimal128(7, 2),
+    "cs_net_paid": pa.decimal128(7, 2),
+    "cs_net_paid_inc_tax": pa.decimal128(7, 2),
+    "cs_net_paid_inc_ship": pa.decimal128(7, 2),
+    "cs_net_paid_inc_ship_tax": pa.decimal128(7, 2),
+    "cs_net_profit": pa.decimal128(7, 2),
 }
 
 customer_cols = {
@@ -258,7 +252,7 @@ customer_address_cols = {
     "ca_state": pa.string(),
     "ca_zip": pa.string(),
     "ca_country": pa.string(),
-    "ca_gmt_offset": decimal128(5, 2),
+    "ca_gmt_offset": pa.decimal128(5, 2),
     "ca_location_type": pa.string(),
 }
 
@@ -332,8 +326,8 @@ item_cols = {
     "i_rec_start_date": pa.date32(),
     "i_rec_end_date": pa.date32(),
     "i_item_desc": pa.string(),
-    "i_current_price": decimal128(7, 2),
-    "i_wholesale_cost": decimal128(7, 2),
+    "i_current_price": pa.decimal128(7, 2),
+    "i_wholesale_cost": pa.decimal128(7, 2),
     "i_brand_id": pa.int32(),
     "i_brand": pa.string(),
     "i_class_id": pa.int32(),
@@ -357,7 +351,7 @@ promotion_cols = {
     "p_start_date_sk": pa.int32(),
     "p_end_date_sk": pa.int32(),
     "p_item_sk": pa.int32(),
-    "p_cost": decimal128(15, 2),
+    "p_cost": pa.decimal128(15, 2),
     "p_response_target": pa.int32(),
     "p_promo_name": pa.string(),
     "p_channel_dmail": pa.string(),
@@ -416,8 +410,8 @@ store_cols = {
     "s_state": pa.string(),
     "s_zip": pa.string(),
     "s_country": pa.string(),
-    "s_gmt_offset": decimal128(5, 2),
-    "s_tax_precentage": decimal128(5, 2),
+    "s_gmt_offset": pa.decimal128(5, 2),
+    "s_tax_precentage": pa.decimal128(5, 2),
 }
 
 store_returns_cols = {
@@ -432,15 +426,15 @@ store_returns_cols = {
     "sr_reason_sk": pa.int32(),
     "sr_ticket_number": pa.int64(),
     "sr_return_quantity": pa.int32(),
-    "sr_return_amt": decimal128(7, 2),
-    "sr_return_tax": decimal128(7, 2),
-    "sr_return_amt_inc_tax": decimal128(7, 2),
-    "sr_fee": decimal128(7, 2),
-    "sr_return_ship_cost": decimal128(7, 2),
-    "sr_refunded_cash": decimal128(7, 2),
-    "sr_reversed_charge": decimal128(7, 2),
-    "sr_store_credit": decimal128(7, 2),
-    "sr_net_loss": decimal128(7, 2),
+    "sr_return_amt": pa.decimal128(7, 2),
+    "sr_return_tax": pa.decimal128(7, 2),
+    "sr_return_amt_inc_tax": pa.decimal128(7, 2),
+    "sr_fee": pa.decimal128(7, 2),
+    "sr_return_ship_cost": pa.decimal128(7, 2),
+    "sr_refunded_cash": pa.decimal128(7, 2),
+    "sr_reversed_charge": pa.decimal128(7, 2),
+    "sr_store_credit": pa.decimal128(7, 2),
+    "sr_net_loss": pa.decimal128(7, 2),
 }
 
 store_sales_cols = {
@@ -455,18 +449,18 @@ store_sales_cols = {
     "ss_promo_sk": pa.int32(),
     "ss_ticket_number": pa.int64(),
     "ss_quantity": pa.int32(),
-    "ss_wholesale_cost": decimal128(7, 2),
-    "ss_list_price": decimal128(7, 2),
-    "ss_sales_price": decimal128(7, 2),
-    "ss_ext_discount_amt": decimal128(7, 2),
-    "ss_ext_sales_price": decimal128(7, 2),
-    "ss_ext_wholesale_cost": decimal128(7, 2),
-    "ss_ext_list_price": decimal128(7, 2),
-    "ss_ext_tax": decimal128(7, 2),
-    "ss_coupon_amt": decimal128(7, 2),
-    "ss_net_paid": decimal128(7, 2),
-    "ss_net_paid_inc_tax": decimal128(7, 2),
-    "ss_net_profit": decimal128(7, 2),
+    "ss_wholesale_cost": pa.decimal128(7, 2),
+    "ss_list_price": pa.decimal128(7, 2),
+    "ss_sales_price": pa.decimal128(7, 2),
+    "ss_ext_discount_amt": pa.decimal128(7, 2),
+    "ss_ext_sales_price": pa.decimal128(7, 2),
+    "ss_ext_wholesale_cost": pa.decimal128(7, 2),
+    "ss_ext_list_price": pa.decimal128(7, 2),
+    "ss_ext_tax": pa.decimal128(7, 2),
+    "ss_coupon_amt": pa.decimal128(7, 2),
+    "ss_net_paid": pa.decimal128(7, 2),
+    "ss_net_paid_inc_tax": pa.decimal128(7, 2),
+    "ss_net_profit": pa.decimal128(7, 2),
 }
 
 time_dim_cols = {
@@ -496,7 +490,7 @@ warehouse_cols = {
     "w_state": pa.string(),
     "w_zip": pa.string(),
     "w_country": pa.string(),
-    "w_gmt_offset": decimal128(5, 2),
+    "w_gmt_offset": pa.decimal128(5, 2),
 }
 
 web_page_cols = {
@@ -532,15 +526,15 @@ web_returns_cols = {
     "wr_reason_sk": pa.int32(),
     "wr_order_number": pa.int64(),
     "wr_return_quantity": pa.int32(),
-    "wr_return_amt": decimal128(7, 2),
-    "wr_return_tax": decimal128(7, 2),
-    "wr_return_amt_inc_tax": decimal128(7, 2),
-    "wr_fee": decimal128(7, 2),
-    "wr_return_ship_cost": decimal128(7, 2),
-    "wr_refunded_cash": decimal128(7, 2),
-    "wr_reversed_charge": decimal128(7, 2),
-    "wr_account_credit": decimal128(7, 2),
-    "wr_net_loss": decimal128(7, 2),
+    "wr_return_amt": pa.decimal128(7, 2),
+    "wr_return_tax": pa.decimal128(7, 2),
+    "wr_return_amt_inc_tax": pa.decimal128(7, 2),
+    "wr_fee": pa.decimal128(7, 2),
+    "wr_return_ship_cost": pa.decimal128(7, 2),
+    "wr_refunded_cash": pa.decimal128(7, 2),
+    "wr_reversed_charge": pa.decimal128(7, 2),
+    "wr_account_credit": pa.decimal128(7, 2),
+    "wr_net_loss": pa.decimal128(7, 2),
 }
 
 web_sales_cols = {
@@ -563,21 +557,21 @@ web_sales_cols = {
     "ws_promo_sk": pa.int32(),
     "ws_order_number": pa.int64(),
     "ws_quantity": pa.int32(),
-    "ws_wholesale_cost": decimal128(7, 2),
-    "ws_list_price": decimal128(7, 2),
-    "ws_sales_price": decimal128(7, 2),
-    "ws_ext_discount_amt": decimal128(7, 2),
-    "ws_ext_sales_price": decimal128(7, 2),
-    "ws_ext_wholesale_cost": decimal128(7, 2),
-    "ws_ext_list_price": decimal128(7, 2),
-    "ws_ext_tax": decimal128(7, 2),
-    "ws_coupon_amt": decimal128(7, 2),
-    "ws_ext_ship_cost": decimal128(7, 2),
-    "ws_net_paid": decimal128(7, 2),
-    "ws_net_paid_inc_tax": decimal128(7, 2),
-    "ws_net_paid_inc_ship": decimal128(7, 2),
-    "ws_net_paid_inc_ship_tax": decimal128(7, 2),
-    "ws_net_profit": decimal128(7, 2),
+    "ws_wholesale_cost": pa.decimal128(7, 2),
+    "ws_list_price": pa.decimal128(7, 2),
+    "ws_sales_price": pa.decimal128(7, 2),
+    "ws_ext_discount_amt": pa.decimal128(7, 2),
+    "ws_ext_sales_price": pa.decimal128(7, 2),
+    "ws_ext_wholesale_cost": pa.decimal128(7, 2),
+    "ws_ext_list_price": pa.decimal128(7, 2),
+    "ws_ext_tax": pa.decimal128(7, 2),
+    "ws_coupon_amt": pa.decimal128(7, 2),
+    "ws_ext_ship_cost": pa.decimal128(7, 2),
+    "ws_net_paid": pa.decimal128(7, 2),
+    "ws_net_paid_inc_tax": pa.decimal128(7, 2),
+    "ws_net_paid_inc_ship": pa.decimal128(7, 2),
+    "ws_net_paid_inc_ship_tax": pa.decimal128(7, 2),
+    "ws_net_profit": pa.decimal128(7, 2),
 }
 
 web_site_cols = {
@@ -605,8 +599,8 @@ web_site_cols = {
     "web_state": pa.string(),
     "web_zip": pa.string(),
     "web_country": pa.string(),
-    "web_gmt_offset": decimal128(5, 2),
-    "web_tax_percentage": decimal128(5, 2),
+    "web_gmt_offset": pa.decimal128(5, 2),
+    "web_tax_percentage": pa.decimal128(5, 2),
 }
 
 tpcds_cols_dict = {
