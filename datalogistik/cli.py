@@ -185,7 +185,7 @@ def parse_args_and_get_dataset_info():
                 "format": "csv",
                 "delim": "|",
                 "scale-factor": opts.scale_factor,
-                "partitioning-nrows": 0,
+                "partitioning-nrows": opts.partition_max_rows,
             }
 
         if opts.format not in config.supported_formats:
@@ -198,7 +198,9 @@ def parse_args_and_get_dataset_info():
 
         if "partitioning-nrows" not in dataset_info:
             dataset_info["partitioning-nrows"] = 0  # Default: no partitioning
+
         return (dataset_info, opts)
+
     else:
         msg = "Please specify a command"
         log.error(msg)

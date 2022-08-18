@@ -445,6 +445,23 @@ def convert_dataset(
     return output_dir
 
 
+# Calculate the number of partitions to generate for a given scale factor and
+# max nr of rows per partitions
+def calc_num_partitions(tpc_name, scale_factor, partitioning_nrows):
+    # nr of rows in the largest table at sf=1
+    tpch_rows_per_sf = {"tpc-h": 6000000, "tpc-ds": 1440000}
+    if partitioning_nrows == 0:
+        return 1
+    num_partitions = int(
+        (tpch_rows_per_sf[tpc_name] * int(scale_factor)) / partitioning_nrows
+    )
+    log.debug(
+        f"Number of partitions for {tpc_name} at sf={scale_factor} with "
+        f"{partitioning_nrows} max rows per partitions: {num_partitions}"
+    )
+    return num_partitions
+
+
 # Generate a dataset by calling one of the supported external generators
 def generate_dataset(dataset_info, argument_info):
     dataset_name = argument_info.dataset
@@ -454,17 +471,22 @@ def generate_dataset(dataset_info, argument_info):
         dataset_name,
         argument_info.scale_factor,
         dataset_info["format"],
-        str(dataset_info["partitioning-nrows"]),
+        str(argument_info.partition_max_rows),
     )
     cached_dataset_path.mkdir(parents=True, exist_ok=True)
 
     # Call generator
     generators = {"tpc-h": DBGen, "tpc-ds": DSDGen}
     try:
+        partitions = calc_num_partitions(
+            dataset_name, argument_info.scale_factor, argument_info.partition_max_rows
+        )
         generator_class = generators[dataset_name]
         generator = generator_class(executable_path=argument_info.generator_path)
         generator.create_dataset(
-            out_dir=cached_dataset_path, scale_factor=argument_info.scale_factor
+            out_dir=cached_dataset_path,
+            scale_factor=argument_info.scale_factor,
+            partitions=partitions,
         )
 
         metadata_table_list = []
