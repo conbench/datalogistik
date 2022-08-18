@@ -107,6 +107,10 @@ class _TPCBuilder(abc.ABC):
     def _get_partitioned_filename(self, table_name: str, p: int, partitions: int):
         """Create the pathname for a file in case of a partitioned output"""
 
+    @abc.abstractmethod
+    def _get_table_name_flags(self):
+        """Create a list of the flags needed to generate all the individual tables"""
+
     def create_dataset(
         self,
         out_dir: pathlib.Path,
@@ -131,14 +135,29 @@ class _TPCBuilder(abc.ABC):
 
         partitions = 1 if partitions == 0 else partitions
         if partitions == 1:
-            # TODO: parallelize across files instead of partitions
-            _run(
-                self.executable_path,
-                self.force_flag,
-                self.scale_flag,
-                str(scale_factor),
-                cwd=self.executable_path.parent,
-            )
+            num_cpus = multiprocessing.cpu_count()
+            pool_size = num_cpus - 1
+
+            with concurrent.futures.ProcessPoolExecutor(pool_size) as pool:
+                futures = []
+                for (table_flag, table_param) in self._get_table_name_flags():
+                    futures.append(
+                        pool.submit(
+                            _run,
+                            self.executable_path,
+                            self.force_flag,
+                            self.scale_flag,
+                            str(scale_factor),
+                            table_flag,
+                            table_param,
+                            cwd=self.executable_path.parent,
+                        )
+                    )
+                for f in tqdm.tqdm(
+                    concurrent.futures.as_completed(futures),
+                    total=len(self._get_table_name_flags()),
+                ):
+                    f.result()
             # Move the new files to out_dir
             out_dir = pathlib.Path(out_dir).resolve()
             for table_name in self.table_names:
@@ -261,6 +280,10 @@ class DBGen(_TPCBuilder):
             return f"region.{self.file_extension}"
         return f"{table_name}.{self.file_extension}.{partition}"
 
+    def _get_table_name_flags(self):
+        tpch_table_abbrevs = ["c", "l", "L", "n", "o", "O", "p", "P", "r", "s", "S"]
+        return [("-T", t) for t in tpch_table_abbrevs]
+
     def _build_executable_unix(self):
         """Build the executable using 'make' on a UNIX-based system."""
         if self.system == "Darwin":
@@ -311,6 +334,13 @@ class DSDGen(_TPCBuilder):
             return self.repo_build_path / "dsdgen.exe"
         else:
             return self.repo_build_path / "dsdgen"
+
+    def _get_table_name_flags(self):
+        return [
+            ("-TABLE", t)
+            for t in self.table_names
+            if t not in ["web_returns", "store_returns", "catalog_returns"]
+        ]
 
     def _get_partitioned_filename(self, table_name, partition, total_partitions):
         return f"{table_name}_{partition}_{total_partitions}.{self.file_extension}"
