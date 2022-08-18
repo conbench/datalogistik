@@ -143,7 +143,7 @@ class _TPCBuilder(abc.ABC):
             out_dir = pathlib.Path(out_dir).resolve()
             for table_name in self.table_names:
                 old_file = self.executable_path.parent / (
-                    table_name + self.file_extension
+                    f"{table_name}.{self.file_extension}"
                 )
                 new_file = out_dir / (table_name + ".csv")
                 shutil.move(old_file, new_file)
