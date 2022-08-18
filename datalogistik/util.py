@@ -204,15 +204,7 @@ def write_metadata(dataset_info, path):
         dataset_info,
         metadata,
     )
-    if metadata.get("files"):
-        # In this case, the dataset info contained checksums. Check them
-        if not validate_files(path, metadata.get("files")):
-            clean_cache_dir(path)
-            msg = "File integrity check for newly created dataset failed."
-            log.error(msg)
-            raise RuntimeError(msg)
-    else:
-        add_file_listing(metadata, path)
+    add_file_listing(metadata, path)
 
     json_string = json.dumps(metadata)
     with open(pathlib.Path(path, config.metadata_filename), "w") as metadata_file:
@@ -439,6 +431,10 @@ def convert_dataset(
         dataset_info["partitioning-nrows"] = new_nrows
         if parquet_compression is not None:
             dataset_info["parquet-compression"] = parquet_compression
+        if dataset_info.get("files"):
+            # Remove the old file listing, because it is not valid for the new dataset
+            # (write_metadata will generate and add a new file listing with checksums)
+            del dataset_info["files"]
         write_metadata(dataset_info, output_dir)
 
     except Exception:
@@ -570,6 +566,14 @@ def download_dataset(dataset_info, argument_info):
         log.error("pyarrow.dataset is unable to read downloaded file")
         clean_cache_dir(cached_dataset_path)
         raise
+
+    if dataset_info.get("files"):
+        # In this case, the dataset info contained checksums. Check them
+        if not validate_files(cached_dataset_path, dataset_info.get("files")):
+            clean_cache_dir(cached_dataset_path)
+            msg = "File integrity check for newly created dataset failed."
+            log.error(msg)
+            raise RuntimeError(msg)
 
     write_metadata(dataset_info, cached_dataset_path)
     return cached_dataset_path
