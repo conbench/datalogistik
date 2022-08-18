@@ -80,17 +80,32 @@ def test_write_metadata():
 
 
 def test_validate():
-    with tempfile.TemporaryDirectory() as path:
-        create_test_dataset(path)
-        assert util.validate(path) is True
-        metadata_file_path = os.path.join(path, config.metadata_filename)
-        with open(metadata_file_path) as f:
-            written_metadata = json.load(f)
-            file_listing = written_metadata["files"]
-            assert util.validate_files(path, file_listing) is True
-            # Now change an md5sum in the metadata and check if the validation fails:
-            file_listing[0]["md5"] = "00000000000000000000000000000000"
-            assert util.validate_files(path, file_listing) is False
+    cache_root = config.get_cache_location()
+    path = pathlib.Path(cache_root, "test_validate/csv/partitioning_0/")
+    path.mkdir(parents=True, exist_ok=True)
+    create_test_dataset(path)
+    assert util.validate(path) is True
+    metadata_file_path = pathlib.Path(path, config.metadata_filename)
+    with open(metadata_file_path) as f:
+        written_metadata = json.load(f)
+    file_listing = written_metadata["files"]
+    assert util.validate_files(path, file_listing) is True
+    # Now change an md5sum in the metadata and check if the validation fails:
+    file_listing[0]["md5"] = "00000000000000000000000000000000"
+    assert util.validate_files(path, file_listing) is False
+
+    # now test --validate and --prune-invalid
+    util.validate_cache(True)  # this should not delete the entry
+    assert metadata_file_path.exists()
+
+    written_metadata["files"] = file_listing
+    json_string = json.dumps(written_metadata)
+    with open(metadata_file_path, "w") as f:
+        f.write(json_string)
+    util.validate_cache(False)  # this should not delete the entry, only report
+    assert metadata_file_path.exists()
+    util.validate_cache(True)  # this should delete the entry
+    assert not metadata_file_path.exists()
 
 
 # TODO: test partitioning conversion
