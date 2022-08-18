@@ -164,15 +164,17 @@ def validate_files(path, file_listing):
 
 
 # Validate all entries in the cache
-def validate_cache():
+def validate_cache(remove_failing):
     cache_root = config.get_cache_location()
     log.info(f"Validating cache at {cache_root}")
     for dirpath, dirnames, filenames in os.walk(cache_root):
         if config.metadata_filename in filenames:
             # Dataset found, validate
             if not validate(dirpath):
-                log.info(f"Found invalid cache entry at {dirpath}, pruning...")
-                prune_cache_entry(pathlib.Path(dirpath).relative_to(cache_root))
+                log.info(f"Found invalid cache entry at {dirpath}")
+                if remove_failing:
+                    log.info("Pruning...")
+                    prune_cache_entry(pathlib.Path(dirpath).relative_to(cache_root))
 
 
 # Write the metadata about a newly created dataset instance at path,

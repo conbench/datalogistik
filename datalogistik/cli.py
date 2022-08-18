@@ -40,6 +40,12 @@ def parse_args():
         help="Remove entry or entries, specified by their relative path, from the cache",
     )
     cache_group.add_argument(
+        "--prune-invalid",
+        type=str,
+        default=None,
+        help="Validate all entries in the cache for file integrity and remove entries that fail",
+    )
+    cache_group.add_argument(
         "--clean",
         action="store_true",
         help="Remove any incomplete/left-over directories from the cache",
@@ -47,7 +53,7 @@ def parse_args():
     cache_group.add_argument(
         "--validate",
         action="store_true",
-        help="Validate all entries in the cache for file integrity",
+        help="Validate all entries in the cache for file integrity and report entries that fail",
     )
 
     gen_parser.add_argument(
@@ -111,7 +117,9 @@ def handle_cache_command(cache_opts):
     elif cache_opts.clean:
         util.clean_cache()
     elif cache_opts.validate:
-        util.validate_cache()
+        util.validate_cache(False)
+    elif cache_opts.prune_invalid:
+        util.validate_cache(True)
     else:
         msg = "Please specify a cache-specific option"
         log.error(msg)
