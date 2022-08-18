@@ -67,10 +67,15 @@ def main():
             f"No cached data metadata file found at '{cached_dataset_metadata_file}'"
         )
         for cached_file_format in [x for x in config.supported_formats]:
+            if argument_info.scale_factor:
+                scale_factor = f"scalefactor_{argument_info.scale_factor}"
+            else:
+                scale_factor = ""
+
             other_format_path = pathlib.Path(
                 local_cache_location,
                 argument_info.dataset,
-                f"scalefactor_{argument_info.scale_factor}",
+                scale_factor,
                 cached_file_format,
             )
             if other_format_path.exists():
