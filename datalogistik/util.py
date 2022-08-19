@@ -356,8 +356,11 @@ def get_dataset(input_file, dataset_info, table_name=None):
     if format == "csv":
         # defaults
         po = csv.ParseOptions()
-        ro = csv.ReadOptions()  # autogenerate_column_names=True)
+        ro = csv.ReadOptions()
         co = csv.ConvertOptions()
+        # TODO: Should we autogenerate column names by default?
+        # Or add a property in the metadata about it?
+        # or allow a fall-back to read_csv in case schema detection fails?
 
         if "delim" in dataset_info:
             po = csv.ParseOptions(delimiter=dataset_info["delim"])
@@ -491,13 +494,6 @@ def convert_dataset(
                     "schema": schema_to_dict(dataset.schema),
                 }
             )
-
-            # TODO: The dataset API does a poor job at detecting the schema.
-            # Would be nice to be able to fall back to read/write_csv etc.
-            # Another option is to store the schema as metadata in the repo and pass it
-            # to dataset.
-            # It would also be nice to detect/provide option whether the first line
-            # contains column names.
 
         conv_time = time.perf_counter() - conv_start
         log.info("Finished conversion.")
