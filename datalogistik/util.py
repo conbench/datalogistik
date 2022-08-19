@@ -505,7 +505,7 @@ def convert_dataset(
         log.info("Finished conversion.")
         log.debug(f"conversion took {conv_time:0.2f} s")
         # Parquet already stores the schema internally
-        if new_format == csv:
+        if new_format == "csv":
             dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
