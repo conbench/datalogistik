@@ -358,6 +358,10 @@ def convert_dataset(
         f"Converting and caching dataset from {old_format}, {old_nrows} rows per "
         f"partition to {new_format}, {new_nrows} rows per partition..."
     )
+    if old_parquet_compression:
+        log.info(f"Converting from parquet compression: {old_parquet_compression}")
+    if new_parquet_compression:
+        log.info(f"Converting to parquet compression: {new_parquet_compression}")
     conv_start = time.perf_counter()
     dataset_name = dataset_info["name"]
     scale_factor = dataset_info.get("scale-factor", "")
@@ -380,7 +384,11 @@ def convert_dataset(
     with open(cached_dataset_metadata_file) as f:
         dataset_metadata = json.load(f)
 
-    if (dataset_metadata["format"] == new_format) and (old_nrows == new_nrows):
+    if (
+        (dataset_metadata["format"] == new_format)
+        and (old_nrows == new_nrows)
+        and (old_parquet_compression == new_parquet_compression)
+    ):
         log.info("Conversion not needed.")
         return cached_dataset_path
 

@@ -137,12 +137,19 @@ def main():
     else:
         cached_dataset_path = util.download_dataset(dataset_info, argument_info)
 
-    # Convert to the requested format if necessary
+    if dataset_info["format"] == "parquet":
+        # retrieve the compression from the directory name
+        pq_compression = cached_dataset_path.parts[-1].split("_")[-1].lower()
+    else:
+        pq_compression = None
+    # Convert if necessary
     if (dataset_info["format"] != argument_info.format) or (
         dataset_info["partitioning-nrows"] != argument_info.partition_max_rows
+        or (pq_compression != argument_info.compression)
     ):
         cached_dataset_path = util.convert_dataset(
             dataset_info,
+            pq_compression,
             argument_info.compression,
             dataset_info["format"],
             argument_info.format,
