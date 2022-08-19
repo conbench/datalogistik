@@ -75,6 +75,7 @@ Supported formats: Parquet, csv",
         "-c",
         "--compression",
         type=str,
+        default="snappy",
         help="Internal compression (passed to parquet writer)",
     )
     gen_parser.add_argument(

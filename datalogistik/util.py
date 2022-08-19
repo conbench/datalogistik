@@ -380,8 +380,6 @@ def convert_dataset(
             write_options = None  # Default
             if new_format == "parquet":
                 dataset_write_format = ds.ParquetFileFormat()
-                if parquet_compression is None:
-                    parquet_compression = "snappy"  # Use snappy by default
                 write_options = dataset_write_format.make_write_options(
                     compression=parquet_compression
                 )
