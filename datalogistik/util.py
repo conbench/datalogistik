@@ -31,11 +31,12 @@ from .log import log
 from .tpc_builders import DBGen, DSDGen
 
 
-def removesuffix(string, suffix):
-    if string.endswith(suffix):
-        return string[: -len(suffix)]
+def removesuffix(orig_path, suffix):
+    path = pathlib.Path(orig_path)
+    if path.suffix == suffix:
+        return path.parent / path.stem
     else:
-        return string
+        return orig_path
 
 
 def peek_line(fd):
@@ -93,6 +94,91 @@ def add_file_listing(metadata, path):
     metadata["files"] = file_list
 
 
+# Returns true if the given path contains a dataset with a metadata file that contains
+# a file listing.
+def contains_dataset(path):
+    if not path.exists():
+        msg = f"Path '{path}' does not exist"
+        log.error(msg)
+        raise RuntimeError(msg)
+    if not path.is_dir():
+        msg = f"Path '{path}' is not a directory"
+        log.error(msg)
+        raise RuntimeError(msg)
+
+    metadata_file = pathlib.Path(path, config.metadata_filename)
+    if metadata_file.exists():
+        with open(metadata_file) as f:
+            if json.load(f).get("files"):
+                return True
+    return False
+
+
+# Validate that the integrity of the files in the dataset at given path is ok, using the metadata file.
+# Return true if the dataset passed the integrity check.
+def validate(path):
+    path = pathlib.Path(path)
+    dataset_found = contains_dataset(path)
+    if not dataset_found:
+        msg = f"No valid dataset was found at '{path}'"
+        log.error(msg)
+        raise RuntimeError(msg)
+    metadata_file = pathlib.Path(path, config.metadata_filename)
+    with open(metadata_file) as f:
+        orig_file_listing = json.load(f).get("files")
+    dataset_valid = validate_files(path, orig_file_listing)
+    log.info(f"Dataset at {path} is{'' if dataset_valid else ' NOT'} valid")
+    return dataset_valid
+
+
+# Validate the files in the given path for integrity using the given file listing.
+# Return true if the files passed the integrity check.
+def validate_files(path, file_listing):
+    new_file_listing = {}
+    add_file_listing(new_file_listing, path)
+    new_file_listing = new_file_listing.get("files")
+    # we can't perform a simple equality check on the whole listing,
+    # because the orig_file_listing does not contain the metadata file.
+    # Also, it would be nice to show the user which files failed.
+    listings_are_equal = True
+    for orig_file in file_listing:
+        found = None
+        for new_file in new_file_listing:
+            if new_file["file_path"] == orig_file["file_path"]:
+                found = new_file
+                break
+        if found is None:
+            orig_file_path = orig_file["file_path"]
+            log.error(f"Missing file: {orig_file_path}")
+            listings_are_equal = False
+        if orig_file != new_file:
+            log.error(
+                "File integrity compromised: (top:properties in metadata bottom:calculated properties)"
+            )
+            log.error(orig_file)
+            log.error(new_file)
+            listings_are_equal = False
+
+        log.debug(f"Dataset is{'' if listings_are_equal else ' NOT'} valid!")
+        return listings_are_equal
+
+
+# Validate all entries in the cache
+def validate_cache(remove_failing):
+    cache_root = config.get_cache_location()
+    log.info(f"Validating cache at {cache_root}")
+    for dirpath, dirnames, filenames in os.walk(cache_root):
+        if config.metadata_filename in filenames:
+            # Dataset found, validate
+            if not validate(dirpath):
+                log.info(f"Found invalid cache entry at {dirpath}")
+                if remove_failing:
+                    log.info("Pruning...")
+                    prune_cache_entry(pathlib.Path(dirpath).relative_to(cache_root))
+
+
+# Write the metadata about a newly created dataset instance at path,
+# using the information in dataset_info in addition to some locally generated info.
 def write_metadata(dataset_info, path):
     metadata = {
         "local-creation-date": datetime.datetime.now()
@@ -119,23 +205,20 @@ def write_metadata(dataset_info, path):
         metadata,
     )
     add_file_listing(metadata, path)
+
     json_string = json.dumps(metadata)
     with open(pathlib.Path(path, config.metadata_filename), "w") as metadata_file:
         metadata_file.write(json_string)
 
 
-# walk up the directory tree up to the root to find a metadatafile
+# Walk up the directory tree up to the root of the cache to find a metadata file.
+# Return true if a metadata file is found
 def valid_metadata_in_parent_dirs(dirpath):
     walking_path = pathlib.Path(dirpath)
     cache_root = config.get_cache_location()
     while walking_path != cache_root:
-        metadata_file = pathlib.Path(walking_path, config.metadata_filename)
-        if metadata_file.exists():
-            with open(metadata_file) as f:
-                metadata = json.load(f)
-                if metadata.get("files"):
-                    return True
-        walking_path = walking_path.parent
+        if contains_dataset(walking_path):
+            return True
     return False
 
 
@@ -162,6 +245,8 @@ def clean_cache_dir(path):
             os.rmdir(path)
 
 
+# Search the cache for directories that do not have a metadata file
+# and are not part of a dataset), and remove them.
 def clean_cache():
     cache_root = config.get_cache_location()
     log.info(f"Cleaning cache at {cache_root}")
@@ -173,28 +258,13 @@ def clean_cache():
                 clean_cache_dir(dirpath)
 
 
+# Remove an entry from the cache by the given subdir.
 def prune_cache_entry(sub_path):
     log.debug(f"Pruning cache entries below cache subdir '{sub_path}'")
     local_cache_location = config.get_cache_location()
     cache_root = pathlib.Path(local_cache_location)
     path = pathlib.Path(cache_root, sub_path)
-    if not path.exists():
-        msg = f"Path '{path}' does not exist"
-        log.error(msg)
-        raise RuntimeError(msg)
-    if not path.is_dir():
-        msg = f"Path '{path}' is not a directory"
-        log.error(msg)
-        raise RuntimeError(msg)
-
-    valid_dataset = False
-    metadata_file = pathlib.Path(path, config.metadata_filename)
-    if metadata_file.exists():
-        with open(metadata_file) as f:
-            if json.load(f).get("files"):
-                valid_dataset = True
-
-    if not valid_dataset:
+    if not contains_dataset(path):
         # check if this path is a subdir of a valid dataset
         if valid_metadata_in_parent_dirs(path.parent):
             msg = f"Path '{path}' seems to be a subdirectory of a valid dataset, refusing to remove it."
@@ -202,14 +272,11 @@ def prune_cache_entry(sub_path):
             raise RuntimeError(msg)
 
     log.info(f"Pruning Directory {path}")
-
-    # Delete the cache entry itself
     shutil.rmtree(path, ignore_errors=True)
-
-    # Use util function to clean up any superfluous directories
     clean_cache_dir(path)
 
 
+# Convert a pyarrow.schema to a dict that can be serialized to JSON
 def schema_to_dict(schema):
     field_dict = {}
     for field in schema:
@@ -225,7 +292,7 @@ def get_dataset(input_file, dataset_info, table_name=None):
     if dataset_info["format"] == "csv":
         # defaults
         po = csv.ParseOptions()
-        ro = csv.ReadOptions()
+        ro = csv.ReadOptions()  # autogenerate_column_names=True)
         co = csv.ConvertOptions()
 
         if "delim" in dataset_info:
@@ -352,7 +419,9 @@ def convert_dataset(
             # TODO: The dataset API does a poor job at detecting the schema.
             # Would be nice to be able to fall back to read/write_csv etc.
             # Another option is to store the schema as metadata in the repo and pass it
-            # to dataset
+            # to dataset.
+            # It would also be nice to detect/provide option whether the first line
+            # contains column names.
 
         conv_time = time.perf_counter() - conv_start
         log.info("Finished conversion.")
@@ -362,6 +431,10 @@ def convert_dataset(
         dataset_info["partitioning-nrows"] = new_nrows
         if parquet_compression is not None:
             dataset_info["parquet-compression"] = parquet_compression
+        if dataset_info.get("files"):
+            # Remove the old file listing, because it is not valid for the new dataset
+            # (write_metadata will generate and add a new file listing with checksums)
+            del dataset_info["files"]
         write_metadata(dataset_info, output_dir)
 
     except Exception:
@@ -372,6 +445,7 @@ def convert_dataset(
     return output_dir
 
 
+# Generate a dataset by calling one of the supported external generators
 def generate_dataset(dataset_info, argument_info):
     dataset_name = argument_info.dataset
     log.info(f"Generating {dataset_name} data to cache...")
@@ -486,15 +560,22 @@ def download_dataset(dataset_info, argument_info):
     try:
         dataset, scanner = get_dataset(dataset_file_path, dataset_info)
         dataset_info["tables"] = [
-            {"table": dataset_file_name, "schema": schema_to_dict(dataset.schema)}
+            {"table": str(dataset_file_name), "schema": schema_to_dict(dataset.schema)}
         ]
-        write_metadata(dataset_info, cached_dataset_path)
-
     except Exception:
         log.error("pyarrow.dataset is unable to read downloaded file")
         clean_cache_dir(cached_dataset_path)
         raise
 
+    if dataset_info.get("files"):
+        # In this case, the dataset info contained checksums. Check them
+        if not validate_files(cached_dataset_path, dataset_info.get("files")):
+            clean_cache_dir(cached_dataset_path)
+            msg = "File integrity check for newly created dataset failed."
+            log.error(msg)
+            raise RuntimeError(msg)
+
+    write_metadata(dataset_info, cached_dataset_path)
     return cached_dataset_path
 
 
