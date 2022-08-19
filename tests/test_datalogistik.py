@@ -131,7 +131,9 @@ def test_convert_dataset_csv_to_parquet():
     written_table = csv.read_csv(test_csv_file_path)
     print(written_table.schema)
     assert written_table == orig_table
-    converted_path = util.convert_dataset(dataset_info, None, "csv", "parquet", 0, 0)
+    converted_path = util.convert_dataset(
+        dataset_info, None, None, "csv", "parquet", 0, 0
+    )
     test_parquet_file_path = pathlib.Path(converted_path, test_parquet_file)
     converted_table = ds.dataset(test_parquet_file_path).to_table()
     print(converted_table.schema)
@@ -161,7 +163,9 @@ def test_convert_dataset_parquet_to_csv():
     written_table = pq.read_table(test_parquet_file_path)
     print(written_table.schema)
     assert written_table == orig_table
-    converted_path = util.convert_dataset(dataset_info, None, "parquet", "csv", 0, 0)
+    converted_path = util.convert_dataset(
+        dataset_info, None, None, "parquet", "csv", 0, 0
+    )
     test_csv_file_path = pathlib.Path(converted_path, test_csv_file)
     converted_table = ds.dataset(
         test_csv_file_path, format=ds.CsvFileFormat()

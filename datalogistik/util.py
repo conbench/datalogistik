@@ -59,9 +59,13 @@ def create_cached_dataset_path(
     local_cache_location = config.get_cache_location()
     if scale_factor:
         scale_factor = f"scalefactor_{scale_factor}"
+    else:
+        scale_factor = ""
     partitioning_nrows = f"partitioning_{partitioning_nrows}"
     if parquet_compression:
         parquet_compression = f"parquetcompression_{parquet_compression}"
+    else:
+        parquet_compression = ""
     if format == "parquet":
         return pathlib.Path(
             local_cache_location,
