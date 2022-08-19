@@ -16,12 +16,14 @@ Usage::
         -f FORMAT \
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
-        [-p PARTITION_MAX_ROWS]
+        [-p PARTITION_MAX_ROWS] \
         [-b, --bypass-cache]
 
     datalogistik cache [-h] \
         [--clean] \
-        [--prune-entry ENTRY]
+        [--prune-entry ENTRY] \
+        [--prune-invalid] \
+        [--validate]
 
 
 ``DATASET``
@@ -47,7 +49,7 @@ Usage::
     Default 0, which means no partitioning.
 
 ``bypass-cache``
-    Do not store any copies of the dataset in the cache
+    Do not store any copies of the dataset in the cache.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
@@ -58,7 +60,13 @@ Usage::
 ``prune-entry``
     Remove a given subdirectory from the cache. The user can specify a certain
     particular dataset (e.g. ``tpc-h/1/parquet/0``), or a directory higher in the hierarchy
-    (e.g. ``tpc-h/100``)
+    (e.g. ``tpc-h/100``).
+
+``prune-invalid``
+    Validate all entries in the cache for file integrity and remove entries that fail.
+
+``validate``
+    Validate all entries in the cache for file integrity and report entries that fail.
 
 Installing using ``pipx`` (recommended)
 ---------------------------------------

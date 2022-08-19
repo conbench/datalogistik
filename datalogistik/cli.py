@@ -40,9 +40,20 @@ def parse_args():
         help="Remove entry or entries, specified by their relative path, from the cache",
     )
     cache_group.add_argument(
+        "--prune-invalid",
+        type=str,
+        default=None,
+        help="Validate all entries in the cache for file integrity and remove entries that fail",
+    )
+    cache_group.add_argument(
         "--clean",
         action="store_true",
         help="Remove any incomplete/left-over directories from the cache",
+    )
+    cache_group.add_argument(
+        "--validate",
+        action="store_true",
+        help="Validate all entries in the cache for file integrity and report entries that fail",
     )
 
     gen_parser.add_argument(
@@ -96,15 +107,23 @@ Supported formats: Parquet, csv",
         action="store_true",
         help="Do not store any copies of the dataset in the cache",
     )
+
     return parser.parse_args()
 
 
 def handle_cache_command(cache_opts):
     if cache_opts.prune_entry:
         util.prune_cache_entry(cache_opts.prune_entry)
-
-    if cache_opts.clean:
+    elif cache_opts.clean:
         util.clean_cache()
+    elif cache_opts.validate:
+        util.validate_cache(False)
+    elif cache_opts.prune_invalid:
+        util.validate_cache(True)
+    else:
+        msg = "Please specify a cache-specific option"
+        log.error(msg)
+        raise RuntimeError(msg)
 
 
 def parse_args_and_get_dataset_info():
@@ -114,68 +133,73 @@ def parse_args_and_get_dataset_info():
         handle_cache_command(opts)
         sys.exit(0)
 
-    # Set up repository (local or remote)
-    repo_location = os.getenv("DATALOGISTIK_REPO", config.default_repo_file)
-    if repo_location[0:4] == "http":
-        log.debug(f"Fetching repo from {repo_location}")
-        try:
-            http = urllib3.PoolManager()
-            r = http.request("GET", repo_location)
-            dataset_sources = json.loads(r.data.decode("utf-8"))
-        except Exception:
-            log.error(f"Unable to download from '{repo_location}'")
-            raise
-    else:
-        log.debug(f"Using local repo at {repo_location}")
-        dataset_sources = json.load(open(repo_location))
+    elif opts.command == "generate":
+        # Set up repository (local or remote)
+        repo_location = os.getenv("DATALOGISTIK_REPO", config.default_repo_file)
+        if repo_location[0:4] == "http":
+            log.debug(f"Fetching repo from {repo_location}")
+            try:
+                http = urllib3.PoolManager()
+                r = http.request("GET", repo_location)
+                dataset_sources = json.loads(r.data.decode("utf-8"))
+            except Exception:
+                log.error(f"Unable to download from '{repo_location}'")
+                raise
+        else:
+            log.debug(f"Using local repo at {repo_location}")
+            dataset_sources = json.load(open(repo_location))
 
-    # Find requested dataset in repository, then in the list of generators
-    dataset_info = None
-    for dataset_source in dataset_sources:
-        if dataset_source["name"] == opts.dataset:
-            dataset_info = dataset_source
-            break
-    if dataset_info is None and opts.dataset not in tpc_info.tpc_datasets:
-        msg = (
-            f"Dataset '{opts.dataset}' not found in repository or list of supported "
-            "generators.\n\nDatasets found in repository: "
-            f"{[source['name'] for source in dataset_sources]}\nSupported generators: "
-            f"{tpc_info.tpc_datasets}"
-        )
-        log.error(msg)
-        raise ValueError(msg)
-
-    if opts.compression is not None:
-        if opts.format != "parquet":
-            msg = "Compression is only supported for parquet format"
+        # Find requested dataset in repository, then in the list of generators
+        dataset_info = None
+        for dataset_source in dataset_sources:
+            if dataset_source["name"] == opts.dataset:
+                dataset_info = dataset_source
+                break
+        if dataset_info is None and opts.dataset not in tpc_info.tpc_datasets:
+            msg = (
+                f"Dataset '{opts.dataset}' not found in repository or list of supported "
+                "generators.\n\nDatasets found in repository: "
+                f"{[source['name'] for source in dataset_sources]}\nSupported generators: "
+                f"{tpc_info.tpc_datasets}"
+            )
             log.error(msg)
             raise ValueError(msg)
 
-    if opts.scale_factor != "" and opts.dataset not in tpc_info.tpc_datasets:
-        msg = "scale-factor is only supported for TPC datasets"
+        if opts.compression is not None:
+            if opts.format != "parquet":
+                msg = "Compression is only supported for parquet format"
+                log.error(msg)
+                raise ValueError(msg)
+
+        if opts.scale_factor != "" and opts.dataset not in tpc_info.tpc_datasets:
+            msg = "scale-factor is only supported for TPC datasets"
+            log.error(msg)
+            raise ValueError(msg)
+        if opts.scale_factor == "" and opts.dataset in tpc_info.tpc_datasets:
+            opts.scale_factor = "1"
+
+        if opts.dataset in tpc_info.tpc_datasets:
+            # Construct an dataset_info for a generated dataset
+            dataset_info = {
+                "name": opts.dataset,
+                "format": "csv",
+                "delim": "|",
+                "scale-factor": opts.scale_factor,
+                "partitioning-nrows": 0,
+            }
+
+        if opts.format not in config.supported_formats:
+            msg = (
+                f"Format '{opts.format}' not supported. Supported formats: "
+                f"{config.supported_formats}"
+            )
+            log.error(msg)
+            raise ValueError(msg)
+
+        if "partitioning-nrows" not in dataset_info:
+            dataset_info["partitioning-nrows"] = 0  # Default: no partitioning
+        return (dataset_info, opts)
+    else:
+        msg = "Please specify a command"
         log.error(msg)
-        raise ValueError(msg)
-    if opts.scale_factor == "" and opts.dataset in tpc_info.tpc_datasets:
-        opts.scale_factor = "1"
-
-    if opts.dataset in tpc_info.tpc_datasets:
-        # Construct an dataset_info for a generated dataset
-        dataset_info = {
-            "name": opts.dataset,
-            "format": "csv",
-            "delim": "|",
-            "scale-factor": opts.scale_factor,
-            "partitioning-nrows": 0,
-        }
-
-    if opts.format not in config.supported_formats:
-        msg = (
-            f"Format '{opts.format}' not supported. Supported formats: "
-            f"{config.supported_formats}"
-        )
-        log.error(msg)
-        raise ValueError(msg)
-
-    if "partitioning-nrows" not in dataset_info:
-        dataset_info["partitioning-nrows"] = 0  # Default: no partitioning
-    return (dataset_info, opts)
+        raise RuntimeError(msg)
