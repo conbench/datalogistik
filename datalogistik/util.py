@@ -297,8 +297,6 @@ def arrow_type_function_lookup(function_name):
 
 # Convert a given item (string or dict) to the corresponding Arrow datatype
 def arrow_type_from_json(input_type):
-    # Dict of all pyarrow types that take parameters to their possible parameters
-    # and whether they are optional
     arrow_nested_types = {
         "list_",
         "large_list",
