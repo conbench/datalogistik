@@ -25,6 +25,7 @@ import pyarrow as pa
 import urllib3
 from pyarrow import csv
 from pyarrow import dataset as ds
+from pyarrow import parquet as pq
 
 from . import config, tpc_info
 from .log import log
@@ -52,10 +53,24 @@ def file_visitor(written_file):
 
 
 # Construct a path to a dataset entry in the cache (possibly not existing yet)
-def create_cached_dataset_path(name, scale_factor, format, partitioning_nrows):
+def create_cached_dataset_path(
+    name, scale_factor, format, partitioning_nrows, parquet_compression
+):
     local_cache_location = config.get_cache_location()
-    scale_factor = f"scalefactor_{scale_factor}" if scale_factor != "" else ""
+    if scale_factor:
+        scale_factor = f"scalefactor_{scale_factor}"
     partitioning_nrows = f"partitioning_{partitioning_nrows}"
+    if parquet_compression:
+        parquet_compression = f"parquetcompression_{parquet_compression}"
+    if format == "parquet":
+        return pathlib.Path(
+            local_cache_location,
+            name,
+            scale_factor,
+            format,
+            partitioning_nrows,
+            parquet_compression,
+        )
     return pathlib.Path(
         local_cache_location, name, scale_factor, format, partitioning_nrows
     )
@@ -328,7 +343,8 @@ def get_dataset(input_file, dataset_info, table_name=None):
 # Convert a cached dataset into another format, return the new directory path
 def convert_dataset(
     dataset_info,
-    parquet_compression,
+    old_parquet_compression,
+    new_parquet_compression,
     old_format,
     new_format,
     old_nrows,
@@ -347,7 +363,7 @@ def convert_dataset(
         dataset_file_name = dataset_info["url"].split("/")[-1]
         file_names = [dataset_file_name.split(".")[0]]
     cached_dataset_path = create_cached_dataset_path(
-        dataset_name, scale_factor, old_format, str(old_nrows)
+        dataset_name, scale_factor, old_format, str(old_nrows), old_parquet_compression
     )
     cached_dataset_metadata_file = pathlib.Path(
         cached_dataset_path, config.metadata_filename
@@ -367,7 +383,11 @@ def convert_dataset(
     metadata_table_list = []
     try:
         output_dir = create_cached_dataset_path(
-            dataset_name, scale_factor, new_format, str(new_nrows)
+            dataset_name,
+            scale_factor,
+            new_format,
+            str(new_nrows),
+            new_parquet_compression,
         )
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -381,7 +401,7 @@ def convert_dataset(
             if new_format == "parquet":
                 dataset_write_format = ds.ParquetFileFormat()
                 write_options = dataset_write_format.make_write_options(
-                    compression=parquet_compression
+                    compression=new_parquet_compression
                 )
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
@@ -427,8 +447,7 @@ def convert_dataset(
         dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
-        if parquet_compression is not None:
-            dataset_info["parquet-compression"] = parquet_compression
+        dataset_info["parquet-compression"] = new_parquet_compression
         if dataset_info.get("files"):
             # Remove the old file listing, because it is not valid for the new dataset
             # (write_metadata will generate and add a new file listing with checksums)
@@ -453,6 +472,7 @@ def generate_dataset(dataset_info, argument_info):
         argument_info.scale_factor,
         dataset_info["format"],
         str(dataset_info["partitioning-nrows"]),
+        None,
     )
     cached_dataset_path.mkdir(parents=True, exist_ok=True)
 
@@ -521,6 +541,7 @@ def download_dataset(dataset_info, argument_info):
         "",  # no scale_factor
         dataset_info["format"],
         str(dataset_info["partitioning-nrows"]),
+        "unknown",  # Temporary location until we detect the actual compression
     )
     cached_dataset_path.mkdir(parents=True, exist_ok=True)
 
@@ -554,6 +575,15 @@ def download_dataset(dataset_info, argument_info):
         decompress(cached_dataset_path, dataset_file_name, compression)
         dataset_file_name = removesuffix(dataset_file_name, "." + compression)
         dataset_file_path = removesuffix(dataset_file_path, "." + compression)
+
+    # Find parquet compression, move to the proper subdir
+    if dataset_info["format"] == "parquet":
+        md = pq.ParquetFile(dataset_file_path).metadata
+        pq_compression = md.row_group(0).column(0).compression.lower()
+        pq_compression = f"parquetcompression_{pq_compression}"
+        cached_dataset_path.replace(cached_dataset_path.parent / pq_compression)
+        cached_dataset_path = cached_dataset_path.parent / pq_compression
+        dataset_file_path = pathlib.Path(cached_dataset_path, dataset_file_name)
 
     try:
         dataset, scanner = get_dataset(dataset_file_path, dataset_info)

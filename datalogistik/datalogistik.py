@@ -52,20 +52,17 @@ def main():
         argument_info.scale_factor,
         argument_info.format,
         str(argument_info.partition_max_rows),
+        argument_info.compression,
     )
     cached_dataset_metadata_file = pathlib.Path(
         cached_dataset_path, config.metadata_filename
     )
     if cached_dataset_metadata_file.exists():
-        log.debug(
-            f"Found cached dataset metadata file at '{cached_dataset_metadata_file}'"
-        )
+        log.debug(f"Found cached dataset at '{cached_dataset_path}'")
         util.copy_from_cache(cached_dataset_path, argument_info.dataset)
         finish()
     else:  # not found in cache, check if the cache has other formats of this dataset
-        log.debug(
-            f"No cached data metadata file found at '{cached_dataset_metadata_file}'"
-        )
+        log.debug("Requested dataset not found in cache")
         for cached_file_format in [x for x in config.supported_formats]:
             if argument_info.scale_factor:
                 scale_factor = f"scalefactor_{argument_info.scale_factor}"
@@ -80,46 +77,56 @@ def main():
             )
             if other_format_path.exists():
                 log.debug(
-                    "Found cached instance(s) with a different format/partitioning at "
+                    "Found cached instance(s) with a different format/compression/partitioning at "
                     f"'{other_format_path}'"
                 )
-                # Find a partitioning (any, really, we're going to convert it anyway)
-                subfolders = [
+                format_subfolders = [
                     f.name for f in os.scandir(other_format_path) if f.is_dir()
                 ]
-                for cached_nrows in subfolders:
-                    other_nrows_path = pathlib.Path(other_format_path, cached_nrows)
-                    cached_nrows = cached_nrows.split("_")[-1]
-                    cached_dataset_metadata_file = pathlib.Path(
-                        other_nrows_path, config.metadata_filename
+                # Grab the first subdir, we're going to convert it anyway
+                cached_nrows_dir = format_subfolders[0]
+                similar_dataset_path = other_format_path / cached_nrows_dir
+                cached_nrows = cached_nrows_dir.split("_")[-1]
+                if cached_file_format == "parquet":
+                    # In case of a parquet dataset, there is an additional level for compression type
+                    nrows_subfolders = [
+                        f.name for f in os.scandir(similar_dataset_path) if f.is_dir()
+                    ]
+                    cached_compression_dir = nrows_subfolders[0]
+                    similar_dataset_path = similar_dataset_path / cached_compression_dir
+                    cached_compression = cached_compression_dir.split("_")[-1]
+                else:
+                    cached_compression = None
+
+                cached_dataset_metadata_file = pathlib.Path(
+                    similar_dataset_path, config.metadata_filename
+                )
+                if cached_dataset_metadata_file.exists():
+                    log.debug(
+                        "Found cached dataset in different format/partitioning at "
+                        f"'{similar_dataset_path}'"
                     )
-                    if cached_dataset_metadata_file.exists():
-                        log.debug(
-                            "Found cached dataset in different format/partitioning at "
-                            f"'{other_nrows_path}'"
-                        )
-                        log.debug(
-                            f"Metadata file located at '{cached_dataset_metadata_file}'"
-                        )
-                        cached_dataset_path = util.convert_dataset(
-                            dataset_info,
-                            argument_info.compression,
-                            cached_file_format,
-                            argument_info.format,
-                            cached_nrows,
-                            argument_info.partition_max_rows,
-                        )
-                        util.copy_from_cache(cached_dataset_path, argument_info.dataset)
-                        if argument_info.bypass_cache:
-                            log.info("Removing cache entry")
-                            shutil.rmtree(cached_dataset_path, ignore_errors=True)
-                            util.clean_cache_dir(cached_dataset_path)
-                        finish()
-                    else:
-                        log.info(
-                            "Found cached dataset without metadata file, cleaning..."
-                        )
-                        util.clean_cache_dir(other_nrows_path)
+                    log.debug(
+                        f"Metadata file located at '{cached_dataset_metadata_file}'"
+                    )
+                    cached_dataset_path = util.convert_dataset(
+                        dataset_info,
+                        cached_compression,
+                        argument_info.compression,
+                        cached_file_format,
+                        argument_info.format,
+                        cached_nrows,
+                        argument_info.partition_max_rows,
+                    )
+                    util.copy_from_cache(cached_dataset_path, argument_info.dataset)
+                    if argument_info.bypass_cache:
+                        log.info("Removing cache entry")
+                        shutil.rmtree(cached_dataset_path, ignore_errors=True)
+                        util.clean_cache_dir(cached_dataset_path)
+                    finish()
+                else:
+                    log.info("Found cached dataset without metadata file, cleaning...")
+                    util.clean_cache_dir(similar_dataset_path)
 
     # If we have not exited at this point, nothing useable was found in the local cache.
     # We need to either generate or download the data.
