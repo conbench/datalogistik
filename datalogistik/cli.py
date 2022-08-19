@@ -75,7 +75,6 @@ Supported formats: Parquet, csv",
         "-c",
         "--compression",
         type=str,
-        default="snappy",
         help="Internal compression (passed to parquet writer)",
     )
     gen_parser.add_argument(
@@ -171,6 +170,11 @@ def parse_args_and_get_dataset_info():
                 msg = "Compression is only supported for parquet format"
                 log.error(msg)
                 raise ValueError(msg)
+        else:
+            if opts.format == "parquet":
+                # Set default here instead of in the CLI code so we can produce
+                # the error above
+                opts.compression = "snappy"
 
         if opts.scale_factor != "" and opts.dataset not in tpc_info.tpc_datasets:
             msg = "scale-factor is only supported for TPC datasets"
