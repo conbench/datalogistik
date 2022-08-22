@@ -109,8 +109,14 @@ class _TPCBuilder(abc.ABC):
         """Create the pathname for a file in case of a partitioned output"""
 
     @abc.abstractmethod
-    def _get_table_name_flags(self):
-        """Create a list of the flags needed to generate all the individual tables"""
+    def _get_parallel_table_name_flags(self):
+        """Create a list of the flags needed to generate all the individual tables
+        that can be generated in parallel"""
+
+    @abc.abstractmethod
+    def _get_serial_table_name_flags(self):
+        """Create a list of the flags needed to generate all the individual tables
+        that cannot be generated in parallel and should be generated in sequence"""
 
     def create_dataset(
         self,
@@ -142,7 +148,7 @@ class _TPCBuilder(abc.ABC):
         if partitions == 1:
             with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
                 futures = []
-                for (table_flag, table_param) in self._get_table_name_flags():
+                for (table_flag, table_param) in self._get_parallel_table_name_flags():
                     futures.append(
                         pool.submit(
                             _run,
@@ -160,6 +166,16 @@ class _TPCBuilder(abc.ABC):
                     total=len(self._get_table_name_flags()),
                 ):
                     f.result()
+            for (table_flag, table_param) in self._get_serial_table_name_flags():
+                _run(
+                    self.executable_path,
+                    self.force_flag,
+                    self.scale_flag,
+                    str(scale_factor),
+                    table_flag,
+                    table_param,
+                    cwd=self.executable_path.parent,
+                )
             # Move the new files to out_dir
             out_dir = pathlib.Path(out_dir).resolve()
             for table_name in self.table_names:
@@ -279,9 +295,13 @@ class DBGen(_TPCBuilder):
             return f"region.{self.file_extension}"
         return f"{table_name}.{self.file_extension}.{partition}"
 
-    def _get_table_name_flags(self):
-        tpch_table_abbrevs = ["c", "L", "n", "O", "P", "r", "s", "S"]
+    def _get_parallel_table_name_flags(self):
+        tpch_table_abbrevs = ["c", "L", "n", "O", "P", "r", "s"]
         return [("-T", t) for t in tpch_table_abbrevs]
+
+    def _get_serial_table_name_flags(self):
+        # Generating table 'S' (partsupp) in parallel causes an error
+        return [("-T", "S")]
 
     def _build_executable_unix(self):
         """Build the executable using 'make' on a UNIX-based system."""
@@ -334,12 +354,15 @@ class DSDGen(_TPCBuilder):
         else:
             return self.repo_build_path / "dsdgen"
 
-    def _get_table_name_flags(self):
+    def _get_parallel_table_name_flags(self):
         return [
             ("-TABLE", t)
             for t in self.table_names
             if t not in ["web_returns", "store_returns", "catalog_returns"]
         ]
+
+    def _get_serial_table_name_flags(self):
+        return []
 
     def _get_partitioned_filename(self, table_name, partition, total_partitions):
         return f"{table_name}_{partition}_{total_partitions}.{self.file_extension}"
