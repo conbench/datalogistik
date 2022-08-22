@@ -18,6 +18,8 @@ import shutil
 import sys
 import time
 
+import pyarrow
+
 from . import cli, config, tpc_info, util
 from .log import log
 
@@ -36,6 +38,8 @@ local_cache_location = config.get_cache_location()
 
 def main():
     (dataset_info, argument_info) = cli.parse_args_and_get_dataset_info()
+    if config.get_max_cpu_count() != 0:
+        pyarrow.set_cpu_count(config.get_max_cpu_count())
     log.info(
         f"Creating an instance of Dataset '{argument_info.dataset}' in "
         f"'{argument_info.format}' format..."

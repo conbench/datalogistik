@@ -24,6 +24,7 @@ from typing import List, Optional
 
 import tqdm
 
+from .config import get_max_cpu_count
 from .log import log
 from .tpc_info import tpc_table_names
 
@@ -134,11 +135,12 @@ class _TPCBuilder(abc.ABC):
             self._make_executable()
 
         partitions = 1 if partitions == 0 else partitions
+        if get_max_cpu_count() != 0:
+            num_cpus = get_max_cpu_count()
+        else:
+            num_cpus = multiprocessing.cpu_count() - 1
         if partitions == 1:
-            num_cpus = multiprocessing.cpu_count()
-            pool_size = num_cpus - 1
-
-            with concurrent.futures.ProcessPoolExecutor(pool_size) as pool:
+            with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
                 futures = []
                 for (table_flag, table_param) in self._get_table_name_flags():
                     futures.append(
@@ -170,10 +172,7 @@ class _TPCBuilder(abc.ABC):
                 os.chmod(new_file, 0o444)
                 log.debug(f"Created {new_file}")
         else:
-            num_cpus = multiprocessing.cpu_count()
-            pool_size = num_cpus - 1
-
-            with concurrent.futures.ProcessPoolExecutor(pool_size) as pool:
+            with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
                 futures = []
                 for p in range(1, partitions + 1):
                     futures.append(

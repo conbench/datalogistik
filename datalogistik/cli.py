@@ -14,7 +14,6 @@
 
 import argparse
 import json
-import os
 import sys
 
 import urllib3
@@ -135,7 +134,7 @@ def parse_args_and_get_dataset_info():
 
     elif opts.command == "generate":
         # Set up repository (local or remote)
-        repo_location = os.getenv("DATALOGISTIK_REPO", config.default_repo_file)
+        repo_location = config.get_repo_file_path()
         if repo_location[0:4] == "http":
             log.debug(f"Fetching repo from {repo_location}")
             try:
