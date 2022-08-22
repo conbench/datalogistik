@@ -281,7 +281,7 @@ class DBGen(_TPCBuilder):
         return f"{table_name}.{self.file_extension}.{partition}"
 
     def _get_table_name_flags(self):
-        tpch_table_abbrevs = ["c", "l", "L", "n", "o", "O", "p", "P", "r", "s", "S"]
+        tpch_table_abbrevs = ["c", "L", "n", "O", "P", "r", "s", "S"]
         return [("-T", t) for t in tpch_table_abbrevs]
 
     def _build_executable_unix(self):
