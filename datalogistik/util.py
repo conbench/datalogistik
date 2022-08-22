@@ -453,7 +453,7 @@ def calc_num_partitions(tpc_name, scale_factor, partitioning_nrows):
     if partitioning_nrows == 0:
         return 1
     num_partitions = int(
-        (tpch_rows_per_sf[tpc_name] * int(scale_factor)) / partitioning_nrows
+        (tpch_rows_per_sf[tpc_name] * float(scale_factor)) / partitioning_nrows
     )
     log.debug(
         f"Number of partitions for {tpc_name} at sf={scale_factor} with "

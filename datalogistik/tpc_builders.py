@@ -114,7 +114,7 @@ class _TPCBuilder(abc.ABC):
     def create_dataset(
         self,
         out_dir: pathlib.Path,
-        scale_factor: int = 1,
+        scale_factor: float = 1,
         partitions: int = 1,
     ):
         """Call the executable to generate the TPC database.
