@@ -145,7 +145,10 @@ jobs:
       - name: Create poetry environment
         run: poetry install
       - name: Run integration test
+        if: matrix.dataset == 'tpc-h'
         run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet -s 0.001
+        if: matrix.dataset == 'tpc-ds'
+        run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet
       - name: Validate output
         if: matrix.dataset == 'tpc-h'
         run: poetry run python ./ci/check_tpc_generation.py ${{ matrix.dataset }}
