@@ -60,7 +60,7 @@ for table in tpc_info.tpc_table_names[dataset]:
         "store_sales",
         "store_returns",
         "inventory",
-        "date_dim",
+        #        "date_dim", # has an additional column, but the data is not duplicate
         "catalog_sales",
         "catalog_returns",
     ]:
@@ -69,7 +69,9 @@ for table in tpc_info.tpc_table_names[dataset]:
         new_dict = {}
         new_dict[first_col_name + "_dup"] = first_col_type
         new_dict.update(column_types)
-        column_types = new_dict
+        ref_column_types = new_dict
+    else:
+        ref_column_types = column_types
 
     # Both TPC generators' output have a trailing delimiter
     column_types_trailed = column_types.copy()
@@ -85,8 +87,17 @@ for table in tpc_info.tpc_table_names[dataset]:
     else:
         gen_dataset_read_format = ds.ParquetFileFormat()
 
+    ref_column_types_trailed = ref_column_types.copy()
+    ref_column_types_trailed["trailing_columns"] = pa.string()
+    ro = csv.ReadOptions(
+        column_names=ref_column_types_trailed.keys(), encoding=encoding
+    )
+    co = csv.ConvertOptions(column_types=ref_column_types_trailed)
+    ref_dataset_read_format = ds.CsvFileFormat(
+        read_options=ro, parse_options=po, convert_options=co
+    )
     ref_ds = ds.dataset(
-        f"./ref_data/{dataset_path}/{table}.{ext}", format=dataset_read_format
+        f"./ref_data/{dataset_path}/{table}.{ext}", format=ref_dataset_read_format
     )
     ref_table = ref_ds.to_table(columns=column_list)
     ref_row_count = ref_table.num_rows
