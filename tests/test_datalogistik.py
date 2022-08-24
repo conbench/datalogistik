@@ -76,6 +76,9 @@ def test_write_metadata():
         metadata_file_path = os.path.join(path, config.metadata_filename)
         with open(metadata_file_path) as f:
             written_metadata = json.load(f)
+            # Prevent a possible difference in the creation times
+            written_time = written_metadata["local-creation-date"]
+            expected_metadata["local-creation-date"] = written_time
             assert written_metadata == expected_metadata
 
 
