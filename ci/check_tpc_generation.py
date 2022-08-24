@@ -56,11 +56,11 @@ for table in tpc_info.tpc_table_names[dataset]:
     if dataset == "tpc-ds" and table not in [
         "web_sales",
         "web_returns",
-        "time_dim",
+        # "time_dim", # has an additional column, but the data is not duplicate
         "store_sales",
         "store_returns",
-        "inventory",
-        #        "date_dim", # has an additional column, but the data is not duplicate
+        # "inventory", # has an additional column, but the data is not duplicate
+        # "date_dim", # has an additional column, but the data is not duplicate
         "catalog_sales",
         "catalog_returns",
     ]:
