@@ -151,5 +151,4 @@ jobs:
         if: matrix.dataset == 'tpc-ds'
         run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet
       - name: Validate output
-        if: matrix.dataset == 'tpc-h'
         run: poetry run python ./ci/check_tpc_generation.py ${{ matrix.dataset }} parquet
