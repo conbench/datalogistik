@@ -14,12 +14,17 @@
 
 import os
 import pathlib
+import platform
 
 debug = True
 
 default_repo_file = str(pathlib.Path(__file__).parent.parent / "repo.json")
-default_cache_location = "./"
-cache_dir_name = "datalogistik_cache"
+if platform.system() == "Windows":
+    default_cache_location = os.getenv("LOCALAPPDATA")
+    cache_dir_name = "datalogistik_cache"
+else:  # Unix (Linux or Mac)
+    default_cache_location = os.getenv("HOME")
+    cache_dir_name = ".datalogistik_cache"
 metadata_filename = "datalogistik_metadata.ini"
 supported_formats = ["parquet", "csv"]
 hashing_chunk_size = 16384
