@@ -59,6 +59,75 @@ expected_metadata = {
     ],
 }
 
+arrow_types_noargs = {
+    pa.null,
+    pa.bool_,
+    pa.int8,
+    pa.int16,
+    pa.int32,
+    pa.int64,
+    pa.uint8,
+    pa.uint16,
+    pa.uint32,
+    pa.uint64,
+    pa.float16,
+    pa.float32,
+    pa.float64,
+    pa.date32,
+    pa.date64,
+    pa.month_day_nano_interval,
+    pa.string,
+    pa.utf8,
+    pa.large_binary,
+    pa.large_string,
+    pa.large_utf8,
+}
+arrow_types_args = {
+    (pa.time32("ms"), """"name": "time32", "args": {"unit": ms}"""),
+    (pa.time64("us"), """"name": "time64", "args": {"unit": us}"""),
+    (pa.timestamp("us"), """"name": "timestamp", "args": {"unit": us}"""),
+    (pa.duration("us"), """"name": "binary", "args": {"unit": "us"}"""),
+    (pa.binary(10), """"name": "binary", "args": {"size": 10}"""),
+    (
+        pa.decimal128(7, 3),
+        """"name": "decimal", "args": {"precision": 7, "index": 3}""",
+    ),
+}
+# These 2 should be equivalent
+complete_schema_json = "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', 'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'k': 'halffloat', 'l': 'float', 'm': 'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'p': 'month_day_nano_interval', 'q': 'string', 'r': 'string', 's': 'large_binary', 't': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', 'x': 'timestamp[s]', 'y': 'duration[ns]', 'z': 'fixed_size_binary[10]', 'argh': 'decimal128(7, 3)'}"
+complete_schema = pa.schema(
+    [
+        pa.field("a", pa.null()),
+        pa.field("b", pa.bool_()),
+        pa.field("c", pa.int8()),
+        pa.field("d", pa.int16()),
+        pa.field("e", pa.int32()),
+        pa.field("f", pa.int64()),
+        pa.field("g", pa.uint8()),
+        pa.field("h", pa.uint16()),
+        pa.field("i", pa.uint32()),
+        pa.field("j", pa.uint64()),
+        pa.field("k", pa.float16()),
+        pa.field("l", pa.float32()),
+        pa.field("m", pa.float64()),
+        pa.field("n", pa.date32()),
+        pa.field("o", pa.date64()),
+        pa.field("p", pa.month_day_nano_interval()),
+        pa.field("q", pa.string()),
+        pa.field("r", pa.utf8()),
+        pa.field("s", pa.large_binary()),
+        pa.field("t", pa.large_string()),
+        pa.field("u", pa.large_utf8()),
+        # types with arguments
+        pa.field("v", pa.time32("ms")),
+        pa.field("w", pa.time64("us")),
+        pa.field("x", pa.timestamp("s")),
+        pa.field("y", pa.duration("ns")),
+        pa.field("z", pa.binary(10)),
+        pa.field("argh", pa.decimal128(7, 3)),
+    ]
+)
+
 
 def create_test_dataset(path):
     with open(os.path.join(path, "tmpfile"), "w") as tmpfile:
@@ -172,34 +241,16 @@ def test_convert_dataset_parquet_to_csv():
 
 
 def test_arrow_type_function_lookup():
-    arrow_types_noargs = {
-        pa.null,
-        pa.bool_,
-        pa.int8,
-        pa.int16,
-        pa.int32,
-        pa.int64,
-        pa.uint8,
-        pa.uint16,
-        pa.uint32,
-        pa.uint64,
-        pa.float16,
-        pa.float32,
-        pa.float64,
-        pa.date32,
-        pa.date64,
-        pa.month_day_nano_interval,
-        pa.string,
-        pa.utf8,
-        pa.large_binary,
-        pa.large_string,
-        pa.large_utf8,
-    }
     for func in arrow_types_noargs:
         assert func == util.arrow_type_function_lookup(func.__name__)
 
 
-def test_parse_schema():
+def test_arrow_type_from_json():
+    for func in arrow_types_noargs:
+        assert func() == util.arrow_type_from_json(func.__name__)
+
+
+def test_get_arrow_schema():
     expected_arrow_schema = pa.schema(
         [
             ("a", pa.string()),
@@ -216,3 +267,7 @@ def test_parse_schema():
         }"""
     arrow_schema = util.get_arrow_schema(json.loads(json_schema))
     assert arrow_schema == expected_arrow_schema
+
+
+def test_schema_to_dict():
+    assert str(util.schema_to_dict(complete_schema)) == complete_schema_json
