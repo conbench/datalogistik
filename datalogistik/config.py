@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import multiprocessing
 import os
 import pathlib
 import platform
@@ -43,3 +44,10 @@ def get_repo_file_path():
 
 def get_max_cpu_count():
     return int(os.getenv("DATALOGISTIK_MAX_THREADS", 0))
+
+
+def get_thread_count():
+    if get_max_cpu_count() != 0:
+        return get_max_cpu_count()
+    else:
+        return max(1, multiprocessing.cpu_count() - 1)

@@ -445,21 +445,13 @@ def convert_dataset(
     return output_dir
 
 
-# Calculate the number of partitions to generate for a given scale factor and
-# max nr of rows per partitions
-def calc_num_partitions(tpc_name, scale_factor, partitioning_nrows):
+# Convert between max rows per partition and number of partitions
+def convert_maxrows_parts(tpc_name, scale_factor, parts_or_rows):
     # nr of rows in the largest table at sf=1
     tpch_rows_per_sf = {"tpc-h": 6000000, "tpc-ds": 1440000}
-    if partitioning_nrows == 0:
-        return 1
-    num_partitions = int(
-        (tpch_rows_per_sf[tpc_name] * float(scale_factor)) / partitioning_nrows
-    )
-    log.debug(
-        f"Number of partitions for {tpc_name} at sf={scale_factor} with "
-        f"{partitioning_nrows} max rows per partitions: {num_partitions}"
-    )
-    return num_partitions
+    if parts_or_rows <= 0:
+        return 0
+    return int((tpch_rows_per_sf[tpc_name] * float(scale_factor)) / parts_or_rows)
 
 
 # Generate a dataset by calling one of the supported external generators
@@ -478,16 +470,41 @@ def generate_dataset(dataset_info, argument_info):
     # Call generator
     generators = {"tpc-h": DBGen, "tpc-ds": DSDGen}
     try:
-        partitions = calc_num_partitions(
-            dataset_name, argument_info.scale_factor, argument_info.partition_max_rows
-        )
         generator_class = generators[dataset_name]
         generator = generator_class(executable_path=argument_info.generator_path)
-        generator.create_dataset(
-            out_dir=cached_dataset_path,
-            scale_factor=argument_info.scale_factor,
-            partitions=partitions,
+        partitions = convert_maxrows_parts(
+            dataset_name, argument_info.scale_factor, argument_info.partition_max_rows
         )
+        # If needed, add some parallelism to speed up generation
+        if (
+            partitions >= config.get_thread_count()
+            or float(argument_info.scale_factor) <= 1.0
+        ):
+            generator.create_dataset(
+                out_dir=cached_dataset_path,
+                scale_factor=argument_info.scale_factor,
+                partitions=partitions,
+            )
+        else:
+            new_partitioning = config.get_thread_count() * 2
+            new_maxrows = convert_maxrows_parts(
+                dataset_name, argument_info.scale_factor, new_partitioning
+            )
+            cached_dataset_path = create_cached_dataset_path(
+                dataset_name,
+                argument_info.scale_factor,
+                dataset_info["format"],
+                str(new_maxrows),
+            )
+            cached_dataset_path.mkdir(parents=True, exist_ok=True)
+            generator.create_dataset(
+                out_dir=cached_dataset_path,
+                scale_factor=argument_info.scale_factor,
+                partitions=new_partitioning,
+            )
+            dataset_info[
+                "partitioning-nrows"
+            ] = new_maxrows  # this will trigger a conversion
 
         metadata_table_list = []
         for table in tpc_info.tpc_table_names[dataset_name]:

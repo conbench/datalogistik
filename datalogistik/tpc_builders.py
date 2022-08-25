@@ -14,7 +14,6 @@
 
 import abc
 import concurrent.futures
-import multiprocessing
 import os
 import pathlib
 import platform
@@ -24,7 +23,7 @@ from typing import List, Optional
 
 import tqdm
 
-from .config import get_max_cpu_count
+from .config import get_thread_count
 from .log import log
 from .tpc_info import tpc_table_names
 
@@ -141,10 +140,7 @@ class _TPCBuilder(abc.ABC):
             self._make_executable()
 
         partitions = 1 if partitions == 0 else partitions
-        if get_max_cpu_count() != 0:
-            num_cpus = get_max_cpu_count()
-        else:
-            num_cpus = multiprocessing.cpu_count() - 1
+        num_cpus = get_thread_count()
         if partitions == 1:
             with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
                 futures = []
