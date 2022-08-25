@@ -389,9 +389,7 @@ def get_dataset(input_file, dataset_info, table_name=None):
                 for table_entry in dataset_info.get("tables"):
                     if table_name is None or table_entry["table"] == table_name:
                         schema = get_arrow_schema(table_entry["schema"])
-                        column_names = list(
-                            table_entry["schema"].keys()
-                        )  # TODO: does this really always preserve ordering?
+                        column_names = list(table_entry["schema"].keys())
                         break
                 ro = csv.ReadOptions(column_names=column_names)
 
