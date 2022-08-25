@@ -171,6 +171,34 @@ def test_convert_dataset_parquet_to_csv():
     util.prune_cache_entry("test_parquet")
 
 
+def test_arrow_type_function_lookup():
+    arrow_types_noargs = {
+        pa.null,
+        pa.bool_,
+        pa.int8,
+        pa.int16,
+        pa.int32,
+        pa.int64,
+        pa.uint8,
+        pa.uint16,
+        pa.uint32,
+        pa.uint64,
+        pa.float16,
+        pa.float32,
+        pa.float64,
+        pa.date32,
+        pa.date64,
+        pa.month_day_nano_interval,
+        pa.string,
+        pa.utf8,
+        pa.large_binary,
+        pa.large_string,
+        pa.large_utf8,
+    }
+    for func in arrow_types_noargs:
+        assert func == util.arrow_type_function_lookup(func.__name__)
+
+
 def test_parse_schema():
     expected_arrow_schema = pa.schema(
         [
