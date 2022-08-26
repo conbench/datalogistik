@@ -16,6 +16,8 @@ import datetime
 import json
 import os
 import pathlib
+import random
+import string
 import tempfile
 
 import pyarrow as pa
@@ -30,7 +32,7 @@ def test_version():
     assert __version__ == "0.1.0"
 
 
-dataset_info = {
+test_dataset_info = {
     "name": "hypothetical_dataset",
     "format": "csv",
     "delim": "|",
@@ -38,10 +40,10 @@ dataset_info = {
     "partitioning-nrows": 0,
 }
 expected_metadata = {
-    "name": dataset_info["name"],
-    "format": dataset_info["format"],
+    "name": test_dataset_info["name"],
+    "format": test_dataset_info["format"],
     "delim": "|",
-    "partitioning-nrows": dataset_info["partitioning-nrows"],
+    "partitioning-nrows": test_dataset_info["partitioning-nrows"],
     "local-creation-date": datetime.datetime.now()
     .astimezone()
     .strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -67,7 +69,7 @@ def create_test_dataset(path):
         os.mkdir(path2)
         with open(os.path.join(path2, "testfile2"), "w") as testfile2:
             testfile2.write("test file 2 contents")
-    util.write_metadata(dataset_info, path)
+    util.write_metadata(test_dataset_info, path)
 
 
 arrow_types_noarguments = {
@@ -121,25 +123,19 @@ complete_schema_json_input = """{
     "h": "uint16",
     "i": "uint32",
     "j": "uint64",
-    "k": "halffloat",
     "l": "float",
     "m": "double",
     "n": "date32",
     "o": "date64",
-    "p": "month_day_nano_interval",
     "q": "string",
     "r": "string",
-    "s": "large_binary",
     "t": "large_string",
     "u": "large_string",
     "v": {"type_name": "time32", "arguments": "ms"},
     "w": {"type_name": "time64", "arguments": "us"},
-    "x": {"type_name": "timestamp", "arguments": {"unit": "s"}},
-    "y": {"type_name": "duration", "arguments": "ns"},
-    "z": {"type_name": "binary", "arguments": {"length": 10}},
-    "argh": {"type_name": "decimal128", "arguments": {"precision": 7, "scale": 3}}
+    "x": {"type_name": "timestamp", "arguments": {"unit": "s"}}
     }"""
-complete_schema_json_output = "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', 'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'k': 'halffloat', 'l': 'float', 'm': 'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'p': 'month_day_nano_interval', 'q': 'string', 'r': 'string', 's': 'large_binary', 't': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', 'x': 'timestamp[s]', 'y': 'duration[ns]', 'z': 'fixed_size_binary[10]', 'argh': 'decimal128(7, 3)'}"
+complete_schema_json_output = "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', 'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'l': 'float', 'm': 'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'q': 'string', 'r': 'string', 't': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', 'x': 'timestamp[s]'}"
 complete_schema = pa.schema(
     [
         pa.field("a", pa.null()),
@@ -152,26 +148,111 @@ complete_schema = pa.schema(
         pa.field("h", pa.uint16()),
         pa.field("i", pa.uint32()),
         pa.field("j", pa.uint64()),
-        pa.field("k", pa.float16()),
+        # pa.field("k", pa.float16()), # not supported by parquet and csv
         pa.field("l", pa.float32()),
         pa.field("m", pa.float64()),
         pa.field("n", pa.date32()),
         pa.field("o", pa.date64()),
-        pa.field("p", pa.month_day_nano_interval()),
+        #  pa.field("p", pa.month_day_nano_interval()), # not supported by csv
         pa.field("q", pa.string()),
         pa.field("r", pa.utf8()),
-        pa.field("s", pa.large_binary()),
+        # pa.field("s", pa.large_binary()), # not supported by csv
         pa.field("t", pa.large_string()),
         pa.field("u", pa.large_utf8()),
         # types with arguments
         pa.field("v", pa.time32("ms")),
         pa.field("w", pa.time64("us")),
         pa.field("x", pa.timestamp("s")),
-        pa.field("y", pa.duration("ns")),
-        pa.field("z", pa.binary(10)),
-        pa.field("argh", pa.decimal128(7, 3)),
+        # pa.field("y", pa.duration("ns")), # not supported by csv
+        # pa.field("z", pa.binary(10)), # not supported by csv
+        # pa.field("argh", pa.decimal128(7, 3)),
     ]
 )
+
+
+def generate_random_string(length):
+    random_string = ""
+    for _ in range(length):
+        random_string += random.choice(string.ascii_letters)
+    return random_string
+
+
+def generate_complete_schema_data(num_rows):
+    k = num_rows
+    return {
+        "a": pa.nulls(k),
+        "b": random.choices([True, False], k=k),
+        "c": [random.randint(-(2**8 / 2), 2**8 / 2 - 1) for _ in range(k)],
+        "d": [random.randint(-(2**16 / 2), 2**16 / 2 - 1) for _ in range(k)],
+        "e": [random.randint(-(2**32 / 2), 2**32 / 2 - 1) for _ in range(k)],
+        "f": [random.randint(-(2**64 / 2), 2**64 / 2 - 1) for _ in range(k)],
+        "g": [random.randint(0, 2**8 - 1) for _ in range(k)],
+        "h": [random.randint(0, 2**16 - 1) for _ in range(k)],
+        "i": [random.randint(0, 2**32 - 1) for _ in range(k)],
+        "j": [random.randint(0, 2**64 - 1) for _ in range(k)],
+        # "k": [np.float16(random.random()) for _ in range(k)],
+        "l": [random.random() for _ in range(k)],
+        "m": [random.random() for _ in range(k)],
+        "n": [
+            (
+                datetime.datetime(
+                    random.randint(1970, 2270),
+                    random.randint(1, 12),
+                    random.randint(1, 28),
+                )
+                - datetime.datetime(1970, 1, 1)
+            )
+            // datetime.timedelta(days=1)
+            for _ in range(k)
+        ],
+        "o": [
+            datetime.datetime(
+                random.randint(1970, 2270), random.randint(1, 12), random.randint(1, 28)
+            ).timestamp()
+            * 1000
+            for _ in range(k)
+        ],
+        # "p": [pa.MonthDayNano([random.randint(1,12),random.randint(1,28),random.randint(1,999) * 1000]) for _ in range(k)],
+        "q": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "r": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        # "s": [random.randbytes(random.randint(1, 64)) for _ in range(k)],
+        "t": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "u": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        # types with arguments
+        "v": [
+            datetime.timedelta(
+                hours=random.randint(0, 23),
+                minutes=random.randint(0, 59),
+                seconds=random.randint(0, 59),
+            )
+            // datetime.timedelta(milliseconds=1)
+            for _ in range(k)
+        ],
+        "w": [
+            datetime.timedelta(
+                hours=random.randint(0, 23),
+                minutes=random.randint(0, 59),
+                seconds=random.randint(0, 59),
+            )
+            // datetime.timedelta(microseconds=1)
+            for _ in range(k)
+        ],
+        "x": [
+            datetime.timedelta(
+                hours=random.randint(0, 23),
+                minutes=random.randint(0, 59),
+                seconds=random.randint(0, 59),
+            )
+            // datetime.timedelta(seconds=1)
+            for _ in range(k)
+        ],
+        # "y": [random.randint(0, 10e9) for _ in range(k)],
+        # "z": [random.randbytes(10) for _ in range(k)],
+        # "argh": [
+        #     decimal.Decimal(f"{random.randint(0, 9999)}.{random.randint(0,999)}")
+        #     for _ in range(k)
+        # ],
+    }
 
 
 def test_arrow_type_function_lookup():
@@ -193,6 +274,43 @@ def test_get_arrow_schema():
 
 def test_schema_to_dict():
     assert str(util.schema_to_dict(complete_schema)) == complete_schema_json_output
+
+
+def test_get_dataset_with_schema():
+    num_rows = 10
+    name = "test_complete_dataset"
+    path = util.create_cached_dataset_path(name, None, "csv", 0)
+    path.mkdir(parents=True)
+    test_file = path / "complete_data.csv"
+    data = generate_complete_schema_data(num_rows)
+    ref_table = pa.table(data, schema=complete_schema)
+    wo = csv.WriteOptions(include_header=False)
+    csv.write_csv(ref_table, test_file, write_options=wo)
+    complete_dataset_info = {
+        "name": name,
+        "format": "csv",
+        "tables": [
+            {"table": "complete_data", "schema": json.loads(complete_schema_json_input)}
+        ],
+    }
+    util.write_metadata(complete_dataset_info, path)
+    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    read_table = dataset.to_table()
+
+    # Comparing parts of the table because pytest truncates the output
+    rows1 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+    rows2 = ["o"]  # failing: date64 field
+    rows3 = ["l", "m", "n", "q", "r", "t", "u", "v", "w", "x"]
+    ref_table1 = ref_table.select(rows1)
+    read_table1 = read_table.select(rows1)
+    ref_table2 = ref_table.select(rows2)
+    read_table2 = read_table.select(rows2)
+    ref_table3 = ref_table.select(rows3)
+    read_table3 = read_table.select(rows3)
+    assert ref_table1 == read_table1
+    assert ref_table2 == read_table2
+    assert ref_table3 == read_table3
+    util.prune_cache_entry(name)
 
 
 def test_write_metadata():
