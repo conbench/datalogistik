@@ -59,7 +59,18 @@ expected_metadata = {
     ],
 }
 
-arrow_types_noargs = {
+
+def create_test_dataset(path):
+    with open(os.path.join(path, "tmpfile"), "w") as tmpfile:
+        tmpfile.write("test file contents")
+        path2 = os.path.join(path, "tmp2")
+        os.mkdir(path2)
+        with open(os.path.join(path2, "tmpfile2"), "w") as tmpfile2:
+            tmpfile2.write("test file 2 contents")
+    util.write_metadata(dataset_info, path)
+
+
+arrow_types_noarguments = {
     pa.null,
     pa.bool_,
     pa.int8,
@@ -82,19 +93,53 @@ arrow_types_noargs = {
     pa.large_string,
     pa.large_utf8,
 }
-arrow_types_args = {
-    (pa.time32("ms"), """"name": "time32", "args": {"unit": ms}"""),
-    (pa.time64("us"), """"name": "time64", "args": {"unit": us}"""),
-    (pa.timestamp("us"), """"name": "timestamp", "args": {"unit": us}"""),
-    (pa.duration("us"), """"name": "binary", "args": {"unit": "us"}"""),
-    (pa.binary(10), """"name": "binary", "args": {"size": 10}"""),
+arrow_types_arguments = {
+    (pa.time32("ms"), """{"type_name": "time32", "arguments": "ms"}"""),
+    (pa.time64("us"), """{"type_name": "time64", "arguments": "us"}"""),
+    (pa.timestamp("us"), """{"type_name": "timestamp", "arguments": "us"}"""),
+    (pa.duration("us"), """{"type_name": "duration", "arguments": "us"}"""),
+    (pa.binary(10), """{"type_name": "binary", "arguments": {"length": 10}}"""),
     (
         pa.decimal128(7, 3),
-        """"name": "decimal", "args": {"precision": 7, "index": 3}""",
+        """{"type_name": "decimal", "arguments": {"precision": 7, "scale": 3}}""",
+    ),
+    # same type, but with the arguments as a list
+    (
+        pa.decimal128(7, 3),
+        """{"type_name": "decimal", "arguments": [7, 3]}""",
     ),
 }
-# These 2 should be equivalent
-complete_schema_json = "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', 'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'k': 'halffloat', 'l': 'float', 'm': 'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'p': 'month_day_nano_interval', 'q': 'string', 'r': 'string', 's': 'large_binary', 't': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', 'x': 'timestamp[s]', 'y': 'duration[ns]', 'z': 'fixed_size_binary[10]', 'argh': 'decimal128(7, 3)'}"
+# These 3 should be equivalent
+complete_schema_json_input = """{
+    "a": "null",
+    "b": "bool",
+    "c": "int8",
+    "d": "int16",
+    "e": "int32",
+    "f": "int64",
+    "g": "uint8",
+    "h": "uint16",
+    "i": "uint32",
+    "j": "uint64",
+    "k": "halffloat",
+    "l": "float",
+    "m": "double",
+    "n": "date32",
+    "o": "date64",
+    "p": "month_day_nano_interval",
+    "q": "string",
+    "r": "string",
+    "s": "large_binary",
+    "t": "large_string",
+    "u": "large_string",
+    "v": {"type_name": "time32", "arguments": "ms"},
+    "w": {"type_name": "time64", "arguments": "us"},
+    "x": {"type_name": "timestamp", "arguments": {"unit": "s"}},
+    "y": {"type_name": "duration", "arguments": "ns"},
+    "z": {"type_name": "binary", "arguments": {"length": 10}},
+    "argh": {"type_name": "decimal128", "arguments": {"precision": 7, "scale": 3}}
+    }"""
+complete_schema_json_output = "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', 'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'k': 'halffloat', 'l': 'float', 'm': 'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'p': 'month_day_nano_interval', 'q': 'string', 'r': 'string', 's': 'large_binary', 't': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', 'x': 'timestamp[s]', 'y': 'duration[ns]', 'z': 'fixed_size_binary[10]', 'argh': 'decimal128(7, 3)'}"
 complete_schema = pa.schema(
     [
         pa.field("a", pa.null()),
@@ -129,14 +174,25 @@ complete_schema = pa.schema(
 )
 
 
-def create_test_dataset(path):
-    with open(os.path.join(path, "tmpfile"), "w") as tmpfile:
-        tmpfile.write("test file contents")
-        path2 = os.path.join(path, "tmp2")
-        os.mkdir(path2)
-        with open(os.path.join(path2, "tmpfile2"), "w") as tmpfile2:
-            tmpfile2.write("test file 2 contents")
-    util.write_metadata(dataset_info, path)
+def test_arrow_type_function_lookup():
+    for func in arrow_types_noarguments:
+        assert func == util.arrow_type_function_lookup(func.__name__)
+
+
+def test_arrow_type_from_json():
+    for func in arrow_types_noarguments:
+        assert func() == util.arrow_type_from_json(func.__name__)
+    for (pa_type, json_type) in arrow_types_arguments:
+        assert pa_type == util.arrow_type_from_json(json.loads(json_type))
+
+
+def test_get_arrow_schema():
+    parsed_schema = util.get_arrow_schema(json.loads(complete_schema_json_input))
+    assert parsed_schema == complete_schema
+
+
+def test_schema_to_dict():
+    assert str(util.schema_to_dict(complete_schema)) == complete_schema_json_output
 
 
 def test_write_metadata():
@@ -238,36 +294,3 @@ def test_convert_dataset_parquet_to_csv():
     print(converted_table.schema)
     assert converted_table == orig_table
     util.prune_cache_entry("test_parquet")
-
-
-def test_arrow_type_function_lookup():
-    for func in arrow_types_noargs:
-        assert func == util.arrow_type_function_lookup(func.__name__)
-
-
-def test_arrow_type_from_json():
-    for func in arrow_types_noargs:
-        assert func() == util.arrow_type_from_json(func.__name__)
-
-
-def test_get_arrow_schema():
-    expected_arrow_schema = pa.schema(
-        [
-            ("a", pa.string()),
-            ("b", pa.int64()),
-            ("c", pa.float64()),
-            ("d", pa.timestamp(unit="ms")),
-        ]
-    )
-    json_schema = """{
-        "a" : "string",
-        "b" : "int64",
-        "c" : {"name": "float64"},
-        "d" : {"name": "timestamp", "arguments": {"unit": "ms"}}
-        }"""
-    arrow_schema = util.get_arrow_schema(json.loads(json_schema))
-    assert arrow_schema == expected_arrow_schema
-
-
-def test_schema_to_dict():
-    assert str(util.schema_to_dict(complete_schema)) == complete_schema_json

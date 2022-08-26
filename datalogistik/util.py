@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import datetime
 import gzip
 import hashlib
@@ -21,6 +22,7 @@ import pathlib
 import shutil
 import time
 from collections import OrderedDict
+from collections.abc import Mapping
 
 import pyarrow as pa
 import urllib3
@@ -285,9 +287,25 @@ def schema_to_dict(schema):
     return field_dict
 
 
+def convert_arrow_alias(type_name):
+    aliases = {
+        "bool": "bool_",
+        "halffloat": "float16",
+        "float": "float32",
+        "double": "float64",
+        "decimal": "decimal128",
+    }
+    for (alias, func_name) in aliases.items():
+        if type_name == alias:
+            return func_name
+    # no alias was found
+    return type_name
+
+
 # Create an instance of the pyarrow datatype with the given name
 def arrow_type_function_lookup(function_name):
     if isinstance(function_name, str):
+        function_name = convert_arrow_alias(function_name)
         pa_type_func = getattr(pa, function_name)
         return pa_type_func
 
@@ -309,25 +327,34 @@ def arrow_type_from_json(input_type):
 
     # In case the type is a simple string
     if isinstance(input_type, str):
+        if input_type in arrow_nested_types:
+            msg = "Nested types in schema not supported yet"
+            log.error(msg)
+            raise ValueError(msg)
         return arrow_type_function_lookup(input_type)()
 
     # Alternatively, a type can be encoded as a name:value pair
-    if not input_type.get("name"):
-        msg = "Schema field type 'name' missing"
+    if not input_type.get("type_name"):
+        msg = "Schema field type 'type_name' missing"
         log.error(msg)
         raise ValueError(msg)
 
-    type_name = input_type.get("name")
-    kwargs = input_type.get("arguments")
+    type_name = input_type.get("type_name")
+    args = input_type.get("arguments")
     if type_name in arrow_nested_types:
         msg = "Nested types in schema not supported yet"
         log.error(msg)
         raise ValueError(msg)
 
-    if kwargs is not None:
-        return arrow_type_function_lookup(type_name)(**kwargs)
-    else:
+    if args is None:
         return arrow_type_function_lookup(type_name)()
+    if isinstance(args, Mapping):
+        return arrow_type_function_lookup(type_name)(**args)
+    elif isinstance(args, list):
+        log.debug(f"args {args}")
+        return arrow_type_function_lookup(type_name)(*args)
+    else:  # args is probably a single value
+        return arrow_type_function_lookup(type_name)(args)
 
 
 # Convert the given dict to a pyarrow.schema
@@ -336,6 +363,7 @@ def get_arrow_schema(input_schema):
     if input_schema is None:
         return None
     field_list = []
+    # TODO: a `field()` entry is not a (name, type) tuple
     for (field_name, type) in input_schema.items():
         log.debug(f"Schema: adding field {field_name}")
         arrow_type = arrow_type_from_json(type)
