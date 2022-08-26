@@ -47,12 +47,12 @@ expected_metadata = {
     .strftime("%Y-%m-%dT%H:%M:%S%z"),
     "files": [
         {
-            "file_path": "tmpfile",
+            "file_path": "testfile",
             "file_size": 18,
             "md5": "891bcd3700619af5151bf95b836ff9b1",
         },
         {
-            "file_path": os.path.join("tmp2", "tmpfile2"),
+            "file_path": os.path.join("tmp2", "testfile2"),
             "file_size": 20,
             "md5": "0ccc9b1a435e7d40a91ac7dd04c67fe8",
         },
@@ -61,12 +61,12 @@ expected_metadata = {
 
 
 def create_test_dataset(path):
-    with open(os.path.join(path, "tmpfile"), "w") as tmpfile:
-        tmpfile.write("test file contents")
+    with open(os.path.join(path, "testfile"), "w") as testfile:
+        testfile.write("test file contents")
         path2 = os.path.join(path, "tmp2")
         os.mkdir(path2)
-        with open(os.path.join(path2, "tmpfile2"), "w") as tmpfile2:
-            tmpfile2.write("test file 2 contents")
+        with open(os.path.join(path2, "testfile2"), "w") as testfile2:
+            testfile2.write("test file 2 contents")
     util.write_metadata(dataset_info, path)
 
 
