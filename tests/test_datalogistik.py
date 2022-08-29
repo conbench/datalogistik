@@ -207,7 +207,10 @@ def generate_complete_schema_data(num_rows):
         ],
         "o": [
             datetime.datetime(
-                random.randint(1970, 2270), random.randint(1, 12), random.randint(1, 28)
+                random.randint(1970, 2270),
+                random.randint(1, 12),
+                random.randint(1, 28),
+                tzinfo=datetime.timezone.utc,
             ).timestamp()
             * 1000
             for _ in range(k)
@@ -297,19 +300,7 @@ def test_get_dataset_with_schema():
     dataset, _ = util.get_dataset(test_file, complete_dataset_info)
     read_table = dataset.to_table()
 
-    # Comparing parts of the table because pytest truncates the output
-    rows1 = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
-    rows2 = ["o"]  # failing: date64 field
-    rows3 = ["l", "m", "n", "q", "r", "t", "u", "v", "w", "x"]
-    ref_table1 = ref_table.select(rows1)
-    read_table1 = read_table.select(rows1)
-    ref_table2 = ref_table.select(rows2)
-    read_table2 = read_table.select(rows2)
-    ref_table3 = ref_table.select(rows3)
-    read_table3 = read_table.select(rows3)
-    assert ref_table1 == read_table1
-    assert ref_table2 == read_table2
-    assert ref_table3 == read_table3
+    assert ref_table == read_table
     util.prune_cache_entry(name)
 
 
