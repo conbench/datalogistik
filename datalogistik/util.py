@@ -492,6 +492,11 @@ def convert_dataset(
                 )
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
+                # Don't include header if there's a known schema
+                if dataset_info.get("tables"):
+                    write_options = dataset_write_format.make_write_options(
+                        include_header=False
+                    )
 
             ds.write_dataset(
                 scanner,
@@ -526,7 +531,9 @@ def convert_dataset(
         log.debug(f"conversion took {conv_time:0.2f} s")
         # Parquet already stores the schema internally
         if new_format == "csv":
-            dataset_info["tables"] = metadata_table_list
+            # Don't overwrite schema if it is already known
+            if dataset_info.get("tables") is None:
+                dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
         if parquet_compression is not None:
