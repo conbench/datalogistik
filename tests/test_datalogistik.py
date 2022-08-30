@@ -454,6 +454,8 @@ def test_convert_dataset_csv_partitioning():
     reverted_file = reverted_path / file_name
     reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
+    reverted_table = reverted_table.sort_by("e")
+    converted_table = converted_table.sort_by("e")
     assert reverted_table == converted_table
     clean("test_complete_dataset")
 
@@ -494,5 +496,7 @@ def test_convert_dataset_parquet_partitioning():
     reverted_file = reverted_path / file_name
     reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
+    reverted_table = reverted_table.sort_by("e")
+    converted_table = converted_table.sort_by("e")
     assert reverted_table == converted_table
     clean("test_complete_dataset")
