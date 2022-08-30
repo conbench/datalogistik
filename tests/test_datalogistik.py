@@ -32,6 +32,11 @@ def test_version():
     assert __version__ == "0.1.0"
 
 
+def clean(path):
+    if pathlib.Path(config.get_cache_location(), path).exists():
+        util.prune_cache_entry(path)
+
+
 test_dataset_info = {
     "name": "hypothetical_dataset",
     "format": "csv",
@@ -282,6 +287,7 @@ def test_schema_to_dict():
 def test_get_dataset_with_schema():
     num_rows = 10
     name = "test_complete_dataset"
+    clean(name)
     path = util.create_cached_dataset_path(name, None, "csv", 0)
     path.mkdir(parents=True)
     test_file = path / "complete_data.csv"
@@ -301,7 +307,7 @@ def test_get_dataset_with_schema():
     read_table = dataset.to_table()
 
     assert ref_table == read_table
-    util.prune_cache_entry(name)
+    clean(name)
 
 
 def test_write_metadata():
@@ -314,6 +320,7 @@ def test_write_metadata():
 
 
 def test_validate():
+    clean("test_validate")
     cache_root = config.get_cache_location()
     path = pathlib.Path(cache_root, "test_validate/csv/partitioning_0/")
     path.mkdir(parents=True, exist_ok=True)
@@ -340,10 +347,11 @@ def test_validate():
     assert metadata_file_path.exists()
     util.validate_cache(True)  # this should delete the entry
     assert not metadata_file_path.exists()
+    clean("test_validate")
 
 
-# TODO: test partitioning conversion
 def test_convert_dataset_csv_to_parquet():
+    clean("test_csv")
     cache_root = config.get_cache_location()
     path = pathlib.Path(cache_root, "test_csv/csv/partitioning_0/")
     test_filename = "convtest"
@@ -370,17 +378,18 @@ def test_convert_dataset_csv_to_parquet():
     converted_table = ds.dataset(test_parquet_file_path).to_table()
     print(converted_table.schema)
     assert converted_table == orig_table
-    util.prune_cache_entry("test_csv")
+    clean("test_csv")
 
 
 def test_convert_dataset_parquet_to_csv():
+    clean("test_parquet")
     cache_root = config.get_cache_location()
     path = pathlib.Path(cache_root, "test_parquet/parquet/partitioning_0/")
     test_filename = "convtest"
     test_csv_file = test_filename + ".csv"
     test_parquet_file = test_filename + ".parquet"
     test_parquet_file_path = pathlib.Path(path, test_parquet_file)
-    path.mkdir(parents=True, exist_ok=True)
+    path.mkdir(parents=True)
     dataset_info = {
         "name": "test_parquet",
         "url": "convtest.parquet",
@@ -402,4 +411,52 @@ def test_convert_dataset_parquet_to_csv():
     ).to_table()
     print(converted_table.schema)
     assert converted_table == orig_table
-    util.prune_cache_entry("test_parquet")
+    clean("test_parquet")
+
+
+def test_convert_dataset_csv_partitioning():
+    num_rows = 100
+    name = "test_complete_dataset"
+    file_name = "complete_data.csv"
+    clean("test_complete_dataset")
+    path = util.create_cached_dataset_path(name, None, "csv", 0)
+    path.mkdir(parents=True)
+    test_file = path / file_name
+    data = generate_complete_schema_data(num_rows)
+    orig_table = pa.table(data, schema=complete_schema)
+    wo = csv.WriteOptions(include_header=False)
+    csv.write_csv(orig_table, test_file, write_options=wo)
+    complete_dataset_info = {
+        "name": name,
+        "url": "http://example.com/complete_data.csv",  # needed for filename during conversion
+        "format": "csv",
+        "tables": [
+            {"table": "complete_data", "schema": json.loads(complete_schema_json_input)}
+        ],
+    }
+    util.write_metadata(complete_dataset_info, path)
+    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    written_table = dataset.to_table()
+    assert written_table == orig_table
+    converted_path = util.convert_dataset(
+        complete_dataset_info, None, "csv", "csv", 0, 10
+    )
+    # for p in range(9, -1, -1):
+    #     f = converted_path / file_name / f"part-{p}.csv"
+    #     f.rename(converted_path / file_name / f"part-{p+1}.csv")
+    converted_file = converted_path / file_name
+    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_table = converted_dataset.to_table()
+    assert converted_table == orig_table
+    # Now convert it back to single partition
+    clean("test_complete_dataset/csv/partitioning_0")
+    reverted_path = util.convert_dataset(
+        complete_dataset_info, None, "csv", "csv", 10, 0
+    )
+    reverted_file = reverted_path / file_name
+    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_table = reverted_dataset.to_table()
+    # assert reverted_table == converted_table
+    for col in converted_table.column_names:
+        assert reverted_table[col] == converted_table[col]
+    clean("test_complete_dataset")
