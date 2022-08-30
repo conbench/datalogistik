@@ -488,7 +488,10 @@ def convert_dataset(
                 if parquet_compression is None:
                     parquet_compression = "snappy"  # Use snappy by default
                 write_options = dataset_write_format.make_write_options(
-                    compression=parquet_compression
+                    compression=parquet_compression,
+                    use_deprecated_int96_timestamps=False,
+                    coerce_timestamps="us",
+                    allow_truncated_timestamps=True,
                 )
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
