@@ -31,6 +31,32 @@ from .log import log
 from .tpc_builders import DBGen, DSDGen
 
 
+# Set file permissions of given path to readonly
+def set_readonly(path):
+    os.chmod(path, 0o444)
+
+
+# Set file permissions of given path to readonly
+def set_readwrite(path):
+    os.chmod(path, 0o666)
+
+
+# Recursively set file permissions of given path to readonly
+def set_readonly_recurse(path):
+    for dirpath, dirnames, filenames in os.walk(path):
+        os.chmod(dirpath, 0o555)
+        for filename in filenames:
+            set_readonly(os.path.join(dirpath, filename))
+
+
+# Recursively set file permissions of given path to readonly
+def set_readwrite_recurse(path):
+    for dirpath, dirnames, filenames in os.walk(path):
+        os.chmod(dirpath, 0o777)
+        for filename in filenames:
+            set_readwrite(os.path.join(dirpath, filename))
+
+
 def removesuffix(orig_path, suffix):
     path = pathlib.Path(orig_path)
     if path.suffix == suffix:
@@ -207,8 +233,11 @@ def write_metadata(dataset_info, path):
     add_file_listing(metadata, path)
 
     json_string = json.dumps(metadata)
-    with open(pathlib.Path(path, config.metadata_filename), "w") as metadata_file:
+    metadata_file_path = pathlib.Path(path, config.metadata_filename)
+    with open(metadata_file_path, "w") as metadata_file:
         metadata_file.write(json_string)
+
+    set_readonly(metadata_file_path)
 
 
 # Walk up the directory tree up to the root of the cache to find a metadata file.
@@ -233,6 +262,7 @@ def clean_cache_dir(path):
         raise RuntimeError(msg)
 
     # Delete the cache entry itself
+    set_readwrite_recurse(path)
     shutil.rmtree(path, ignore_errors=True)
 
     # Search for parent directories that are empty and should thus be deleted
@@ -261,8 +291,7 @@ def clean_cache():
 # Remove an entry from the cache by the given subdir.
 def prune_cache_entry(sub_path):
     log.debug(f"Pruning cache entries below cache subdir '{sub_path}'")
-    local_cache_location = config.get_cache_location()
-    cache_root = pathlib.Path(local_cache_location)
+    cache_root = config.get_cache_location()
     path = pathlib.Path(cache_root, sub_path)
     if not contains_dataset(path):
         # check if this path is a subdir of a valid dataset
@@ -272,6 +301,7 @@ def prune_cache_entry(sub_path):
             raise RuntimeError(msg)
 
     log.info(f"Pruning Directory {path}")
+    set_readwrite_recurse(path)
     shutil.rmtree(path, ignore_errors=True)
     clean_cache_dir(path)
 
@@ -437,6 +467,8 @@ def convert_dataset(
             del dataset_info["files"]
         write_metadata(dataset_info, output_dir)
 
+        set_readonly_recurse(output_dir)
+
     except Exception:
         log.error("An error occurred during conversion.")
         clean_cache_dir(output_dir)
@@ -549,13 +581,16 @@ def download_dataset(dataset_info, argument_info):
     down_time = time.perf_counter() - down_start
     log.debug(f"download took {down_time:0.2f} s")
     log.info("Finished downloading.")
+    set_readonly(dataset_file_path)
 
+    # TODO: Deal with having multiple files in a single compressed archive
     # Decompress if necessary
     if "file-compression" in dataset_info:
         compression = dataset_info["file-compression"]
         decompress(cached_dataset_path, dataset_file_name, compression)
         dataset_file_name = removesuffix(dataset_file_name, "." + compression)
         dataset_file_path = removesuffix(dataset_file_path, "." + compression)
+        set_readonly(dataset_file_path)
 
     try:
         dataset, scanner = get_dataset(dataset_file_path, dataset_info)
@@ -579,14 +614,17 @@ def download_dataset(dataset_info, argument_info):
     return cached_dataset_path
 
 
-def copy_from_cache(cached_dataset_path, name):
-    log.info("Copying dataset from cache...")
-    copy_start = time.perf_counter()
-    dest_path = f"./{name}"
-    cached_dataset_path.mkdir(parents=True, exist_ok=True)
-    # This also copies the metadata file
+def copy_from_cache(cached_dataset_path, output_path, make_copy):
+    dest_path = pathlib.Path(output_path)
     shutil.rmtree(dest_path, ignore_errors=True)
-    shutil.copytree(cached_dataset_path, dest_path)
+    copy_start = time.perf_counter()
+    cached_dataset_path.mkdir(parents=True, exist_ok=True)
+    if make_copy:
+        log.info("Copying dataset from cache...")
+        shutil.copytree(cached_dataset_path, dest_path)
+    else:
+        log.info("Creating hard-link to dataset in cache...")
+        shutil.copytree(cached_dataset_path, dest_path, copy_function=os.link)
     copy_time = time.perf_counter() - copy_start
     log.info("Finished Copying.")
     log.debug(f"copy took {copy_time:0.2f} s")

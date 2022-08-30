@@ -72,6 +72,13 @@ def parse_args():
 Supported formats: Parquet, csv",
     )
     gen_parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        required=False,
+        help="Path where the output should be placed",
+    )
+    gen_parser.add_argument(
         "-c",
         "--compression",
         type=str,
@@ -106,6 +113,13 @@ Supported formats: Parquet, csv",
         "--bypass-cache",
         action="store_true",
         help="Do not store any copies of the dataset in the cache",
+    )
+    gen_parser.add_argument(
+        "-m",
+        "--make-copy",
+        action="store_true",
+        help="Create a copy of the dataset, instead of hard-linking the files.'"
+        " Useful if you wish to create a read/write instance.",
     )
 
     return parser.parse_args()

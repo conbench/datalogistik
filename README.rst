@@ -14,10 +14,13 @@ Usage::
     datalogistik generate [-h] \
         -d DATASET \
         -f FORMAT \
+        [-o OUTPUT] \
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
         [-p PARTITION_MAX_ROWS] \
-        [-b, --bypass-cache]
+        [-c COMPRESSION] \
+        [-b, --bypass-cache] \
+        [-m, --make-copy]
 
     datalogistik cache [-h] \
         [--clean] \
@@ -35,6 +38,10 @@ Usage::
     repository has a different format, it will be converted. Supported formats:
     ``parquet``, ``csv``.
 
+``OUTPUT``
+    Path where the output should be placed. If not specified, output will be placed in
+    a folder in the current working directory, with the name of the dataset.
+
 ``SCALE_FACTOR``
     Scale factor for generating TPC data. Default 1.
 
@@ -48,8 +55,16 @@ Usage::
     Partition the dataset using this value as the maximum number of rows per partition.
     Default 0, which means no partitioning.
 
+``COMPRESSION``
+    Internal compression (passed to parquet writer).
+
 ``bypass-cache``
     Do not store any copies of the dataset in the cache.
+
+``make-copy``
+    Instead of creating hard-links to the dataset instance in the cache,
+    make a full copy of the files to the output directory.
+    Useful if you want a read/write instance of a dataset.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 

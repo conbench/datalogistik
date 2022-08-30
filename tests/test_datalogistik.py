@@ -100,6 +100,7 @@ def test_validate():
 
     written_metadata["files"] = file_listing
     json_string = json.dumps(written_metadata)
+    os.chmod(metadata_file_path, 0o666)  # to allow writing
     with open(metadata_file_path, "w") as f:
         f.write(json_string)
     util.validate_cache(False)  # this should not delete the entry, only report
