@@ -482,9 +482,6 @@ def test_convert_dataset_parquet_partitioning():
     converted_path = util.convert_dataset(
         complete_dataset_info, None, format, format, 0, 10
     )
-    # for p in range(9, -1, -1):
-    #     f = converted_path / file_name / f"part-{p}.csv"
-    #     f.rename(converted_path / file_name / f"part-{p+1}.csv")
     converted_file = converted_path / file_name
     converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
