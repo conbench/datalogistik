@@ -211,12 +211,13 @@ In addition, entries can have the following optional properties:
     - type_name: Name of an Arrow datatype
     - arguments: either a dictionary of argument_name:value items, a list of values,
     or a single value.
-    Example::
+    Example:
+    .. code::
 
     {
-    "a": "string",
-    "b": {"type_name": "timestamp", "arguments": {"unit": "ms"}},
-    "c": {"type_name": "decimal", "arguments": [7, 3]}
+        "a": "string",
+        "b": {"type_name": "timestamp", "arguments": {"unit": "ms"}},
+        "c": {"type_name": "decimal", "arguments": [7, 3]}
     }
 
 ``header-line``
