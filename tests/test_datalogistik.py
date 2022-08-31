@@ -141,7 +141,13 @@ complete_csv_schema_json_input = """{
     "w": {"type_name": "time64", "arguments": "us"},
     "x": {"type_name": "timestamp", "arguments": {"unit": "ms"}}
     }"""
-complete_csv_schema_json_output = "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', 'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'l': 'float', 'm': 'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'q': 'string', 'r': 'string', 't': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', 'x': 'timestamp[ms]'}"
+complete_csv_schema_json_output = (
+    "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', "
+    "'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'l': 'float', 'm': "
+    "'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'q': 'string', 'r': 'string', "
+    "'t': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', "
+    "'x': 'timestamp[ms]'}"
+)
 complete_csv_schema = pa.schema(
     [
         pa.field("a", pa.null()),

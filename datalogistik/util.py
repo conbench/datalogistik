@@ -297,11 +297,7 @@ def convert_arrow_alias(type_name):
         "double": "float64",
         "decimal": "decimal128",
     }
-    for (alias, func_name) in aliases.items():
-        if type_name == alias:
-            return func_name
-    # no alias was found
-    return type_name
+    return aliases.get(type_name, type_name)
 
 
 # Create an instance of the pyarrow datatype with the given name
@@ -361,9 +357,9 @@ def arrow_type_from_json(input_type):
 
 # Convert the given dict to a pyarrow.schema
 def get_arrow_schema(input_schema):
-    log.debug("Converting schema to pyarrow.schema...")
     if input_schema is None:
         return None
+    log.debug("Converting schema to pyarrow.schema...")
     field_list = []
     # TODO: a `field()` entry is not a (name, type) tuple
     for (field_name, type) in input_schema.items():
