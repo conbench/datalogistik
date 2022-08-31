@@ -378,7 +378,7 @@ def get_table_schema_from_metadata(dataset_info, table_name):
             if table_name is None or table_entry["table"] == table_name:
                 if table_entry.get("schema"):
                     return table_entry["schema"]
-                break # there should be only 1
+                break  # there should be only 1
     return None
 
 
@@ -432,7 +432,7 @@ def get_dataset(input_file, dataset_info, table_name=None):
 
             ro = csv.ReadOptions(
                 column_names=column_names,
-                autogenerate_column_names=autogen_column_names
+                autogenerate_column_names=autogen_column_names,
             )
 
         dataset_read_format = ds.CsvFileFormat(
@@ -510,7 +510,10 @@ def convert_dataset(
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
                 # Don't include header if there's a known schema
-                if old_format == "csv" and (get_table_schema_from_metadata(dataset_info, file_name) or not dataset_info.get("header-line")):
+                if old_format == "csv" and (
+                    get_table_schema_from_metadata(dataset_info, file_name)
+                    or not dataset_info.get("header-line")
+                ):
                     write_options = dataset_write_format.make_write_options(
                         include_header=False
                     )
