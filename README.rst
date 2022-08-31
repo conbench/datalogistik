@@ -212,7 +212,7 @@ In addition, entries can have the following optional properties:
     - arguments: either a dictionary of argument_name:value items, a list of values,
     or a single value.
     Example:
-    .. code::
+.. code::
 
     {
         "a": "string",
