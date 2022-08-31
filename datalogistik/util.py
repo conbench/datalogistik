@@ -223,13 +223,14 @@ def valid_metadata_in_parent_dirs(dirpath):
     while walking_path != cache_root:
         if contains_dataset(walking_path):
             return True
+        walking_path = walking_path.parent
     return False
 
 
 # Performs cleanup if something happens while creating an entry in the cache
 def clean_cache_dir(path):
     path = pathlib.Path(path)
-    log.debug(f"Cleaning incomplete cache entry '{path}'")
+    log.debug(f"Cleaning cache directory '{path}'")
     cache_root = config.get_cache_location()
     if cache_root not in path.parents:
         msg = "Refusing to clean a directory outside of the local cache"
