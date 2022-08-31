@@ -375,6 +375,17 @@ def get_arrow_schema(input_schema):
     return output_schema
 
 
+# Lookup the user-specified schema or return None is none was found
+def get_table_schema_from_metadata(dataset_info, table_name):
+    if dataset_info.get("tables"):
+        for table_entry in dataset_info.get("tables"):
+            if table_name is None or table_entry["table"] == table_name:
+                if table_entry.get("schema"):
+                    return table_entry["schema"]
+                break # there should be only 1
+    return None
+
+
 # Create Arrow Dataset for a given input file
 def get_dataset(input_file, dataset_info, table_name=None):
     # Defaults
@@ -415,23 +426,20 @@ def get_dataset(input_file, dataset_info, table_name=None):
             co = csv.ConvertOptions(column_types=column_types_trailed)
         else:  # not a TPC dataset
             column_names = None
-            schema_found = False
-            has_header_line = False
-            if dataset_info.get("tables"):
-                for table_entry in dataset_info.get("tables"):
-                    if table_name is None or table_entry["table"] == table_name:
-                        if table_entry.get("schema"):
-                            schema_found = True
-                            log.debug("Found user-specified schema in metadata")
-                            schema = get_arrow_schema(table_entry["schema"])
-                            column_names = list(table_entry["schema"].keys())
-                        break # There should be only 1
-            if not schema_found:
+            autogen_column_names = False
+            table_schema = get_table_schema_from_metadata(dataset_info, table_name)
+            if table_schema:
+                log.debug("Found user-specified schema in metadata")
+                schema = get_arrow_schema(table_schema)
+                column_names = list(table_schema.keys())
+            else:
                 has_header_line = dataset_info.get("header-line", False)
+                autogen_column_names = not has_header_line
 
+            log.debug(f"autogen_column_names = {autogen_column_names}")
             ro = csv.ReadOptions(
                 column_names=column_names,
-                autogenerate_column_names=not has_header_line
+                autogenerate_column_names=autogen_column_names
             )
 
         dataset_read_format = ds.CsvFileFormat(
@@ -509,10 +517,12 @@ def convert_dataset(
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
                 # Don't include header if there's a known schema
-                if dataset_info.get("tables") or not dataset_info.get("header-line"):
+                if old_format == "csv" and (get_table_schema_from_metadata(dataset_info, file_name) or not dataset_info.get("header-line")):
                     write_options = dataset_write_format.make_write_options(
                         include_header=False
                     )
+                else:
+                    dataset_info["header-line"] = True
 
             ds.write_dataset(
                 scanner,

@@ -406,6 +406,7 @@ def test_convert_dataset_csv_to_parquet():
         "name": "test_csv",
         "url": "convtest.csv",
         "format": "csv",
+        "header-line": True,
         "partitioning-nrows": 0,
     }
     pydict = {"int": [1, 2], "str": ["a", "b"]}
