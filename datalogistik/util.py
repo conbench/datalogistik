@@ -194,6 +194,7 @@ def write_metadata(dataset_info, path):
         [
             "name",
             "format",
+            "header-line",
             "partitioning-nrows",
             "scale-factor",
             "dim",
@@ -412,14 +413,25 @@ def get_dataset(input_file, dataset_info, table_name=None):
             )
             co = csv.ConvertOptions(column_types=column_types_trailed)
         else:  # not a TPC dataset
+            column_names = None
+            schema_found = False
+            has_header_line = False
             if dataset_info.get("tables"):
-                log.debug("Found schema information in metadata")
                 for table_entry in dataset_info.get("tables"):
                     if table_name is None or table_entry["table"] == table_name:
-                        schema = get_arrow_schema(table_entry["schema"])
-                        column_names = list(table_entry["schema"].keys())
-                        break
-                ro = csv.ReadOptions(column_names=column_names)
+                        if table_entry.get("schema"):
+                            schema_found = True
+                            log.debug("Found user-specified schema in metadata")
+                            schema = get_arrow_schema(table_entry["schema"])
+                            column_names = list(table_entry["schema"].keys())
+                        break # There should be only 1
+            if not schema_found:
+                has_header_line = dataset_info.get("header-line", False)
+
+            ro = csv.ReadOptions(
+                column_names=column_names,
+                autogenerate_column_names=not has_header_line
+            )
 
         dataset_read_format = ds.CsvFileFormat(
             read_options=ro, parse_options=po, convert_options=co
@@ -496,7 +508,7 @@ def convert_dataset(
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
                 # Don't include header if there's a known schema
-                if dataset_info.get("tables"):
+                if dataset_info.get("tables") or not dataset_info.get("header-line"):
                     write_options = dataset_write_format.make_write_options(
                         include_header=False
                     )
@@ -525,7 +537,8 @@ def convert_dataset(
             metadata_table_list.append(
                 {
                     "table": file_name,
-                    "schema": schema_to_dict(dataset.schema),
+                    # This inferred schema is different from a user-specified schema
+                    "inferred-schema": schema_to_dict(dataset.schema),
                 }
             )
 
@@ -534,7 +547,7 @@ def convert_dataset(
         log.debug(f"conversion took {conv_time:0.2f} s")
         # Parquet already stores the schema internally
         if new_format == "csv":
-            # Don't overwrite schema if it is already known
+            # Don't insert inferred-schema if a known schema is available already
             if dataset_info.get("tables") is None:
                 dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
@@ -587,6 +600,8 @@ def generate_dataset(dataset_info, argument_info):
                     metadata_table_list.append(
                         {
                             "table": table,
+                            # TODO: this schema is not inferred, but it does not have
+                            # the same structure of a user-specified schema either
                             "schema": schema_to_dict(dataset.schema),
                         }
                     )
@@ -689,7 +704,7 @@ def download_dataset(dataset_info, argument_info):
                 dataset_info["tables"] = [
                     {
                         "table": str(pathlib.Path(dataset_file_name).stem),
-                        "schema": schema_to_dict(dataset.schema),
+                        "inferred-schema": schema_to_dict(dataset.schema),
                     }
                 ]
             except Exception:

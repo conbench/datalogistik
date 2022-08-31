@@ -204,7 +204,10 @@ In addition, entries can have the following optional properties:
     but that is not what is meant here.
 
 ``schema``
-    The schema of the tabular data in the file. This entry is currently ignored.
+    The schema of the tabular data in the file.
+
+``header-line``
+    Boolean denoting whether the first line of a CSV file contains the column names (default: false)
 
 Dataset output
 --------------
