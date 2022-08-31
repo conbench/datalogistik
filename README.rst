@@ -213,11 +213,9 @@ In addition, entries can have the following optional properties:
     or a single value.
     Example::
 
-    {
-      "a": "string",
-      "b": {"type_name": "timestamp", "arguments": {"unit": "ms"}},
-      "c": {"type_name": "decimal", "arguments": [7, 3]}
-    }
+    {"a": "string",
+    "b": {"type_name": "timestamp", "arguments": {"unit": "ms"}},
+    "c": {"type_name": "decimal", "arguments": [7, 3]}}
 
 ``header-line``
     Boolean denoting whether the first line of a CSV file contains the column names (default: false)
