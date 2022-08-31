@@ -399,9 +399,7 @@ def get_dataset(input_file, dataset_info, table_name=None):
         po = csv.ParseOptions()
         ro = csv.ReadOptions()
         co = csv.ConvertOptions()
-        # TODO: Should we autogenerate column names by default?
-        # Or add a property in the metadata about it?
-        # or allow a fall-back to read_csv in case schema detection fails?
+        # TODO: Should we fall-back to read_csv in case schema detection fails?
 
         if "delim" in dataset_info:
             po = csv.ParseOptions(delimiter=dataset_info["delim"])
@@ -436,7 +434,6 @@ def get_dataset(input_file, dataset_info, table_name=None):
                 has_header_line = dataset_info.get("header-line", False)
                 autogen_column_names = not has_header_line
 
-            log.debug(f"autogen_column_names = {autogen_column_names}")
             ro = csv.ReadOptions(
                 column_names=column_names,
                 autogenerate_column_names=autogen_column_names
