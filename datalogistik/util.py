@@ -349,7 +349,6 @@ def arrow_type_from_json(input_type):
     if isinstance(args, Mapping):
         return arrow_type_function_lookup(type_name)(**args)
     elif isinstance(args, list):
-        log.debug(f"args {args}")
         return arrow_type_function_lookup(type_name)(*args)
     else:  # args is probably a single value
         return arrow_type_function_lookup(type_name)(args)

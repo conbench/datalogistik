@@ -205,6 +205,19 @@ In addition, entries can have the following optional properties:
 
 ``schema``
     The schema of the tabular data in the file.
+    The structure of a schema is a JSON string with key:value pairs for each column.
+    The key is the column name, and the value is either the name of an Arrow datatype
+    without any parameters, or a dictionary with the following properties:
+    - type_name: Name of an Arrow datatype
+    - arguments: either a dictionary of argument_name:value items, a list of values,
+    or a single value.
+    Example::
+
+    {
+      "a": "string",
+      "b": {"type_name": "timestamp", "arguments": {"unit": "ms"}},
+      "c": {"type_name": "decimal", "arguments": [7, 3]}
+    }
 
 ``header-line``
     Boolean denoting whether the first line of a CSV file contains the column names (default: false)
