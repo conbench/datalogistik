@@ -77,7 +77,7 @@ def main():
             )
             if other_format_path.exists():
                 log.debug(
-                    "Found cached instance(s) with a different format/compression/partitioning at "
+                    "Found cached instance(s) with a different format/partitioning/compression at "
                     f"'{other_format_path}'"
                 )
                 format_subfolders = [
@@ -87,23 +87,19 @@ def main():
                 cached_nrows_dir = format_subfolders[0]
                 similar_dataset_path = other_format_path / cached_nrows_dir
                 cached_nrows = cached_nrows_dir.split("_")[-1]
-                if cached_file_format == "parquet":
-                    # In case of a parquet dataset, there is an additional level for compression type
-                    nrows_subfolders = [
-                        f.name for f in os.scandir(similar_dataset_path) if f.is_dir()
-                    ]
-                    cached_compression_dir = nrows_subfolders[0]
-                    similar_dataset_path = similar_dataset_path / cached_compression_dir
-                    cached_compression = cached_compression_dir.split("_")[-1]
-                else:
-                    cached_compression = None
+                nrows_subfolders = [
+                    f.name for f in os.scandir(similar_dataset_path) if f.is_dir()
+                ]
+                cached_compression_dir = nrows_subfolders[0]
+                similar_dataset_path = similar_dataset_path / cached_compression_dir
+                cached_compression = cached_compression_dir.split("_")[-1]
 
                 cached_dataset_metadata_file = pathlib.Path(
                     similar_dataset_path, config.metadata_filename
                 )
                 if cached_dataset_metadata_file.exists():
                     log.debug(
-                        "Found cached dataset in different format/partitioning at "
+                        "Found cached dataset in different format/partitioning/compression at "
                         f"'{similar_dataset_path}'"
                     )
                     log.debug(
@@ -139,17 +135,17 @@ def main():
 
     if dataset_info["format"] == "parquet":
         # retrieve the compression from the directory name
-        pq_compression = cached_dataset_path.parts[-1].split("_")[-1].lower()
+        compression = cached_dataset_path.parts[-1].split("_")[-1].lower()
     else:
-        pq_compression = None
+        compression = dataset_info["file-compression"]
     # Convert if necessary
     if (dataset_info["format"] != argument_info.format) or (
         dataset_info["partitioning-nrows"] != argument_info.partition_max_rows
-        or (pq_compression != argument_info.compression)
+        or (compression != argument_info.compression)
     ):
         cached_dataset_path = util.convert_dataset(
             dataset_info,
-            pq_compression,
+            compression,
             argument_info.compression,
             dataset_info["format"],
             argument_info.format,

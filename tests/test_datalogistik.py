@@ -334,7 +334,7 @@ def test_get_dataset_with_schema():
     num_rows = 10
     name = "test_complete_dataset"
     clean(name)
-    path = util.create_cached_dataset_path(name, None, "csv", 0)
+    path = util.create_cached_dataset_path(name, None, "csv", 0, None)
     path.mkdir(parents=True)
     test_file = path / "complete_data.csv"
     data = generate_complete_schema_data(num_rows, "csv")
@@ -402,7 +402,7 @@ def test_validate():
 def test_convert_dataset_csv_to_parquet():
     clean("test_csv")
     cache_root = config.get_cache_location()
-    path = pathlib.Path(cache_root, "test_csv/csv/partitioning_0/")
+    path = pathlib.Path(cache_root, "test_csv/csv/partitioning_0/compression_None")
     test_filename = "convtest"
     test_csv_file = test_filename + ".csv"
     test_parquet_file = test_filename + ".parquet"
@@ -436,7 +436,7 @@ def test_convert_dataset_csv_to_parquet():
 def test_convert_dataset_parquet_to_csv():
     clean("test_parquet")
     cache_root = config.get_cache_location()
-    path = pathlib.Path(cache_root, "test_parquet/parquet/partitioning_0/parquetcompression_snappy")
+    path = pathlib.Path(cache_root, "test_parquet/parquet/partitioning_0/compression_snappy")
     test_filename = "convtest"
     test_csv_file = test_filename + ".csv"
     test_parquet_file = test_filename + ".parquet"
@@ -474,7 +474,7 @@ def test_convert_dataset_csv_partitioning():
     format = "csv"
     file_name = "complete_data." + format
     clean("test_complete_dataset")
-    path = util.create_cached_dataset_path(name, None, format, 0)
+    path = util.create_cached_dataset_path(name, None, format, 0, None)
     path.mkdir(parents=True)
     test_file = path / file_name
     data = generate_complete_schema_data(num_rows, "csv")
