@@ -137,7 +137,7 @@ def main():
         # retrieve the compression from the directory name
         compression = cached_dataset_path.parts[-1].split("_")[-1].lower()
     else:
-        compression = dataset_info["file-compression"]
+        compression = dataset_info.get("file-compression")
     # Convert if necessary
     if (dataset_info["format"] != argument_info.format) or (
         dataset_info["partitioning-nrows"] != argument_info.partition_max_rows
