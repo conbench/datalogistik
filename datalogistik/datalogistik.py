@@ -131,7 +131,7 @@ def main():
     if argument_info.dataset in tpc_info.tpc_datasets:
         cached_dataset_path = util.generate_dataset(dataset_info, argument_info)
     else:
-        cached_dataset_path = util.download_dataset(dataset_info, argument_info)
+        cached_dataset_path = util.download_dataset(dataset_info)
 
     if dataset_info["format"] == "parquet":
         # retrieve the compression from the directory name

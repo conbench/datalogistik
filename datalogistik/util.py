@@ -701,7 +701,7 @@ def decompress(compressed_file_path, decompressed_file_path, compression):
         raise ValueError(msg)
 
 
-def download_dataset(dataset_info, argument_info):
+def download_dataset(dataset_info):
     log.info("Downloading to cache...")
     down_start = time.perf_counter()
     if dataset_info["format"] == "parquet":
@@ -711,7 +711,7 @@ def download_dataset(dataset_info, argument_info):
     else:
         compression = dataset_info["file-compression"]
     cached_dataset_path = create_cached_dataset_path(
-        argument_info.dataset,
+        dataset_info["name"],
         "",  # no scale_factor
         dataset_info["format"],
         str(dataset_info["partitioning-nrows"]),
