@@ -487,6 +487,7 @@ def test_convert_dataset_csv_partitioning():
         "name": name,
         "url": "http://example.com/complete_data.csv",  # needed for filename during conversion
         "format": format,
+        "partitioning-nrows": 0,
         "tables": [
             {
                 "table": "complete_data",
@@ -536,6 +537,7 @@ def test_convert_dataset_parquet_partitioning():
         "name": name,
         "url": "http://example.com/complete_data.parquet",  # needed for filename during conversion
         "format": "parquet",
+        "partitioning-nrows": 0,
     }
     util.write_metadata(complete_dataset_info, path)
     dataset, _ = util.get_dataset(test_file, complete_dataset_info)
