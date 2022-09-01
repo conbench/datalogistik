@@ -486,7 +486,7 @@ def generate_dataset(dataset_info, argument_info):
                 partitions=partitions,
             )
         else:
-            new_partitioning = config.get_thread_count() * 2
+            new_partitioning = int(argument_info.scale_factor)
             new_maxrows = convert_maxrows_parts(
                 dataset_name, argument_info.scale_factor, new_partitioning
             )
