@@ -86,7 +86,7 @@ def main():
                 # Grab the first subdir, we're going to convert it anyway
                 cached_nrows_dir = format_subfolders[0]
                 similar_dataset_path = other_format_path / cached_nrows_dir
-                cached_nrows = cached_nrows_dir.split("_")[-1]
+                cached_nrows = int(cached_nrows_dir.split("_")[-1])
                 nrows_subfolders = [
                     f.name for f in os.scandir(similar_dataset_path) if f.is_dir()
                 ]
