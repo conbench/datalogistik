@@ -497,6 +497,14 @@ def convert_dataset(
         log.info("Conversion not needed.")
         return cached_dataset_path
 
+    if (
+        (dataset_info["format"] == new_format)
+        and (dataset_info["partitioning-nrows"] == new_nrows)
+        and (dataset_info.get("file-compression") == new_compression)  # rules out tpc
+    ):
+        log.info("Re-downloading instead of converting.")
+        return download_dataset(dataset_info)
+
     metadata_table_list = []
     try:
         output_dir = create_cached_dataset_path(
@@ -510,14 +518,16 @@ def convert_dataset(
 
         for file_name in file_names:
             input_file = pathlib.Path(cached_dataset_path, f"{file_name}.{old_format}")
+            if old_compression:
+                input_file = input_file.parent / f"{input_file.name}.{old_compression}"
             output_file = pathlib.Path(output_dir, f"{file_name}.{new_format}")
             if (
                 old_format == "csv"
                 and new_format == "csv"
-                and (old_nrows == new_nrows)
+                and old_nrows == new_nrows
                 and new_compression is None
             ):
-                input_file = input_file.parent / f"{input_file.name}.{old_compression}"
+                log.info("decompressing without conversion...")
                 decompress(input_file, output_file, old_compression)
                 continue
 
