@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import datetime
 import gzip
 import hashlib
@@ -20,6 +21,8 @@ import os
 import pathlib
 import shutil
 import time
+from collections import OrderedDict
+from collections.abc import Mapping
 
 import pyarrow as pa
 import urllib3
@@ -57,10 +60,7 @@ def create_cached_dataset_path(
     name, scale_factor, format, partitioning_nrows, parquet_compression
 ):
     local_cache_location = config.get_cache_location()
-    if scale_factor:
-        scale_factor = f"scalefactor_{scale_factor}"
-    else:
-        scale_factor = ""
+    scale_factor = f"scalefactor_{scale_factor}" if scale_factor else ""
     partitioning_nrows = f"partitioning_{partitioning_nrows}"
     if parquet_compression:
         parquet_compression = f"parquetcompression_{parquet_compression}"
@@ -210,6 +210,7 @@ def write_metadata(dataset_info, path):
         [
             "name",
             "format",
+            "header-line",
             "partitioning-nrows",
             "scale-factor",
             "dim",
@@ -238,13 +239,14 @@ def valid_metadata_in_parent_dirs(dirpath):
     while walking_path != cache_root:
         if contains_dataset(walking_path):
             return True
+        walking_path = walking_path.parent
     return False
 
 
 # Performs cleanup if something happens while creating an entry in the cache
 def clean_cache_dir(path):
     path = pathlib.Path(path)
-    log.debug(f"Cleaning incomplete cache entry '{path}'")
+    log.debug(f"Cleaning cache directory '{path}'")
     cache_root = config.get_cache_location()
     if cache_root not in path.parents:
         msg = "Refusing to clean a directory outside of the local cache"
@@ -303,16 +305,112 @@ def schema_to_dict(schema):
     return field_dict
 
 
+def convert_arrow_alias(type_name):
+    aliases = {
+        "bool": "bool_",
+        "halffloat": "float16",
+        "float": "float32",
+        "double": "float64",
+        "decimal": "decimal128",
+    }
+    return aliases.get(type_name, type_name)
+
+
+# Create an instance of the pyarrow datatype with the given name
+def arrow_type_function_lookup(function_name):
+    if isinstance(function_name, str):
+        function_name = convert_arrow_alias(function_name)
+        pa_type_func = getattr(pa, function_name)
+        return pa_type_func
+
+    # The argument was not a pyarrow type (maybe a nested structure?)
+    return None
+
+
+# Convert a given item (string or dict) to the corresponding Arrow datatype
+def arrow_type_from_json(input_type):
+    arrow_nested_types = {
+        "list_",
+        "large_list",
+        "map_",
+        "struct",
+        "dictionary",
+        # Could be useful for the user to have control over nullability
+        "field",
+    }
+
+    # In case the type is a simple string
+    if isinstance(input_type, str):
+        if input_type in arrow_nested_types:
+            msg = "Nested types in schema not supported yet"
+            log.error(msg)
+            raise ValueError(msg)
+        return arrow_type_function_lookup(input_type)()
+
+    # Alternatively, a type can be encoded as a name:value pair
+    if not input_type.get("type_name"):
+        msg = "Schema field type 'type_name' missing"
+        log.error(msg)
+        raise ValueError(msg)
+
+    type_name = input_type.get("type_name")
+    args = input_type.get("arguments")
+    if type_name in arrow_nested_types:
+        msg = "Nested types in schema not supported yet"
+        log.error(msg)
+        raise ValueError(msg)
+
+    if args is None:
+        return arrow_type_function_lookup(type_name)()
+    if isinstance(args, Mapping):
+        return arrow_type_function_lookup(type_name)(**args)
+    elif isinstance(args, list):
+        return arrow_type_function_lookup(type_name)(*args)
+    else:  # args is probably a single value
+        return arrow_type_function_lookup(type_name)(args)
+
+
+# Convert the given dict to a pyarrow.schema
+def get_arrow_schema(input_schema):
+    if input_schema is None:
+        return None
+    log.debug("Converting schema to pyarrow.schema...")
+    field_list = []
+    # TODO: a `field()` entry is not a (name, type) tuple
+    for (field_name, type) in input_schema.items():
+        log.debug(f"Schema: adding field {field_name}")
+        arrow_type = arrow_type_from_json(type)
+        field_list.append(pa.field(field_name, arrow_type))
+
+    output_schema = pa.schema(field_list)
+    return output_schema
+
+
+# Lookup the user-specified schema or return None is none was found
+def get_table_schema_from_metadata(dataset_info, table_name):
+    if dataset_info.get("tables"):
+        for table_entry in dataset_info.get("tables"):
+            if table_name is None or table_entry["table"] == table_name:
+                if table_entry.get("schema"):
+                    return table_entry["schema"]
+                break  # there should be only 1
+    return None
+
+
 # Create Arrow Dataset for a given input file
 def get_dataset(input_file, dataset_info, table_name=None):
-    column_list = None  # Default
-    if dataset_info["format"] == "parquet":
+    # Defaults
+    column_list = None
+    schema = None
+    format = dataset_info["format"]
+    if format == "parquet":
         dataset_read_format = ds.ParquetFileFormat()
-    if dataset_info["format"] == "csv":
+    if format == "csv":
         # defaults
         po = csv.ParseOptions()
-        ro = csv.ReadOptions()  # autogenerate_column_names=True)
+        ro = csv.ReadOptions()
         co = csv.ConvertOptions()
+        # TODO: Should we fall-back to read_csv in case schema detection fails?
 
         if "delim" in dataset_info:
             po = csv.ParseOptions(delimiter=dataset_info["delim"])
@@ -331,15 +429,32 @@ def get_dataset(input_file, dataset_info, table_name=None):
             column_types_trailed = column_types.copy()
             column_types_trailed["trailing_columns"] = pa.string()
             ro = csv.ReadOptions(
-                column_names=column_types_trailed.keys(), encoding="ISO-8859"
+                column_names=column_types_trailed.keys(),
+                encoding="iso8859" if dataset_info["name"] == "tpc-ds" else "utf8",
             )
             co = csv.ConvertOptions(column_types=column_types_trailed)
+        else:  # not a TPC dataset
+            column_names = None
+            autogen_column_names = False
+            table_schema = get_table_schema_from_metadata(dataset_info, table_name)
+            if table_schema:
+                log.debug("Found user-specified schema in metadata")
+                schema = get_arrow_schema(table_schema)
+                column_names = list(table_schema.keys())
+            else:
+                has_header_line = dataset_info.get("header-line", False)
+                autogen_column_names = not has_header_line
+
+            ro = csv.ReadOptions(
+                column_names=column_names,
+                autogenerate_column_names=autogen_column_names,
+            )
 
         dataset_read_format = ds.CsvFileFormat(
             read_options=ro, parse_options=po, convert_options=co
         )
 
-    dataset = ds.dataset(input_file, format=dataset_read_format)
+    dataset = ds.dataset(input_file, schema=schema, format=dataset_read_format)
     scanner = dataset.scanner(columns=column_list)
     return dataset, scanner
 
@@ -382,7 +497,7 @@ def convert_dataset(
         raise ValueError(msg)
 
     with open(cached_dataset_metadata_file) as f:
-        dataset_metadata = json.load(f)
+        dataset_metadata = json.load(f, object_pairs_hook=OrderedDict)
 
     if (
         (dataset_metadata["format"] == new_format)
@@ -413,10 +528,23 @@ def convert_dataset(
             if new_format == "parquet":
                 dataset_write_format = ds.ParquetFileFormat()
                 write_options = dataset_write_format.make_write_options(
-                    compression=new_parquet_compression
+                    compression=new_parquet_compression,
+                    use_deprecated_int96_timestamps=False,
+                    coerce_timestamps="us",
+                    allow_truncated_timestamps=True,
                 )
             if new_format == "csv":
                 dataset_write_format = ds.CsvFileFormat()
+                # Don't include header if there's a known schema
+                if old_format == "csv" and (
+                    get_table_schema_from_metadata(dataset_info, file_name)
+                    or not dataset_info.get("header-line")
+                ):
+                    write_options = dataset_write_format.make_write_options(
+                        include_header=False
+                    )
+                else:
+                    dataset_info["header-line"] = True
 
             ds.write_dataset(
                 scanner,
@@ -441,22 +569,20 @@ def convert_dataset(
 
             metadata_table_list.append(
                 {
-                    "table": f"{file_name}.{new_format}",
-                    "schema": schema_to_dict(dataset.schema),
+                    "table": file_name,
+                    # This inferred schema is different from a user-specified schema
+                    "inferred-schema": schema_to_dict(dataset.schema),
                 }
             )
-
-            # TODO: The dataset API does a poor job at detecting the schema.
-            # Would be nice to be able to fall back to read/write_csv etc.
-            # Another option is to store the schema as metadata in the repo and pass it
-            # to dataset.
-            # It would also be nice to detect/provide option whether the first line
-            # contains column names.
 
         conv_time = time.perf_counter() - conv_start
         log.info("Finished conversion.")
         log.debug(f"conversion took {conv_time:0.2f} s")
-        dataset_info["tables"] = metadata_table_list
+        # Parquet already stores the schema internally
+        if new_format == "csv":
+            # Don't insert inferred-schema if a known schema is available already
+            if dataset_info.get("tables") is None:
+                dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
         dataset_info["parquet-compression"] = new_parquet_compression
@@ -497,18 +623,33 @@ def generate_dataset(dataset_info, argument_info):
             out_dir=cached_dataset_path, scale_factor=argument_info.scale_factor
         )
 
-        metadata_table_list = []
-        for table in tpc_info.tpc_table_names[dataset_name]:
-            input_file = pathlib.Path(cached_dataset_path, table + ".csv")
-            dataset, scanner = get_dataset(input_file, dataset_info, table)
-            metadata_table_list.append(
-                {"table": table + ".csv", "schema": schema_to_dict(dataset.schema)}
-            )
+        # If the entry in the repo file does not specify the schema, try to detect it
+        if not dataset_info.get("tables"):
+            metadata_table_list = []
+            for table in tpc_info.tpc_table_names[dataset_name]:
+                input_file = pathlib.Path(cached_dataset_path, table + ".csv")
+                try:
+                    dataset, scanner = get_dataset(input_file, dataset_info, table)
+                    metadata_table_list.append(
+                        {
+                            "table": table,
+                            # TODO: this schema is not inferred, but it does not have
+                            # the same structure of a user-specified schema either
+                            "schema": schema_to_dict(dataset.schema),
+                        }
+                    )
+                except Exception:
+                    log.error(
+                        f"pyarrow.dataset is unable to read schema from generated file {input_file}"
+                    )
+                    clean_cache_dir(cached_dataset_path)
+                    raise
+
+        dataset_info["tables"] = metadata_table_list
 
         gen_time = time.perf_counter() - gen_start
         log.info("Finished generating.")
         log.debug(f"generation took {gen_time:0.2f} s")
-        dataset_info["tables"] = metadata_table_list
         write_metadata(dataset_info, cached_dataset_path)
 
     except Exception:
@@ -565,7 +706,7 @@ def download_dataset(dataset_info, argument_info):
     # so something could have gone wrong while downloading/converting previously
     if dataset_file_path.exists():
         log.debug(f"Removing existing file '{dataset_file_path}'")
-        dataset_file_path.rmdir()
+        dataset_file_path.unlink()
     url = dataset_info["url"]
     try:
         http = urllib3.PoolManager()
@@ -597,15 +738,24 @@ def download_dataset(dataset_info, argument_info):
         cached_dataset_path = cached_dataset_path.parent / pq_compression
         dataset_file_path = pathlib.Path(cached_dataset_path, dataset_file_name)
 
-    try:
-        dataset, scanner = get_dataset(dataset_file_path, dataset_info)
-        dataset_info["tables"] = [
-            {"table": str(dataset_file_name), "schema": schema_to_dict(dataset.schema)}
-        ]
-    except Exception:
-        log.error("pyarrow.dataset is unable to read downloaded file")
-        clean_cache_dir(cached_dataset_path)
-        raise
+    # Parquet already stores the schema internally
+    if dataset_info["format"] == "csv":
+        # If the entry in the repo file does not specify the schema, try to detect it
+        if not dataset_info.get("tables"):
+            try:
+                dataset, scanner = get_dataset(dataset_file_path, dataset_info)
+                dataset_info["tables"] = [
+                    {
+                        "table": str(pathlib.Path(dataset_file_name).stem),
+                        "inferred-schema": schema_to_dict(dataset.schema),
+                    }
+                ]
+            except Exception:
+                log.error(
+                    "pyarrow.dataset is unable to read schema from downloaded file"
+                )
+                clean_cache_dir(cached_dataset_path)
+                raise
 
     if dataset_info.get("files"):
         # In this case, the dataset info contained checksums. Check them
