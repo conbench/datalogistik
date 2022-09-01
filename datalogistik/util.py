@@ -518,7 +518,7 @@ def convert_dataset(
 
         for file_name in file_names:
             input_file = pathlib.Path(cached_dataset_path, f"{file_name}.{old_format}")
-            if old_compression:
+            if old_format != "parquet" and old_compression:
                 input_file = input_file.parent / f"{input_file.name}.{old_compression}"
             output_file = pathlib.Path(output_dir, f"{file_name}.{new_format}")
             if (
