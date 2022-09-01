@@ -57,15 +57,17 @@ def file_visitor(written_file):
 
 # Construct a path to a dataset entry in the cache (possibly not existing yet)
 def create_cached_dataset_path(
-    name, scale_factor, format, partitioning_nrows, parquet_compression
+    name, scale_factor, format, partitioning_nrows, parquet_compression=None
 ):
     local_cache_location = config.get_cache_location()
     scale_factor = f"scalefactor_{scale_factor}" if scale_factor else ""
     partitioning_nrows = f"partitioning_{partitioning_nrows}"
-    if parquet_compression:
-        parquet_compression = f"parquetcompression_{parquet_compression}"
-    else:
-        parquet_compression = ""
+    parquet_compression_str = ""
+    if format == "parquet":
+        if parquet_compression:
+            parquet_compression_str = f"parquetcompression_{parquet_compression}"
+        else:
+            parquet_compression_str = "parquetcompression_None"
     if format == "parquet":
         return pathlib.Path(
             local_cache_location,
@@ -73,7 +75,7 @@ def create_cached_dataset_path(
             scale_factor,
             format,
             partitioning_nrows,
-            parquet_compression,
+            parquet_compression_str,
         )
     return pathlib.Path(
         local_cache_location, name, scale_factor, format, partitioning_nrows
