@@ -512,10 +512,10 @@ def convert_dataset(
             input_file = pathlib.Path(cached_dataset_path, f"{file_name}.{old_format}")
             output_file = pathlib.Path(output_dir, f"{file_name}.{new_format}")
             if (
-                    old_format == 'csv'
-                    and new_format == 'csv'
-                    and (old_nrows == new_nrows)
-                    and new_compression is None
+                old_format == "csv"
+                and new_format == "csv"
+                and (old_nrows == new_nrows)
+                and new_compression is None
             ):
                 input_file = input_file.parent / f"{input_file.name}.{old_compression}"
                 decompress(input_file, output_file, old_compression)
@@ -574,7 +574,9 @@ def convert_dataset(
                 }
             )
             if new_format == "csv" and new_compression:
-                compressed_output_file = output_file.parent / f"{output_file.name}.{new_compression}"
+                compressed_output_file = (
+                    output_file.parent / f"{output_file.name}.{new_compression}"
+                )
                 compress(output_file, compressed_output_file, new_compression)
                 output_file.unlink()
 
@@ -703,7 +705,9 @@ def download_dataset(dataset_info, argument_info):
     log.info("Downloading to cache...")
     down_start = time.perf_counter()
     if dataset_info["format"] == "parquet":
-        compression = "unknown" # Temporary location until we detect the actual compression
+        compression = (
+            "unknown"  # Temporary location until we detect the actual compression
+        )
     else:
         compression = dataset_info["file-compression"]
     cached_dataset_path = create_cached_dataset_path(

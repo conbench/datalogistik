@@ -436,7 +436,9 @@ def test_convert_dataset_csv_to_parquet():
 def test_convert_dataset_parquet_to_csv():
     clean("test_parquet")
     cache_root = config.get_cache_location()
-    path = pathlib.Path(cache_root, "test_parquet/parquet/partitioning_0/compression_snappy")
+    path = pathlib.Path(
+        cache_root, "test_parquet/parquet/partitioning_0/compression_snappy"
+    )
     test_filename = "convtest"
     test_csv_file = test_filename + ".csv"
     test_parquet_file = test_filename + ".parquet"
