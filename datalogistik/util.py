@@ -501,6 +501,7 @@ def convert_dataset(
         (dataset_info["format"] == new_format)
         and (dataset_info["partitioning-nrows"] == new_nrows)
         and (dataset_info.get("file-compression") == new_compression)  # rules out tpc
+        and (new_compression == "gz") #  Only re-download compressed datasets
     ):
         log.info("Re-downloading instead of converting.")
         return download_dataset(dataset_info)
@@ -528,7 +529,7 @@ def convert_dataset(
                 and new_compression is None
             ):
                 log.info("decompressing without conversion...")
-                decompress(input_file, output_file, old_compression)
+                decompress(input_file, output_file.parent, old_compression)
                 continue
 
             dataset, scanner = get_dataset(input_file, dataset_metadata, file_name)
@@ -584,10 +585,7 @@ def convert_dataset(
                 }
             )
             if new_format == "csv" and new_compression:
-                compressed_output_file = (
-                    output_file.parent / f"{output_file.name}.{new_compression}"
-                )
-                compress(output_file, compressed_output_file, new_compression)
+                compress(output_file, output_file.parent, new_compression)
                 output_file.unlink()
 
         conv_time = time.perf_counter() - conv_start
@@ -675,39 +673,55 @@ def generate_dataset(dataset_info, argument_info):
     return cached_dataset_path
 
 
-def compress(uncompressed_file_path, compressed_file_path, compression):
+def compress(uncompressed_file_path, output_dir, compression):
     if compression is None:
         return
     if compression == "gz":
         log.debug(
-            f"Compressing GZip file {uncompressed_file_path} into "
-            f"{compressed_file_path}"
+            f"Compressing GZip dataset {uncompressed_file_path} into "
+            f"{output_dir}"
         )
-        with open(uncompressed_file_path, "rb") as input_file:
-            with gzip.open(compressed_file_path, "wb") as output_file:
-                shutil.copyfileobj(input_file, output_file)
+        if uncompressed_file_path.is_dir():
+            file_list = []
+            for x in uncompressed_file_path.iterdir():
+                if x.is_file():
+                    file_list.append(x)
+        else:
+            file_list = [uncompressed_file_path]
+        for uncompressed_file in file_list:
+            with open(uncompressed_file, "rb") as input_file:
+                with gzip.open(output_dir / (uncompressed_file.name + ".gz"), "wb") as output_file:
+                    shutil.copyfileobj(input_file, output_file)
     else:
         msg = f"Unsupported compression type ({compression})."
         log.error(msg)
-        clean_cache_dir(compressed_file_path.parent)
+        clean_cache_dir(output_dir.parent)
         raise ValueError(msg)
 
 
-def decompress(compressed_file_path, decompressed_file_path, compression):
+def decompress(compressed_file_path, output_dir, compression):
     if compression is None:
         return
     if compression == "gz":
         log.debug(
-            f"Decompressing GZip file {compressed_file_path} into "
-            f"{decompressed_file_path}"
+            f"Decompressing GZip dataset {compressed_file_path} into "
+            f"{output_dir}"
         )
-        with gzip.open(compressed_file_path, "rb") as input_file:
-            with open(decompressed_file_path, "wb") as output_file:
-                shutil.copyfileobj(input_file, output_file)
+        if compressed_file_path.is_dir():
+            file_list = []
+            for x in compressed_file_path.iterdir():
+                if x.is_file():
+                    file_list.append(x)
+        else:
+            file_list = [compressed_file_path]
+        for compressed_file in file_list:
+            with gzip.open(compressed_file, "rb") as input_file:
+                with open(output_dir / compressed_file.stem, "wb") as output_file:
+                    shutil.copyfileobj(input_file, output_file)
     else:
         msg = f"Unsupported compression type ({compression})."
         log.error(msg)
-        clean_cache_dir(decompressed_file_path.parent)
+        clean_cache_dir(output_dir.parent)
         raise ValueError(msg)
 
 
