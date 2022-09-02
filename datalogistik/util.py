@@ -614,17 +614,5 @@ def download_dataset(dataset_info, argument_info):
     return cached_dataset_path
 
 
-def copy_from_cache(cached_dataset_path, output_path, make_copy):
-    dest_path = pathlib.Path(output_path)
-    shutil.rmtree(dest_path, ignore_errors=True)
-    copy_start = time.perf_counter()
-    cached_dataset_path.mkdir(parents=True, exist_ok=True)
-    if make_copy:
-        log.info("Copying dataset from cache...")
-        shutil.copytree(cached_dataset_path, dest_path)
-    else:
-        log.info("Creating hard-link to dataset in cache...")
-        shutil.copytree(cached_dataset_path, dest_path, copy_function=os.link)
-    copy_time = time.perf_counter() - copy_start
-    log.info("Finished Copying.")
-    log.debug(f"copy took {copy_time:0.2f} s")
+def output_result(dataset_directory):
+    print(dataset_directory)

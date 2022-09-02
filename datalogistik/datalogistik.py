@@ -75,7 +75,7 @@ def main():
         log.debug(
             f"Found cached dataset metadata file at '{cached_dataset_metadata_file}'"
         )
-        util.copy_from_cache(cached_dataset_path, output_dir, argument_info.make_copy)
+        util.output_result(cached_dataset_path)
         finish()
     else:  # not found in cache, check if the cache has other formats of this dataset
         log.debug(
@@ -124,15 +124,7 @@ def main():
                             cached_nrows,
                             argument_info.partition_max_rows,
                         )
-                        util.copy_from_cache(
-                            cached_dataset_path,
-                            output_dir,
-                            argument_info.make_copy,
-                        )
-                        if argument_info.bypass_cache:
-                            log.info("Removing cache entry")
-                            shutil.rmtree(cached_dataset_path, ignore_errors=True)
-                            util.clean_cache_dir(cached_dataset_path)
+                        util.output_result(cached_dataset_path)
                         finish()
                     else:
                         log.info(
@@ -162,12 +154,7 @@ def main():
             argument_info.partition_max_rows,
         )
 
-    # Copy to the actual output location
-    util.copy_from_cache(cached_dataset_path, output_dir, argument_info.make_copy)
-    if argument_info.bypass_cache:
-        log.info("Removing cache entry")
-        shutil.rmtree(cached_dataset_path, ignore_errors=True)
-        util.clean_cache_dir(cached_dataset_path)
+    util.output_result(cached_dataset_path)
     finish()
 
 

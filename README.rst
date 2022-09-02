@@ -18,9 +18,7 @@ Usage::
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
         [-p PARTITION_MAX_ROWS] \
-        [-c COMPRESSION] \
-        [-b, --bypass-cache] \
-        [-m, --make-copy]
+        [-c COMPRESSION]
 
     datalogistik cache [-h] \
         [--clean] \
@@ -57,14 +55,6 @@ Usage::
 
 ``COMPRESSION``
     Internal compression (passed to parquet writer).
-
-``bypass-cache``
-    Do not store any copies of the dataset in the cache.
-
-``make-copy``
-    Instead of creating hard-links to the dataset instance in the cache,
-    make a full copy of the files to the output directory.
-    Useful if you want a read/write instance of a dataset.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
