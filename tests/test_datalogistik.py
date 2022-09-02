@@ -562,3 +562,99 @@ def test_convert_dataset_parquet_partitioning():
     converted_table = converted_table.sort_by("e")
     assert reverted_table == converted_table
     clean("test_complete_dataset")
+
+
+def test_convert_dataset_csv_compression():
+    num_rows = 100
+    name = "test_complete_dataset"
+    format = "csv"
+    file_name = "complete_data." + format
+    clean("test_complete_dataset")
+    path = util.create_cached_dataset_path(name, None, format, 0, None)
+    path.mkdir(parents=True)
+    test_file = path / file_name
+    data = generate_complete_schema_data(num_rows, "csv")
+    orig_table = pa.table(data, schema=complete_csv_schema)
+    wo = csv.WriteOptions(include_header=False)
+    csv.write_csv(orig_table, test_file, write_options=wo)
+    complete_dataset_info = {
+        "name": name,
+        "url": "http://example.com/complete_data.csv",  # needed for filename during conversion
+        "format": format,
+        "partitioning-nrows": 0,
+        "tables": [
+            {
+                "table": "complete_data",
+                "schema": json.loads(complete_csv_schema_json_input),
+            }
+        ],
+    }
+    util.write_metadata(complete_dataset_info, path)
+    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    written_table = dataset.to_table()
+    assert written_table == orig_table
+    converted_path = util.convert_dataset(
+        complete_dataset_info, None, "gz", format, format, 0, 0
+    )
+    converted_file = converted_path / f"{file_name}.gz"
+    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_table = converted_dataset.to_table()
+    assert converted_table == orig_table
+    # Now decompress it again
+    clean(path)
+    reverted_path = util.convert_dataset(
+        complete_dataset_info, "gz", None, format, format, 0, 0
+    )
+    reverted_file = reverted_path / file_name
+    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_table = reverted_dataset.to_table()
+    reverted_table = reverted_table.sort_by("e")
+    converted_table = converted_table.sort_by("e")
+    assert reverted_table == converted_table
+    clean("test_complete_dataset")
+
+
+def test_convert_dataset_parquet_compression():
+    num_rows = 100
+    name = "test_complete_dataset"
+    format = "parquet"
+    from_compression = "snappy"
+    to_compression = "lz4"
+    file_name = "complete_data." + format
+    clean("test_complete_dataset")
+    path = util.create_cached_dataset_path(name, None, format, 0, from_compression)
+    path.mkdir(parents=True)
+    test_file = path / file_name
+    data = generate_complete_schema_data(num_rows, "parquet")
+    orig_table = pa.table(data, schema=complete_parquet_schema)
+    pq.write_table(orig_table, test_file, compression=from_compression)
+    complete_dataset_info = {
+        "name": name,
+        "url": "http://example.com/complete_data.parquet",  # needed for filename during conversion
+        "format": "parquet",
+        "partitioning-nrows": 0,
+    }
+    util.write_metadata(complete_dataset_info, path)
+    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    written_table = dataset.to_table()
+    assert written_table == orig_table
+    converted_path = util.convert_dataset(
+        complete_dataset_info, from_compression, to_compression, format, format, 0, 0
+    )
+    converted_file = converted_path / file_name
+    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_table = converted_dataset.to_table()
+    assert converted_table == orig_table
+    # Now convert it back to previous compression
+    clean(path)
+    reverted_path = util.convert_dataset(
+        complete_dataset_info, to_compression, from_compression, format, format, 0, 0
+    )
+    reverted_file = reverted_path / file_name
+    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_table = reverted_dataset.to_table()
+    reverted_table = reverted_table.sort_by("e")
+    converted_table = converted_table.sort_by("e")
+    assert reverted_table == converted_table
+    clean("test_complete_dataset")
+
