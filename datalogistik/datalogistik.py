@@ -40,26 +40,6 @@ def main():
         f"Creating an instance of Dataset '{argument_info.dataset}' in "
         f"'{argument_info.format}' format..."
     )
-    if argument_info.output:
-        output_dir = pathlib.Path(argument_info.output)
-    else:
-        output_dir = pathlib.Path(argument_info.dataset)
-    if config.get_cache_location() in output_dir.parents:
-        msg = f"Error: output path '{output_dir}' is inside the cache. Exiting."
-        log.error(msg)
-        raise RuntimeError(msg)
-    if pathlib.Path(output_dir).exists():
-        try:
-            # if this does not raise an error, the dir is not empty
-            next(output_dir.iterdir())
-            msg = (
-                f"Error: output directory '{output_dir}' "
-                " already exists and is not empty. Exiting."
-            )
-            log.error(msg)
-            raise RuntimeError(msg)
-        except StopIteration:
-            pass
 
     log.debug(f"Checking local cache at {local_cache_location}")
     cached_dataset_path = util.create_cached_dataset_path(

@@ -14,7 +14,6 @@ Usage::
     datalogistik generate [-h] \
         -d DATASET \
         -f FORMAT \
-        [-o OUTPUT] \
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
         [-p PARTITION_MAX_ROWS] \
@@ -35,10 +34,6 @@ Usage::
     File format to instantiate the dataset in. If the original dataset specified in the
     repository has a different format, it will be converted. Supported formats:
     ``parquet``, ``csv``.
-
-``OUTPUT``
-    Path where the output should be placed. If not specified, output will be placed in
-    a folder in the current working directory, with the name of the dataset.
 
 ``SCALE_FACTOR``
     Scale factor for generating TPC data. Default 1.
