@@ -17,6 +17,7 @@ Usage::
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
         [-p PARTITION_MAX_ROWS] \
+        [-c COMPRESSION] \
         [-b, --bypass-cache]
 
     datalogistik cache [-h] \
@@ -47,6 +48,11 @@ Usage::
 ``PARTITION_MAX_ROWS``
     Partition the dataset using this value as the maximum number of rows per partition.
     Default 0, which means no partitioning.
+
+``COMPRESSION``
+    Compression to be used for the dataset. For Parquet dataset, this value will be
+    passed to the parquet writer.
+    For CSV datasets, supported values are gz (for GZip) or none.
 
 ``bypass-cache``
     Do not store any copies of the dataset in the cache.

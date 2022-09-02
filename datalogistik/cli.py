@@ -76,7 +76,7 @@ Supported formats: Parquet, csv",
         "--compression",
         type=str,
         help="Compression (for parquet: passed to parquet writer, "
-        "for csv: either None of gz)",
+        "for csv: either None or gz)",
     )
     gen_parser.add_argument(
         "-s",
