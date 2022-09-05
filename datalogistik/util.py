@@ -626,9 +626,6 @@ def generate_dataset(dataset_info, argument_info):
         dataset_info["format"],
         str(argument_info.partition_max_rows),
     )
-    cached_dataset_path.mkdir(parents=True, exist_ok=True)
-
-    # Call generator
     generators = {"tpc-h": DBGen, "tpc-ds": DSDGen}
     try:
         generator_class = generators[dataset_name]
@@ -641,6 +638,7 @@ def generate_dataset(dataset_info, argument_info):
             partitions >= config.get_thread_count()
             or float(argument_info.scale_factor) <= 1.0
         ):
+            cached_dataset_path.mkdir(parents=True, exist_ok=True)
             generator.create_dataset(
                 out_dir=cached_dataset_path,
                 scale_factor=argument_info.scale_factor,
