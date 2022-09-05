@@ -14,7 +14,6 @@
 
 import os
 import pathlib
-import shutil
 import sys
 import time
 
@@ -40,11 +39,6 @@ def main():
         f"Creating an instance of Dataset '{argument_info.dataset}' in "
         f"'{argument_info.format}' format..."
     )
-    # Here could be a check for whether this dataset instance already exists.
-    # However, because it may be possible that it was generated using different
-    # parameters, we skip it for now. It will be in the cache so the penalty for
-    # re-creating it is small. In the future, we could inquire the metadata file to
-    # check if an existing dataset is still valid.
 
     log.debug(f"Checking local cache at {local_cache_location}")
     cached_dataset_path = util.create_cached_dataset_path(
@@ -60,7 +54,7 @@ def main():
         log.debug(
             f"Found cached dataset metadata file at '{cached_dataset_metadata_file}'"
         )
-        util.copy_from_cache(cached_dataset_path, argument_info.dataset)
+        util.output_result(cached_dataset_path)
         finish()
     else:  # not found in cache, check if the cache has other formats of this dataset
         log.debug(
@@ -98,9 +92,6 @@ def main():
                             "Found cached dataset in different format/partitioning at "
                             f"'{other_nrows_path}'"
                         )
-                        log.debug(
-                            f"Metadata file located at '{cached_dataset_metadata_file}'"
-                        )
                         cached_dataset_path = util.convert_dataset(
                             dataset_info,
                             argument_info.compression,
@@ -109,11 +100,7 @@ def main():
                             cached_nrows,
                             argument_info.partition_max_rows,
                         )
-                        util.copy_from_cache(cached_dataset_path, argument_info.dataset)
-                        if argument_info.bypass_cache:
-                            log.info("Removing cache entry")
-                            shutil.rmtree(cached_dataset_path, ignore_errors=True)
-                            util.clean_cache_dir(cached_dataset_path)
+                        util.output_result(cached_dataset_path)
                         finish()
                     else:
                         log.info(
@@ -143,12 +130,7 @@ def main():
             argument_info.partition_max_rows,
         )
 
-    # Copy to the actual output location
-    util.copy_from_cache(cached_dataset_path, argument_info.dataset)
-    if argument_info.bypass_cache:
-        log.info("Removing cache entry")
-        shutil.rmtree(cached_dataset_path, ignore_errors=True)
-        util.clean_cache_dir(cached_dataset_path)
+    util.output_result(cached_dataset_path)
     finish()
 
 
