@@ -615,4 +615,24 @@ def download_dataset(dataset_info, argument_info):
 
 
 def output_result(dataset_directory):
-    print(dataset_directory)
+    output = {"path": str(dataset_directory)}
+    metadata_file = pathlib.Path(dataset_directory, config.metadata_filename)
+    if metadata_file.exists():
+        with open(metadata_file) as f:
+            metadata = json.load(f)
+            add_if_present(
+                [
+                    "name",
+                    "format",
+                    "partitioning-nrows",
+                    "scale-factor",
+                    "dim",
+                    "delim",
+                    "parquet-compression",
+                ],
+                metadata,
+                output,
+            )
+            output["files"] = [item["file_path"] for item in metadata["files"]]
+
+    print(json.dumps(output))
