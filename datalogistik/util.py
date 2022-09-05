@@ -530,7 +530,7 @@ def convert_dataset(
         (dataset_info["format"] == new_format)
         and (dataset_info["partitioning-nrows"] == new_nrows)
         and (dataset_info.get("file-compression") == new_compression)  # rules out tpc
-        and (new_compression == "gz")  #  Only re-download compressed datasets
+        and (new_compression == "gz")  # Only re-download compressed datasets
     ):
         log.info("Re-downloading instead of converting.")
         return download_dataset(dataset_info)

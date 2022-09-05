@@ -52,9 +52,7 @@ def main():
         cached_dataset_path, config.metadata_filename
     )
     if cached_dataset_metadata_file.exists():
-        log.debug(
-            f"Found cached dataset at '{cached_dataset_metadata_file}'"
-        )
+        log.debug(f"Found cached dataset at '{cached_dataset_metadata_file}'")
         util.output_result(cached_dataset_path)
         finish()
     else:  # not found in cache, check if the cache has other formats of this dataset
@@ -110,9 +108,7 @@ def main():
                     util.output_result(cached_dataset_path)
                     finish()
                 else:
-                    log.info(
-                        "Found cached dataset without metadata file, cleaning..."
-                    )
+                    log.info("Found cached dataset without metadata file, cleaning...")
                     util.clean_cache_dir(similar_dataset_path)
 
     # If we have not exited at this point, nothing useable was found in the local cache.
