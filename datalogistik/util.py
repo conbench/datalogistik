@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import concurrent
 import datetime
 import gzip
 import hashlib
@@ -108,19 +109,29 @@ def calculate_checksum(file_path):
     return file_hash.hexdigest()
 
 
-def add_file_listing(metadata, path):
-    file_list = []
-    for cur_path, dirs, files in os.walk(path):
-        for file_name in files:
-            full_path = os.path.join(cur_path, file_name)
-            rel_path = os.path.relpath(full_path, path)
-            file_size = os.path.getsize(full_path)
-            file_md5 = calculate_checksum(full_path)
-            file_list.append(
-                {"file_path": rel_path, "file_size": file_size, "md5": file_md5}
-            )
+def file_listing_item(dataset_path, file_path):
+    rel_path = os.path.relpath(file_path, dataset_path)
+    file_size = os.path.getsize(file_path)
+    file_md5 = calculate_checksum(file_path)
+    return {"file_path": rel_path, "file_size": file_size, "md5": file_md5}
 
-    metadata["files"] = file_list
+
+def add_file_listing(metadata, path):
+    with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
+        futures = []
+        for cur_path, dirs, files in os.walk(path):
+            for file_name in files:
+                futures.append(
+                    pool.submit(
+                        file_listing_item,
+                        path,
+                        os.path.join(cur_path, file_name)
+                    )
+                )
+        file_list = []
+        for f in futures:
+            file_list.append(f.result())
+    metadata["files"] = sorted(file_list, key=lambda item: item["file_path"])
 
 
 # Returns true if the given path contains a dataset with a metadata file that contains
