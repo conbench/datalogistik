@@ -211,7 +211,6 @@ def write_metadata(dataset_info, path):
             "url",
             "homepage",
             "tables",
-            "parquet-compression",
             "files",
         ],
         dataset_info,
@@ -598,7 +597,6 @@ def convert_dataset(
                 dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
-        dataset_info["parquet-compression"] = new_compression
         if dataset_info.get("files"):
             # Remove the old file listing, because it is not valid for the new dataset
             # (write_metadata will generate and add a new file listing with checksums)

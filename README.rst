@@ -267,10 +267,6 @@ datalogistik_metadata.ini
 ``homepage``
     Location where more information about the origins of dataset can be found.
 
-``parquet-compression``
-    When the parquet format is used, what compression standard was used internally. Note
-    that this is different from file-compression.
-
 ``tables``
     A list of tables in the dataset, each with its own (set of) files. Each entry in the
     list has the following properties:
