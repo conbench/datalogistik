@@ -727,11 +727,11 @@ def download_dataset(dataset_info):
     log.info("Downloading to cache...")
     down_start = time.perf_counter()
     if dataset_info["format"] == "parquet":
-        compression = (
-            "unknown"  # Temporary location until we detect the actual compression
-        )
+        # Temporary location until we detect the actual compression
+        compression = "unknown"
     else:
-        compression = dataset_info["file-compression"]
+        compression = dataset_info.get("file-compression", "none")
+
     cached_dataset_path = create_cached_dataset_path(
         dataset_info["name"],
         "",  # no scale_factor
