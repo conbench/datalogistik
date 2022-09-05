@@ -280,17 +280,21 @@ def clean_cache_dir(path):
             os.rmdir(path)
 
 
-# Search the cache for directories that do not have a metadata file
-# and are not part of a dataset), and remove them.
+# Search the cache for directories that are not part of a dataset, and remove them.
+# Also removes directories that do not have any datasets underneath them.
 def clean_cache():
     cache_root = config.get_cache_location()
     log.info(f"Cleaning cache at {cache_root}")
-    for dirpath, dirnames, _ in os.walk(cache_root):
-        if pathlib.Path(dirpath) == cache_root:
-            continue
-        if not dirnames:
-            if not valid_metadata_in_parent_dirs(dirpath):
-                clean_cache_dir(dirpath)
+    cleaned_leaf_dir = True
+    while cleaned_leaf_dir:
+        cleaned_leaf_dir = False
+        for dirpath, dirnames, _ in os.walk(cache_root):
+            if pathlib.Path(dirpath) == cache_root:
+                continue
+            if not dirnames:
+                if not valid_metadata_in_parent_dirs(dirpath):
+                    clean_cache_dir(dirpath)
+                    cleaned_leaf_dir = True
 
 
 # Remove an entry from the cache by the given subdir.
