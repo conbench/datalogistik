@@ -17,7 +17,7 @@ Usage::
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
         [-p PARTITION_MAX_ROWS] \
-        [-b, --bypass-cache]
+        [-c COMPRESSION]
 
     datalogistik cache [-h] \
         [--clean] \
@@ -48,8 +48,8 @@ Usage::
     Partition the dataset using this value as the maximum number of rows per partition.
     Default 0, which means no partitioning.
 
-``bypass-cache``
-    Do not store any copies of the dataset in the cache.
+``COMPRESSION``
+    Internal compression (passed to parquet writer).
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
@@ -204,7 +204,24 @@ In addition, entries can have the following optional properties:
     but that is not what is meant here.
 
 ``schema``
-    The schema of the tabular data in the file. This entry is currently ignored.
+    The schema of the tabular data in the file.
+    The structure of a schema is a JSON string with key:value pairs for each column.
+    The key is the column name, and the value is either the name of an Arrow datatype
+    without any parameters, or a dictionary with the following properties:
+    - type_name: Name of an Arrow datatype
+    - arguments: either a dictionary of argument_name:value items, a list of values,
+    or a single value.
+    Example:
+.. code::
+
+    {
+        "a": "string",
+        "b": {"type_name": "timestamp", "arguments": {"unit": "ms"}},
+        "c": {"type_name": "decimal", "arguments": [7, 3]}
+    }
+
+``header-line``
+    Boolean denoting whether the first line of a CSV file contains the column names (default: false)
 
 Dataset output
 --------------

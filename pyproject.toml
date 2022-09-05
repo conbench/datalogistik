@@ -21,7 +21,7 @@ include = ["repo.json"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-pyarrow = "^7.0.0"
+pyarrow = "^9.0.0"
 urllib3 = "^1.26.9"
 tqdm = "^4.64.0"
 
