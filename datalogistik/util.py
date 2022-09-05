@@ -215,22 +215,30 @@ def write_metadata(dataset_info, path):
         .strftime("%Y-%m-%dT%H:%M:%S%z")
     }
 
+    property_list = [
+        "name",
+        "format",
+        "partitioning-nrows",
+        "scale-factor",
+        "dim",
+        "url",
+        "homepage",
+        "files",
+    ]
+    if dataset_info["format"] == "csv":
+        property_list.extend([
+            "header-line",
+            "delim",
+            "tables"
+        ])
+    else:
+        property_list.extend([
+            "parquet-compression",
+        ])
+
     # Propagate metadata from dataset_info
     add_if_present(
-        [
-            "name",
-            "format",
-            "header-line",
-            "partitioning-nrows",
-            "scale-factor",
-            "dim",
-            "delim",
-            "url",
-            "homepage",
-            "tables",
-            "parquet-compression",
-            "files",
-        ],
+        property_list,
         dataset_info,
         metadata,
     )
@@ -585,11 +593,10 @@ def convert_dataset(
         conv_time = time.perf_counter() - conv_start
         log.info("Finished conversion.")
         log.debug(f"conversion took {conv_time:0.2f} s")
-        # Parquet already stores the schema internally
-        if new_format == "csv":
-            # Don't insert inferred-schema if a known schema is available already
-            if dataset_info.get("tables") is None:
-                dataset_info["tables"] = metadata_table_list
+
+        # Don't insert inferred-schema if a known schema is available already
+        if dataset_info.get("tables") is None:
+            dataset_info["tables"] = metadata_table_list
         dataset_info["format"] = new_format
         dataset_info["partitioning-nrows"] = new_nrows
         if parquet_compression is not None:
