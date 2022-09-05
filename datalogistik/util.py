@@ -500,7 +500,7 @@ def convert_dataset(
         (dataset_info["format"] == new_format)
         and (dataset_info["partitioning-nrows"] == new_nrows)
         and (dataset_info.get("file-compression") == new_compression)  # rules out tpc
-        and (new_compression == "gz") #  Only re-download compressed datasets
+        and (new_compression == "gz")  #  Only re-download compressed datasets
     ):
         log.info("Re-downloading instead of converting.")
         return download_dataset(dataset_info)
@@ -676,8 +676,7 @@ def compress(uncompressed_file_path, output_dir, compression):
         return
     if compression == "gz":
         log.debug(
-            f"Compressing GZip dataset {uncompressed_file_path} into "
-            f"{output_dir}"
+            f"Compressing GZip dataset {uncompressed_file_path} into " f"{output_dir}"
         )
         if uncompressed_file_path.is_dir():
             file_list = []
@@ -688,7 +687,9 @@ def compress(uncompressed_file_path, output_dir, compression):
             file_list = [uncompressed_file_path]
         for uncompressed_file in file_list:
             with open(uncompressed_file, "rb") as input_file:
-                with gzip.open(output_dir / (uncompressed_file.name + ".gz"), "wb") as output_file:
+                with gzip.open(
+                    output_dir / (uncompressed_file.name + ".gz"), "wb"
+                ) as output_file:
                     shutil.copyfileobj(input_file, output_file)
     else:
         msg = f"Unsupported compression type ({compression})."
@@ -702,8 +703,7 @@ def decompress(compressed_file_path, output_dir, compression):
         return
     if compression == "gz":
         log.debug(
-            f"Decompressing GZip dataset {compressed_file_path} into "
-            f"{output_dir}"
+            f"Decompressing GZip dataset {compressed_file_path} into " f"{output_dir}"
         )
         if compressed_file_path.is_dir():
             file_list = []

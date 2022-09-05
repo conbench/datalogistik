@@ -657,4 +657,3 @@ def test_convert_dataset_parquet_compression():
     converted_table = converted_table.sort_by("e")
     assert reverted_table == converted_table
     clean("test_complete_dataset")
-
