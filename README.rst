@@ -17,8 +17,7 @@ Usage::
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
         [-p PARTITION_MAX_ROWS] \
-        [-c COMPRESSION] \
-        [-b, --bypass-cache]
+        [-c COMPRESSION]
 
     datalogistik cache [-h] \
         [--clean] \
@@ -53,9 +52,6 @@ Usage::
     Compression to be used for the dataset. For Parquet dataset, this value will be
     passed to the parquet writer.
     For CSV datasets, supported values are gz (for GZip) or none.
-
-``bypass-cache``
-    Do not store any copies of the dataset in the cache.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 

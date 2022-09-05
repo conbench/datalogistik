@@ -72,6 +72,13 @@ def parse_args():
 Supported formats: Parquet, csv",
     )
     gen_parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        required=False,
+        help="Path where the output should be placed",
+    )
+    gen_parser.add_argument(
         "-c",
         "--compression",
         type=str,
@@ -101,12 +108,6 @@ Supported formats: Parquet, csv",
         type=int,
         default=0,
         help="Partition the dataset using this maximum number of rows per file",
-    )
-    gen_parser.add_argument(
-        "-b",
-        "--bypass-cache",
-        action="store_true",
-        help="Do not store any copies of the dataset in the cache",
     )
 
     return parser.parse_args()
