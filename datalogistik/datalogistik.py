@@ -92,9 +92,6 @@ def main():
                             "Found cached dataset in different format/partitioning at "
                             f"'{other_nrows_path}'"
                         )
-                        log.debug(
-                            f"Metadata file located at '{cached_dataset_metadata_file}'"
-                        )
                         cached_dataset_path = util.convert_dataset(
                             dataset_info,
                             argument_info.compression,
