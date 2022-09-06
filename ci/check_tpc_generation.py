@@ -23,7 +23,9 @@ from pyarrow import dataset as ds
 from datalogistik import config, tpc_info
 
 if len(sys.argv) != 4:
-    print(f"Usage: {sys.argv[1]} <tpc-h|tpc-ds> <csv|parquet> dataset_properties_file.json")
+    print(
+        f"Usage: {sys.argv[1]} <tpc-h|tpc-ds> <csv|parquet> dataset_properties_file.json"
+    )
     sys.exit(-1)
 
 dataset = sys.argv[1]
@@ -104,7 +106,8 @@ for table in tpc_info.tpc_table_names[dataset]:
         read_options=ro, parse_options=po, convert_options=co
     )
     ref_ds = ds.dataset(
-        f"./ref_data/{ref_dataset_subpath}/{table}.{ext}", format=ref_dataset_read_format
+        f"./ref_data/{ref_dataset_subpath}/{table}.{ext}",
+        format=ref_dataset_read_format,
     )
     ref_table = ref_ds.to_table(columns=column_list)
     ref_row_count = ref_table.num_rows
