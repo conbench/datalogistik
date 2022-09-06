@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import sys
 
 import pyarrow as pa
@@ -21,8 +22,8 @@ from pyarrow import dataset as ds
 
 from datalogistik import config, tpc_info
 
-if len(sys.argv) != 3:
-    print(f"Usage: {sys.argv[1]} <tpc-h|tpc-ds> <csv|parquet>")
+if len(sys.argv) != 4:
+    print(f"Usage: {sys.argv[1]} <tpc-h|tpc-ds> <csv|parquet> dataset_properties_file.json")
     sys.exit(-1)
 
 dataset = sys.argv[1]
@@ -34,13 +35,15 @@ if file_format not in config.supported_formats:
 if dataset == "tpc-ds":
     encoding = "ISO-8859"
     ext = "vld"
-    dataset_path = "tpc-ds"
+    ref_dataset_subpath = "tpc-ds"
     sf = "1"
 else:
     encoding = "utf8"
     ext = "tbl"
-    dataset_path = "tpc-h/0.001"
+    ref_dataset_subpath = "tpc-h/0.001"
     sf = "0.001"
+dataset_properties = json.load(argv[3])
+dataset_path = dataset_properties["path"]
 
 
 def iter_patable_rows(table):
@@ -99,12 +102,12 @@ for table in tpc_info.tpc_table_names[dataset]:
         read_options=ro, parse_options=po, convert_options=co
     )
     ref_ds = ds.dataset(
-        f"./ref_data/{dataset_path}/{table}.{ext}", format=ref_dataset_read_format
+        f"./ref_data/{ref_dataset_subpath}/{table}.{ext}", format=ref_dataset_read_format
     )
     ref_table = ref_ds.to_table(columns=column_list)
     ref_row_count = ref_table.num_rows
     gen_ds = ds.dataset(
-        f"/home/runner/.datalogistik_cache/{dataset}/scalefactor_{sf}/parquet/partitioning_0/{table}.{file_format}",
+        f"{dataset_path}/{table}.{file_format}",
         format=gen_dataset_read_format,
     )
     gen_table = gen_ds.to_table(columns=column_list)

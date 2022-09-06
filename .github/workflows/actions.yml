@@ -146,14 +146,14 @@ jobs:
         run: poetry install
       - name: Run TPC-H integration test
         if: matrix.dataset == 'tpc-h'
-        run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet -s 0.001
+        run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet -s 0.001 | tee dloutput.json
       - name: Run TPC-DS integration test
         if: matrix.dataset == 'tpc-ds'
-        run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet
+        run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet | tee dloutput.json
       - name: Validate TPC-H output
         if: matrix.dataset == 'tpc-h'
-        run: poetry run python ./ci/check_tpc_generation.py ${{ matrix.dataset }} parquet
+        run: poetry run python ./ci/check_tpc_generation.py ${{ matrix.dataset }} parquet dloutput.json
       - name: Validate TPC-DS output
         if: matrix.dataset == 'tpc-ds'
         continue-on-error: true
-        run: poetry run python ./ci/check_tpc_generation.py ${{ matrix.dataset }} parquet
+        run: poetry run python ./ci/check_tpc_generation.py ${{ matrix.dataset }} parquet dloutput.json
