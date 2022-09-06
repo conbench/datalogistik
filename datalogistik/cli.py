@@ -72,13 +72,6 @@ def parse_args():
 Supported formats: Parquet, csv",
     )
     gen_parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        required=False,
-        help="Path where the output should be placed",
-    )
-    gen_parser.add_argument(
         "-c",
         "--compression",
         type=str,
