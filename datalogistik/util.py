@@ -683,28 +683,18 @@ def generate_dataset(dataset_info, argument_info):
                 "partitioning-nrows"
             ] = new_maxrows  # this will trigger a conversion
 
-        # If the entry in the repo file does not specify the schema, try to detect it
-        if not dataset_info.get("tables"):
-            metadata_table_list = []
-            for table in tpc_info.tpc_table_names[dataset_name]:
-                input_file = pathlib.Path(cached_dataset_path, table + ".csv")
-                try:
-                    dataset, scanner = get_dataset(input_file, dataset_info, table)
-                    metadata_table_list.append(
-                        {
-                            "table": table,
-                            # TODO: this schema is not inferred, but it does not have
-                            # the same structure of a user-specified schema either
-                            "schema": schema_to_dict(dataset.schema),
-                        }
-                    )
-                except Exception:
-                    log.error(
-                        f"pyarrow.dataset is unable to read schema from generated file {input_file}"
-                    )
-                    clean_cache_dir(cached_dataset_path)
-                    raise
-
+        metadata_table_list = []
+        for table in tpc_info.tpc_table_names[dataset_name]:
+            input_file = pathlib.Path(cached_dataset_path, table + ".csv")
+            dataset, scanner = get_dataset(input_file, dataset_info, table)
+            metadata_table_list.append(
+                {
+                    "table": table,
+                    # TODO: this schema is not inferred, but it does not have
+                    # the same structure of a user-specified schema either
+                    "schema": schema_to_dict(dataset.schema),
+                }
+            )
         dataset_info["tables"] = metadata_table_list
 
         gen_time = time.perf_counter() - gen_start
