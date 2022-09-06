@@ -35,10 +35,12 @@ if dataset == "tpc-ds":
     encoding = "ISO-8859"
     ext = "vld"
     dataset_path = "tpc-ds"
+    sf="1"
 else:
     encoding = "utf8"
     ext = "tbl"
     dataset_path = "tpc-h/0.001"
+    sf="0.001"
 
 
 def iter_patable_rows(table):
@@ -102,7 +104,7 @@ for table in tpc_info.tpc_table_names[dataset]:
     ref_table = ref_ds.to_table(columns=column_list)
     ref_row_count = ref_table.num_rows
     gen_ds = ds.dataset(
-        f"./{dataset}/{table}.{file_format}", format=gen_dataset_read_format
+        f"/home/runner/.datalogistik_cache/{dataset}/scalefactor_{sf}/parquet/partitioning_0/{table}.{file_format}", format=gen_dataset_read_format
     )
     gen_table = gen_ds.to_table(columns=column_list)
     if dataset == "tpc-h":
