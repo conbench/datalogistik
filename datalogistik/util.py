@@ -123,9 +123,7 @@ def add_file_listing(metadata, path):
             for file_name in files:
                 futures.append(
                     pool.submit(
-                        file_listing_item,
-                        path,
-                        os.path.join(cur_path, file_name)
+                        file_listing_item, path, os.path.join(cur_path, file_name)
                     )
                 )
         file_list = []
@@ -237,15 +235,13 @@ def write_metadata(dataset_info, path):
         "files",
     ]
     if dataset_info["format"] == "csv":
-        property_list.extend([
-            "header-line",
-            "delim",
-            "tables"
-        ])
+        property_list.extend(["header-line", "delim", "tables"])
     else:
-        property_list.extend([
-            "parquet-compression",
-        ])
+        property_list.extend(
+            [
+                "parquet-compression",
+            ]
+        )
 
     # Propagate metadata from dataset_info
     add_if_present(
@@ -655,7 +651,6 @@ def generate_dataset(dataset_info, argument_info):
         partitions = convert_maxrows_parts(
             dataset_name, argument_info.scale_factor, argument_info.partition_max_rows
         )
-        # If needed, add some parallelism to speed up generation
         if (
             partitions >= config.get_thread_count()
             or float(argument_info.scale_factor) <= 1.0
@@ -667,6 +662,7 @@ def generate_dataset(dataset_info, argument_info):
                 partitions=partitions,
             )
         else:
+            # If needed, add some parallelism to speed up generation
             new_partitioning = int(argument_info.scale_factor)
             new_maxrows = convert_maxrows_parts(
                 dataset_name, argument_info.scale_factor, new_partitioning

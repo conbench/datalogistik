@@ -226,13 +226,13 @@ def generate_complete_schema_data(num_rows, format):
     data = {
         "a": pa.nulls(k),
         "b": random.choices([True, False], k=k),
-        "c": [random.randint(-(2**8 / 2), 2**8 / 2 - 1) for _ in range(k)],
-        "d": [random.randint(-(2**16 / 2), 2**16 / 2 - 1) for _ in range(k)],
-        "e": [random.randint(-(2**32 / 2), 2**32 / 2 - 1) for _ in range(k)],
-        "f": [random.randint(-(2**64 / 2), 2**64 / 2 - 1) for _ in range(k)],
-        "g": [random.randint(0, 2**8 - 1) for _ in range(k)],
-        "h": [random.randint(0, 2**16 - 1) for _ in range(k)],
-        "j": [random.randint(0, 2**64 - 1) for _ in range(k)],
+        "c": [random.randint(-(2 ** 8 / 2), 2 ** 8 / 2 - 1) for _ in range(k)],
+        "d": [random.randint(-(2 ** 16 / 2), 2 ** 16 / 2 - 1) for _ in range(k)],
+        "e": [random.randint(-(2 ** 32 / 2), 2 ** 32 / 2 - 1) for _ in range(k)],
+        "f": [random.randint(-(2 ** 64 / 2), 2 ** 64 / 2 - 1) for _ in range(k)],
+        "g": [random.randint(0, 2 ** 8 - 1) for _ in range(k)],
+        "h": [random.randint(0, 2 ** 16 - 1) for _ in range(k)],
+        "j": [random.randint(0, 2 ** 64 - 1) for _ in range(k)],
         # "k": [np.float16(random.random()) for _ in range(k)],
         "l": [random.random() for _ in range(k)],
         "m": [random.random() for _ in range(k)],
@@ -284,7 +284,7 @@ def generate_complete_schema_data(num_rows, format):
         # "y": [random.randint(0, 10e6) for _ in range(k)],
     }
     if format == "csv":
-        data["i"] = [random.randint(0, 2**32 - 1) for _ in range(k)]
+        data["i"] = [random.randint(0, 2 ** 32 - 1) for _ in range(k)]
         data["o"] = [
             datetime.datetime(
                 random.randint(1970, 2270),
