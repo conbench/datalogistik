@@ -42,7 +42,9 @@ else:
     ext = "tbl"
     ref_dataset_subpath = "tpc-h/0.001"
     sf = "0.001"
-dataset_properties = json.load(sys.argv[3])
+
+with open(sys.argv[3]) as f:
+    dataset_properties = json.load(f)
 dataset_path = dataset_properties["path"]
 
 
