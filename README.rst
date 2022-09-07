@@ -49,7 +49,9 @@ Usage::
     Default 0, which means no partitioning.
 
 ``COMPRESSION``
-    Internal compression (passed to parquet writer).
+    Compression to be used for the dataset. For Parquet dataset, this value will be
+    passed to the parquet writer.
+    For CSV datasets, supported values are gz (for GZip) or none.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
@@ -223,18 +225,11 @@ In addition, entries can have the following optional properties:
 ``header-line``
     Boolean denoting whether the first line of a CSV file contains the column names (default: false)
 
-Dataset output
+Output
 --------------
 
-Upon success, a directory is created with the name of the dataset. It will contain the
-file(s) and a metadata file. This file contains most of the information that was in the
-repo for this dataset, along with some additional information:
-
-datalogistik_metadata.ini
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``local-creation-date``
-    Date and time when this dataset was downloaded or generated to the cache.
+Upon success, a JSON string is output on stdout. It points to the dataset created in the cache.
+It contains the following properties:
 
 ``name``
     String to identify the dataset.
@@ -255,15 +250,25 @@ datalogistik_metadata.ini
 ``dim``
     Dimensions ([rows, columns]).
 
+``parquet-compression``
+    When the parquet format is used, what compression standard was used internally. Note
+    that this is different from file-compression.
+
+
+The dataset itself contains a metadata file with the following additional properties:
+
+datalogistik_metadata.ini
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``local-creation-date``
+    Date and time when this dataset was downloaded or generated to the cache.
+
+
 ``url``
     The location where this dataset was downloaded.
 
 ``homepage``
     Location where more information about the origins of dataset can be found.
-
-``parquet-compression``
-    When the parquet format is used, what compression standard was used internally. Note
-    that this is different from file-compression.
 
 ``tables``
     A list of tables in the dataset, each with its own (set of) files. Each entry in the

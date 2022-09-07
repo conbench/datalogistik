@@ -334,7 +334,7 @@ def test_get_dataset_with_schema():
     num_rows = 10
     name = "test_complete_dataset"
     clean(name)
-    path = util.create_cached_dataset_path(name, None, "csv", 0)
+    path = util.create_cached_dataset_path(name, None, "csv", 0, None)
     path.mkdir(parents=True)
     test_file = path / "complete_data.csv"
     data = generate_complete_schema_data(num_rows, "csv")
@@ -406,7 +406,7 @@ def test_validate():
 def test_convert_dataset_csv_to_parquet():
     clean("test_csv")
     cache_root = config.get_cache_location()
-    path = pathlib.Path(cache_root, "test_csv/csv/partitioning_0/")
+    path = pathlib.Path(cache_root, "test_csv/csv/partitioning_0/compression_None")
     test_filename = "convtest"
     test_csv_file = test_filename + ".csv"
     test_parquet_file = test_filename + ".parquet"
@@ -427,7 +427,9 @@ def test_convert_dataset_csv_to_parquet():
     written_table = csv.read_csv(test_csv_file_path)
     print(written_table.schema)
     assert written_table == orig_table
-    converted_path = util.convert_dataset(dataset_info, None, "csv", "parquet", 0, 0)
+    converted_path = util.convert_dataset(
+        dataset_info, None, None, "csv", "parquet", 0, 0
+    )
     test_parquet_file_path = pathlib.Path(converted_path, test_parquet_file)
     converted_table = ds.dataset(test_parquet_file_path).to_table()
     print(converted_table.schema)
@@ -438,7 +440,9 @@ def test_convert_dataset_csv_to_parquet():
 def test_convert_dataset_parquet_to_csv():
     clean("test_parquet")
     cache_root = config.get_cache_location()
-    path = pathlib.Path(cache_root, "test_parquet/parquet/partitioning_0/")
+    path = pathlib.Path(
+        cache_root, "test_parquet/parquet/partitioning_0/compression_snappy"
+    )
     test_filename = "convtest"
     test_csv_file = test_filename + ".csv"
     test_parquet_file = test_filename + ".parquet"
@@ -458,7 +462,9 @@ def test_convert_dataset_parquet_to_csv():
     written_table = pq.read_table(test_parquet_file_path)
     print(written_table.schema)
     assert written_table == orig_table
-    converted_path = util.convert_dataset(dataset_info, None, "parquet", "csv", 0, 0)
+    converted_path = util.convert_dataset(
+        dataset_info, "snappy", None, "parquet", "csv", 0, 0
+    )
     test_csv_file_path = pathlib.Path(converted_path, test_csv_file)
     converted_table = ds.dataset(
         test_csv_file_path, format=ds.CsvFileFormat()
@@ -474,7 +480,7 @@ def test_convert_dataset_csv_partitioning():
     format = "csv"
     file_name = "complete_data." + format
     clean("test_complete_dataset")
-    path = util.create_cached_dataset_path(name, None, format, 0)
+    path = util.create_cached_dataset_path(name, None, format, 0, None)
     path.mkdir(parents=True)
     test_file = path / file_name
     data = generate_complete_schema_data(num_rows, "csv")
@@ -485,6 +491,7 @@ def test_convert_dataset_csv_partitioning():
         "name": name,
         "url": "http://example.com/complete_data.csv",  # needed for filename during conversion
         "format": format,
+        "partitioning-nrows": 0,
         "tables": [
             {
                 "table": "complete_data",
@@ -497,7 +504,7 @@ def test_convert_dataset_csv_partitioning():
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
-        complete_dataset_info, None, format, format, 0, 10
+        complete_dataset_info, None, None, format, format, 0, 10
     )
     converted_file = converted_path / file_name
     converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
@@ -506,7 +513,7 @@ def test_convert_dataset_csv_partitioning():
     # Now convert it back to single partition
     clean(f"test_complete_dataset/{format}/partitioning_0")
     reverted_path = util.convert_dataset(
-        complete_dataset_info, None, format, format, 10, 0
+        complete_dataset_info, None, None, format, format, 10, 0
     )
     reverted_file = reverted_path / file_name
     reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
@@ -521,9 +528,10 @@ def test_convert_dataset_parquet_partitioning():
     num_rows = 100
     name = "test_complete_dataset"
     format = "parquet"
+    compression = "snappy"
     file_name = "complete_data." + format
     clean("test_complete_dataset")
-    path = util.create_cached_dataset_path(name, None, format, 0)
+    path = util.create_cached_dataset_path(name, None, format, 0, compression)
     path.mkdir(parents=True)
     test_file = path / file_name
     data = generate_complete_schema_data(num_rows, "parquet")
@@ -533,13 +541,14 @@ def test_convert_dataset_parquet_partitioning():
         "name": name,
         "url": "http://example.com/complete_data.parquet",  # needed for filename during conversion
         "format": "parquet",
+        "partitioning-nrows": 0,
     }
     util.write_metadata(complete_dataset_info, path)
     dataset, _ = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
-        complete_dataset_info, None, format, format, 0, 10
+        complete_dataset_info, compression, compression, format, format, 0, 10
     )
     converted_file = converted_path / file_name
     converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
@@ -548,7 +557,102 @@ def test_convert_dataset_parquet_partitioning():
     # Now convert it back to single partition
     clean(f"test_complete_dataset/{format}/partitioning_0")
     reverted_path = util.convert_dataset(
-        complete_dataset_info, None, format, format, 10, 0
+        complete_dataset_info, compression, compression, format, format, 10, 0
+    )
+    reverted_file = reverted_path / file_name
+    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_table = reverted_dataset.to_table()
+    reverted_table = reverted_table.sort_by("e")
+    converted_table = converted_table.sort_by("e")
+    assert reverted_table == converted_table
+    clean("test_complete_dataset")
+
+
+def test_convert_dataset_csv_compression():
+    num_rows = 100
+    name = "test_complete_dataset"
+    format = "csv"
+    file_name = "complete_data." + format
+    clean("test_complete_dataset")
+    path = util.create_cached_dataset_path(name, None, format, 0, None)
+    path.mkdir(parents=True)
+    test_file = path / file_name
+    data = generate_complete_schema_data(num_rows, "csv")
+    orig_table = pa.table(data, schema=complete_csv_schema)
+    wo = csv.WriteOptions(include_header=False)
+    csv.write_csv(orig_table, test_file, write_options=wo)
+    complete_dataset_info = {
+        "name": name,
+        "url": "http://example.com/complete_data.csv",  # needed for filename during conversion
+        "format": format,
+        "partitioning-nrows": 0,
+        "tables": [
+            {
+                "table": "complete_data",
+                "schema": json.loads(complete_csv_schema_json_input),
+            }
+        ],
+    }
+    util.write_metadata(complete_dataset_info, path)
+    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    written_table = dataset.to_table()
+    assert written_table == orig_table
+    converted_path = util.convert_dataset(
+        complete_dataset_info, None, "gz", format, format, 0, 0
+    )
+    converted_file = converted_path / f"{file_name}.gz"
+    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_table = converted_dataset.to_table()
+    assert converted_table == orig_table
+    # Now decompress it again
+    clean(path)
+    reverted_path = util.convert_dataset(
+        complete_dataset_info, "gz", None, format, format, 0, 0
+    )
+    reverted_file = reverted_path / file_name
+    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_table = reverted_dataset.to_table()
+    reverted_table = reverted_table.sort_by("e")
+    converted_table = converted_table.sort_by("e")
+    assert reverted_table == converted_table
+    clean("test_complete_dataset")
+
+
+def test_convert_dataset_parquet_compression():
+    num_rows = 100
+    name = "test_complete_dataset"
+    format = "parquet"
+    from_compression = "snappy"
+    to_compression = "lz4"
+    file_name = "complete_data." + format
+    clean("test_complete_dataset")
+    path = util.create_cached_dataset_path(name, None, format, 0, from_compression)
+    path.mkdir(parents=True)
+    test_file = path / file_name
+    data = generate_complete_schema_data(num_rows, "parquet")
+    orig_table = pa.table(data, schema=complete_parquet_schema)
+    pq.write_table(orig_table, test_file, compression=from_compression)
+    complete_dataset_info = {
+        "name": name,
+        "url": "http://example.com/complete_data.parquet",  # needed for filename during conversion
+        "format": "parquet",
+        "partitioning-nrows": 0,
+    }
+    util.write_metadata(complete_dataset_info, path)
+    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    written_table = dataset.to_table()
+    assert written_table == orig_table
+    converted_path = util.convert_dataset(
+        complete_dataset_info, from_compression, to_compression, format, format, 0, 0
+    )
+    converted_file = converted_path / file_name
+    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_table = converted_dataset.to_table()
+    assert converted_table == orig_table
+    # Now convert it back to previous compression
+    clean(path)
+    reverted_path = util.convert_dataset(
+        complete_dataset_info, to_compression, from_compression, format, format, 0, 0
     )
     reverted_file = reverted_path / file_name
     reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
