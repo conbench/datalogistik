@@ -21,8 +21,6 @@ import shutil
 import subprocess
 from typing import List, Optional
 
-import tqdm
-
 from .config import get_thread_count
 from .log import log
 from .tpc_info import tpc_table_names
@@ -157,11 +155,7 @@ class _TPCBuilder(abc.ABC):
                             cwd=self.executable_path.parent,
                         )
                     )
-                for f in tqdm.tqdm(
-                    concurrent.futures.as_completed(futures),
-                    total=len(self._get_parallel_table_name_flags()),
-                ):
-                    f.result()
+
             for (table_flag, table_param) in self._get_serial_table_name_flags():
                 _run(
                     self.executable_path,
@@ -201,10 +195,6 @@ class _TPCBuilder(abc.ABC):
                             cwd=self.executable_path.parent,
                         )
                     )
-                for f in tqdm.tqdm(
-                    concurrent.futures.as_completed(futures), total=partitions
-                ):
-                    f.result()
 
             # Move the new files to out_dir
             out_dir = pathlib.Path(out_dir).resolve()
