@@ -705,6 +705,7 @@ def generate_dataset(dataset_info, argument_info):
                 argument_info.scale_factor,
                 dataset_info["format"],
                 str(new_maxrows),
+                None,
             )
             cached_dataset_path.mkdir(parents=True, exist_ok=True)
             generator.create_dataset(
