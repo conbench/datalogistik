@@ -32,9 +32,6 @@ def finish():
     sys.exit(0)
 
 
-local_cache_location = config.get_cache_location()
-
-
 def main():
     (dataset_info, argument_info) = cli.parse_args_and_get_dataset_info()
     if config.get_max_cpu_count() != 0:
@@ -45,6 +42,7 @@ def main():
         f"'{argument_info.format}' format..."
     )
 
+    local_cache_location = config.get_cache_location()
     log.debug(f"Checking local cache at {local_cache_location}")
     cached_dataset_path = util.create_cached_dataset_path(
         argument_info.dataset,
