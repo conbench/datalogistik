@@ -256,6 +256,8 @@ def write_metadata(dataset_info, path):
 
     json_string = json.dumps(metadata)
     metadata_file_path = pathlib.Path(path, config.metadata_filename)
+    if metadata_file_path.exists():
+        set_readwrite(metadata_file_path)
     with open(metadata_file_path, "w") as metadata_file:
         metadata_file.write(json_string)
 
