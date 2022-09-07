@@ -24,7 +24,7 @@ from datalogistik import config, datalogistik, tpc_info, tpc_validation
 
 @pytest.mark.parametrize("dataset_name", tpc_info.tpc_datasets)
 # this will exercise both parallelization strategies
-@pytest.mark.parametrize("scale_factor", [1, 10])
+@pytest.mark.parametrize("scale_factor", [1, 2])
 @pytest.mark.parametrize("format", config.supported_formats)
 @pytest.mark.parametrize("partitioning", [0, 600000])
 def test_tpc_generation(dataset_name, scale_factor, format, partitioning):
@@ -48,19 +48,22 @@ def test_tpc_generation(dataset_name, scale_factor, format, partitioning):
             assert e.value.code == 0
 
 
+@pytest.mark.parametrize("dataset_name", tpc_info.tpc_datasets)
 @pytest.mark.parametrize("format", config.supported_formats)
-@pytest.mark.parametrize("partitioning", [0, 100])
-def validate_tpch_generation(capsys, format, partitioning):
+@pytest.mark.parametrize("partitioning", [0, 600000])
+def validate_tpch_generation(capsys, dataset_name, format, partitioning):
+    if dataset_name == "tpc-ds":
+        pytest.skip()
     with tempfile.TemporaryDirectory() as tmpcachepath:
         os.environ["DATALOGISTIK_CACHE"] = tmpcachepath
         with pytest.raises(SystemExit) as e:
             sys.argv = [
-                "unittest",
+                "test_tpc",
                 "generate",
                 "-d",
-                "tpc-h",
+                dataset_name,
                 "-s",
-                "0.001",
+                "0.001" if dataset_name == "tpc-h" else "1",
                 "-f",
                 format,
                 "-p",
