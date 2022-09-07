@@ -34,8 +34,7 @@ def test_version():
 
 
 def clean(path):
-    if pathlib.Path(config.get_cache_location(), path).exists():
-        util.prune_cache_entry(path)
+    util.prune_cache_entry(path)
 
 
 test_dataset_info = {

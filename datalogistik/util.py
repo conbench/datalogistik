@@ -320,6 +320,9 @@ def prune_cache_entry(sub_path):
     log.debug(f"Pruning cache entries below cache subdir '{sub_path}'")
     cache_root = config.get_cache_location()
     path = pathlib.Path(cache_root, sub_path)
+    if not path.exists():
+        log.info("Could not find entry in cache.")
+        return
     if not contains_dataset(path):
         # check if this path is a subdir of a valid dataset
         if valid_metadata_in_parent_dirs(path.parent):
