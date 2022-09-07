@@ -121,16 +121,13 @@ jobs:
         run: ${{ matrix.installer }} install '${{ matrix.installee }}'
       - name: Test generating and converting a dataset
         run: datalogistik generate -d type_floats -f csv
-  test-tpc-integration:
+  test-tpch-integration:
     strategy:
       matrix:
         os:
           - ubuntu-latest
           - windows-latest
           - macos-latest
-        dataset:
-          - tpc-h
-          - tpc-ds
     runs-on: ${{ matrix.os }}
     steps:
       - name: Add msbuild to PATH
@@ -145,15 +142,6 @@ jobs:
       - name: Create poetry environment
         run: poetry install
       - name: Run TPC-H integration test
-        if: matrix.dataset == 'tpc-h'
-        run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet -s 0.001 | tee dloutput.json
-      - name: Run TPC-DS integration test
-        if: matrix.dataset == 'tpc-ds'
-        run: poetry run datalogistik generate -d ${{ matrix.dataset }} -f parquet | tee dloutput.json
+        run: poetry run datalogistik generate -d tpc-h -f parquet -s 0.001 | tee dloutput.json
       - name: Validate TPC-H output
-        if: matrix.dataset == 'tpc-h'
-        run: poetry run python ./ci/check_tpc_generation.py ${{ matrix.dataset }} parquet dloutput.json
-      - name: Validate TPC-DS output
-        if: matrix.dataset == 'tpc-ds'
-        continue-on-error: true
-        run: poetry run python ./ci/check_tpc_generation.py ${{ matrix.dataset }} parquet dloutput.json
+        run: poetry run python ./ci/check_tpc_generation.py dloutput.json
