@@ -570,14 +570,13 @@ def convert_dataset(
             if old_format != "parquet" and old_compression:
                 input_file = input_file.parent / f"{input_file.name}.{old_compression}"
             output_file = pathlib.Path(output_dir, f"{file_name}.{new_format}")
-            if (
-                old_format == "csv"
-                and new_format == "csv"
-                and old_nrows == new_nrows
-                and new_compression is None
-            ):
-                log.info("decompressing without conversion...")
-                decompress(input_file, output_file.parent, old_compression)
+            if old_format == "csv" and new_format == "csv" and old_nrows == new_nrows:
+                if new_compression is None:
+                    log.info(f"decompressing file {input_file} without conversion...")
+                    decompress(input_file, output_file.parent, old_compression)
+                else:
+                    log.info(f"compressing file {input_file} without conversion...")
+                    compress(input_file, output_file.parent, new_compression)
                 continue
 
             dataset, scanner = get_dataset(input_file, dataset_metadata, file_name)
