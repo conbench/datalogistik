@@ -49,7 +49,9 @@ Usage::
     Default 0, which means no partitioning.
 
 ``COMPRESSION``
-    Internal compression (passed to parquet writer).
+    Compression to be used for the dataset. For Parquet dataset, this value will be
+    passed to the parquet writer.
+    For CSV datasets, supported values are gz (for GZip) or none.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
