@@ -159,19 +159,14 @@ def parse_args_and_get_dataset_info():
             log.error(msg)
             raise ValueError(msg)
 
-        # Defaults
-        if opts.compression is None:
-            if opts.format == "parquet":
-                opts.compression = "snappy"
-            if opts.format == "csv":
-                opts.compression = "gz"
-
-        # Note the difference between None and a string "None"
-        if (
-            opts.compression.lower() == "uncompressed"
-            or opts.compression.lower() == "none"
-        ):
-            opts.compression = None
+        # Set defaults and perform sanity-check for the arguments
+        if opts.format not in config.supported_formats:
+            msg = (
+                f"Format '{opts.format}' not supported. Supported formats: "
+                f"{config.supported_formats}"
+            )
+            log.error(msg)
+            raise ValueError(msg)
 
         if opts.scale_factor != "" and opts.dataset not in tpc_info.tpc_datasets:
             msg = "scale-factor is only supported for TPC datasets"
@@ -190,13 +185,21 @@ def parse_args_and_get_dataset_info():
                 "partitioning-nrows": opts.partition_max_rows,
             }
 
-        if opts.format not in config.supported_formats:
-            msg = (
-                f"Format '{opts.format}' not supported. Supported formats: "
-                f"{config.supported_formats}"
-            )
-            log.error(msg)
-            raise ValueError(msg)
+        if opts.compression is None:
+            # Defaults
+            if opts.format == "parquet":
+                opts.compression = "snappy"
+            if opts.format == "csv":
+                # Do not convert unless the user specifically asked
+                opts.compression = dataset_info.get("file-compression")
+        else:
+            if (
+                opts.compression.lower() == "uncompressed"
+                or opts.compression.lower() == "none"
+            ):
+                # Note the difference between None and a string "None".
+                # In various parts of the code, None means uncompressed
+                opts.compression = None
 
         if "partitioning-nrows" not in dataset_info:
             dataset_info["partitioning-nrows"] = 0  # Default: no partitioning
