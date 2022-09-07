@@ -139,6 +139,12 @@ class _TPCBuilder(abc.ABC):
 
         partitions = 1 if partitions == 0 else partitions
         num_cpus = get_thread_count()
+
+        # We use 2 different approaches for parallelizing the calls to the generators:
+        # When generating un-chunked output (partitions == 1), we call the generators
+        # for each table in parallel.
+        # Otherwise, we use a separate process for each chunk, where each chunk
+        # generates a portion of each table.
         if partitions == 1:
             with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
                 futures = []
