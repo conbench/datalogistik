@@ -60,8 +60,12 @@ def main():
         log.debug(f"Found cached dataset at '{cached_dataset_metadata_file}'")
         util.output_result(cached_dataset_path)
         finish()
-    else:  # not found in cache, check if the cache has other formats of this dataset
-        log.debug("Requested dataset not found in cache")
+
+    # Do not convert a tpc dataset to CSV, because Arrow cannot cast decimals to string (ARROW-17458)
+    elif not (
+        argument_info.dataset in tpc_info.tpc_datasets and argument_info.format == "csv"
+    ):
+        # not found in cache, check if the cache has other formats of this dataset
         for cached_file_format in [x for x in config.supported_formats]:
             if argument_info.scale_factor:
                 scale_factor = f"scalefactor_{argument_info.scale_factor}"

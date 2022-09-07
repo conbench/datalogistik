@@ -688,7 +688,9 @@ def generate_dataset(dataset_info, argument_info):
             dataset_name, argument_info.scale_factor, argument_info.partition_max_rows
         )
         if (
-            partitions >= config.get_thread_count()
+            # don't use more parallelism for csv, we can't perform the conversion due to decimal values
+            dataset_info["format"] == "csv"
+            or partitions >= config.get_thread_count()
             or float(argument_info.scale_factor) <= 1.0
         ):
             cached_dataset_path.mkdir(parents=True, exist_ok=True)
