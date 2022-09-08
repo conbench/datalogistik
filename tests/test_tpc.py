@@ -51,7 +51,7 @@ def test_tpc_generation(dataset_name, scale_factor, format, partitioning):
 @pytest.mark.parametrize("dataset_name", tpc_info.tpc_datasets)
 @pytest.mark.parametrize("format", config.supported_formats)
 @pytest.mark.parametrize("partitioning", [0, 600000])
-def validate_tpch_generation(capsys, dataset_name, format, partitioning):
+def test_validate_tpch_generation(capsys, dataset_name, format, partitioning):
     if dataset_name == "tpc-ds":
         pytest.skip()
     with tempfile.TemporaryDirectory() as tmpcachepath:
