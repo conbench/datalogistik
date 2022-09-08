@@ -52,6 +52,28 @@ jobs:
         run: poetry install --no-root
       - name: Lint
         run: poetry run pre-commit run --all-files
+  test-and-validate-tpc-generation:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Add msbuild to PATH
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.1
+      - name: Check out repo
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Install Poetry
+        run: pip install poetry
+      - name: Create poetry environment
+        run: poetry install
+      - name: Run tests
+        run: poetry run pytest tests/test_tpc.py
   unit-tests:
     strategy:
       matrix:
@@ -70,7 +92,7 @@ jobs:
       - name: Create poetry environment
         run: poetry install
       - name: Run tests
-        run: poetry run pytest
+        run: poetry run pytest tests/test_datalogistik.py
   build-wheel:
     runs-on: ubuntu-latest
     steps:
@@ -89,7 +111,7 @@ jobs:
         with:
           name: poetry-build-artifacts
           path: dist
-  test-convert-without-repo:
+  test-wheel:
     strategy:
       matrix:
         os:
@@ -119,29 +141,6 @@ jobs:
           name: poetry-build-artifacts
       - name: Install package
         run: ${{ matrix.installer }} install '${{ matrix.installee }}'
-      - name: Test generating and converting a dataset
+      - name: Test downloading and converting a dataset
         run: datalogistik generate -d type_floats -f csv
-  test-tpch-integration:
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Add msbuild to PATH
-        if: matrix.os == 'windows-latest'
-        uses: microsoft/setup-msbuild@v1.1
-      - name: Check out repo
-        uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-      - name: Install poetry
-        run: pip install poetry
-      - name: Create poetry environment
-        run: poetry install
-      - name: Run TPC-H integration test
-        run: poetry run datalogistik generate -d tpc-h -f parquet -s 0.001 | tee dloutput.json
-      - name: Validate TPC-H output
-        run: poetry run python ./ci/check_tpc_generation.py dloutput.json
+
