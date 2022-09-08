@@ -51,7 +51,7 @@ def test_tpc_generation(dataset_name, scale_factor, format, partitioning):
 @pytest.mark.parametrize("dataset_name", tpc_info.tpc_datasets)
 @pytest.mark.parametrize("format", config.supported_formats)
 @pytest.mark.parametrize("partitioning", [0, 600000])
-def test_validate_tpch_generation(capsys, dataset_name, format, partitioning):
+def test_validate_tpc_generation(capsys, dataset_name, format, partitioning):
     if dataset_name == "tpc-ds":
         pytest.skip()
     with tempfile.TemporaryDirectory() as tmpcachepath:
@@ -67,14 +67,14 @@ def test_validate_tpch_generation(capsys, dataset_name, format, partitioning):
                 "-f",
                 format,
                 "-p",
-                partitioning,
+                str(partitioning),
             ]
             datalogistik.main()
             assert e.type == SystemExit
             assert e.value.code == 0
 
         captured = capsys.readouterr().out
-        dataset_result = json.load(captured)
+        dataset_result = json.loads(captured)
         dataset_name = dataset_result["name"]
         dataset_path = dataset_result["path"]
         file_format = dataset_result["format"]
