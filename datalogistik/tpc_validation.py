@@ -27,6 +27,20 @@ def iter_patable_rows(table):
             yield row
 
 
+def print_diff(ref_table, gen_table):
+    for (i, (ref_row, gen_row)) in enumerate(
+        zip(iter_patable_rows(ref_table), iter_patable_rows(gen_table))
+    ):
+        if ref_row != gen_row:
+            print(f"row {i}: ")
+            for (ref_val, gen_val) in zip(ref_row, gen_row):
+                if ref_val != gen_val:
+                    print(f"<ref:{ref_val}|gen:{gen_val}>", end=" ")
+                else:
+                    print(ref_val, end=" ")
+            print("")
+
+
 # Validate a TPC dataset.
 # For TPC-H, it should have the same scale factor as the reference data (0.001)
 # The TPC-DS reference data is meant to be used on valid test scale factors (e.g. 1000)
@@ -110,9 +124,10 @@ def validate_tpc_dataset(dataset_name, dataset_path, file_format):
                 failure_occurred = True
                 print(f"ref ncols: {ref_table.num_columns} nrows: {ref_table.num_rows}")
                 print(f"gen ncols: {gen_table.num_columns} nrows: {gen_table.num_rows}")
+                print_diff(ref_table, gen_table)
         else:  # tpd-ds
             # For each row in the ref table, check if that row exists in the generated data
-            table_failures = 0
+            missing_rows = []
             for row in iter_patable_rows(ref_table):
                 # Build up an expression
                 expr = pc.equal(gen_table[column_list[0]], row[0])
@@ -121,11 +136,13 @@ def validate_tpc_dataset(dataset_name, dataset_path, file_format):
                 result = pc.filter(gen_table, expr)
                 if result.num_rows == 0:
                     failure_occurred = True
-                    table_failures += 1
-            if table_failures != 0:
+                    missing_rows.append(row)
+            if len(missing_rows) != 0:
                 print(
-                    f"Validation of table {table}: FAILED with {table_failures} failures"
+                    f"Validation of table {table}: FAILED with {len(missing_rows)} missing rows:"
                 )
+                print(missing_rows)
+
             else:
                 print(f"Validation of table {table}: OK")
 
