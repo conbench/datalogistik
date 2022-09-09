@@ -19,16 +19,16 @@ import tempfile
 
 import pytest
 
-from datalogistik import config, datalogistik, tpc_info, tpc_validation
+from datalogistik import datalogistik, tpc_validation
+
+# TODO: TPC-DS tests
+# TODO: TPC with partitions
 
 
-@pytest.mark.parametrize("dataset_name", tpc_info.tpc_datasets)
-@pytest.mark.parametrize("scale_factor", [1])  # sf1 is the smallest supported by tpc-ds
-# @pytest.mark.parametrize("format", config.supported_formats)
+@pytest.mark.parametrize("dataset_name", ["tpc-h"])
+@pytest.mark.parametrize("scale_factor", [0.01, 0.1])
 @pytest.mark.parametrize("format", ["parquet"])
-# this will exercise both parallelization strategies
-@pytest.mark.parametrize("partitioning", [0, 600000])
-def test_tpc_generation(dataset_name, scale_factor, format, partitioning):
+def test_tpc_generation(dataset_name, scale_factor, format):
     with tempfile.TemporaryDirectory() as tmpcachepath:
         os.environ["DATALOGISTIK_CACHE"] = tmpcachepath
         with pytest.raises(SystemExit) as e:
@@ -42,20 +42,16 @@ def test_tpc_generation(dataset_name, scale_factor, format, partitioning):
                 "-f",
                 format,
                 "-p",
-                str(partitioning),
+                "0",
             ]
             datalogistik.main()
             assert e.type == SystemExit
             assert e.value.code == 0
 
 
-@pytest.mark.parametrize("dataset_name", tpc_info.tpc_datasets)
-@pytest.mark.parametrize("format", config.supported_formats)
-# @pytest.mark.parametrize("partitioning", [0, 600])  # Chunked TPC-H also needs sorting
-@pytest.mark.parametrize("partitioning", [0])
-def test_validate_tpc_generation(capsys, dataset_name, format, partitioning):
-    if dataset_name == "tpc-ds":
-        pytest.skip()
+@pytest.mark.parametrize("dataset_name", ["tpc-h"])
+@pytest.mark.parametrize("format", ["parquet"])
+def test_validate_tpc_generation(capsys, dataset_name, format):
     with tempfile.TemporaryDirectory() as tmpcachepath:
         os.environ["DATALOGISTIK_CACHE"] = tmpcachepath
         with pytest.raises(SystemExit) as e:
@@ -69,7 +65,7 @@ def test_validate_tpc_generation(capsys, dataset_name, format, partitioning):
                 "-f",
                 format,
                 "-p",
-                str(partitioning),
+                "0",
             ]
             datalogistik.main()
             assert e.type == SystemExit

@@ -116,6 +116,14 @@ def validate_tpc_dataset(dataset_name, dataset_path, file_format):
         )
         gen_table = gen_ds.to_table(columns=column_list)
         if dataset_name == "tpc-h":
+            # resort, since order is not deterministic in pyarrow
+            gen_table = gen_table.sort_by(
+                [(x, "ascending") for x in gen_table.column_names]
+            )
+            ref_table = ref_table.sort_by(
+                [(x, "ascending") for x in ref_table.column_names]
+            )
+
             # Perform a simple equality check
             if ref_table == gen_table:
                 print(f"Validation of table {table}: OK")

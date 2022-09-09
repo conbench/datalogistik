@@ -447,57 +447,76 @@ def get_dataset(input_file, dataset_info, table_name=None):
     if format == "parquet":
         dataset_read_format = ds.ParquetFileFormat()
     if format == "csv":
-        # defaults
-        po = csv.ParseOptions()
-        ro = csv.ReadOptions()
-        co = csv.ConvertOptions()
-        # TODO: Should we fall-back to read_csv in case schema detection fails?
-
-        if "delim" in dataset_info:
-            po = csv.ParseOptions(delimiter=dataset_info["delim"])
-        if dataset_info["name"] in tpc_info.tpc_datasets:
-            if table_name is None:
-                msg = (
-                    "dataset is in tpc_datasets but table_name (needed to look up the "
-                    "schema) is 'None'"
-                )
-                log.error(msg)
-                raise ValueError(msg)
-            column_types = tpc_info.col_dicts[dataset_info["name"]][table_name]
-            column_list = list(column_types.keys())
-
-            # dbgen's .tbl output has a trailing delimiter
-            column_types_trailed = column_types.copy()
-            column_types_trailed["trailing_columns"] = pa.string()
-            ro = csv.ReadOptions(
-                column_names=column_types_trailed.keys(),
-                encoding="iso8859" if dataset_info["name"] == "tpc-ds" else "utf8",
-            )
-            co = csv.ConvertOptions(column_types=column_types_trailed)
-        else:  # not a TPC dataset
-            column_names = None
-            autogen_column_names = False
-            table_schema = get_table_schema_from_metadata(dataset_info, table_name)
-            if table_schema:
-                log.debug("Found user-specified schema in metadata")
-                schema = get_arrow_schema(table_schema)
-                column_names = list(table_schema.keys())
-            else:
-                has_header_line = dataset_info.get("header-line", False)
-                autogen_column_names = not has_header_line
-
-            ro = csv.ReadOptions(
-                column_names=column_names,
-                autogenerate_column_names=autogen_column_names,
-            )
-
-        dataset_read_format = ds.CsvFileFormat(
-            read_options=ro, parse_options=po, convert_options=co
-        )
+        dataset_read_format, schema = get_csv_dataset(table_name, dataset_info)
+    if format == "tpc-raw":
+        dataset_read_format, column_list = get_raw_tpc_dataset(table_name, dataset_info)
 
     dataset = ds.dataset(input_file, schema=schema, format=dataset_read_format)
     scanner = dataset.scanner(columns=column_list)
     return dataset, scanner
+
+
+def get_csv_dataset(table_name, dataset_info):
+    # defaults
+    po = csv.ParseOptions()
+    co = csv.ConvertOptions()
+    schema = None
+    # TODO: Should we fall-back to read_csv in case schema detection fails?
+    if "delim" in dataset_info:
+        po = csv.ParseOptions(delimiter=dataset_info["delim"])
+
+    column_names = None
+    autogen_column_names = False
+    table_schema = get_table_schema_from_metadata(dataset_info, table_name)
+    if table_schema:
+        log.debug("Found user-specified schema in metadata")
+        schema = get_arrow_schema(table_schema)
+        column_names = list(table_schema.keys())
+    else:
+        has_header_line = dataset_info.get("header-line", False)
+        autogen_column_names = not has_header_line
+
+    ro = csv.ReadOptions(
+        column_names=column_names,
+        autogenerate_column_names=autogen_column_names,
+    )
+
+    dataset_read_format = ds.CsvFileFormat(
+        read_options=ro, parse_options=po, convert_options=co
+    )
+
+    return dataset_read_format, schema
+
+
+def get_raw_tpc_dataset(table_name, dataset_info):
+    # defaults
+    ro = csv.ReadOptions()
+    po = csv.ParseOptions(delimiter="|")
+
+    if table_name is None:
+        msg = (
+            "dataset is in tpc_datasets but table_name (needed to look up the "
+            "schema) is 'None'"
+        )
+        log.error(msg)
+        raise ValueError(msg)
+    column_types = tpc_info.col_dicts[dataset_info["name"]][table_name]
+    column_list = list(column_types.keys())
+
+    # dbgen's .tbl output has a trailing delimiter
+    column_types_trailed = column_types.copy()
+    column_types_trailed["trailing_columns"] = pa.string()
+    ro = csv.ReadOptions(
+        column_names=column_types_trailed.keys(),
+        encoding="iso8859" if dataset_info["name"] == "tpc-ds" else "utf8",
+    )
+    co = csv.ConvertOptions(column_types=column_types_trailed)
+
+    dataset_read_format = ds.CsvFileFormat(
+        read_options=ro, parse_options=po, convert_options=co
+    )
+
+    return dataset_read_format, column_list
 
 
 # Convert a cached dataset into another format, return the new directory path
@@ -567,7 +586,14 @@ def convert_dataset(
         output_dir.mkdir(parents=True, exist_ok=True)
 
         for file_name in file_names:
-            input_file = pathlib.Path(cached_dataset_path, f"{file_name}.{old_format}")
+            # TODO: this is a bit of a hack, but generally speaking _all_ partitioned
+            # datasets (not just tpc-raw) should not have a file extension in the filename
+            if old_format == "tpc-raw":
+                input_file = pathlib.Path(cached_dataset_path, f"{file_name}")
+            else:
+                input_file = pathlib.Path(
+                    cached_dataset_path, f"{file_name}.{old_format}"
+                )
             if old_format != "parquet" and old_compression:
                 input_file = input_file.parent / f"{input_file.name}.{old_compression}"
             output_file = pathlib.Path(output_dir, f"{file_name}.{new_format}")
@@ -604,13 +630,29 @@ def convert_dataset(
                 else:
                     dataset_info["header-line"] = True
 
+            # Find a reasonable number to set our rows per row group.
+            # and then make sure that max rows per group is less than new_nrows
+            # TODO: This should actually be something that takes into account the
+            # number of cells by default (rows * cols), and then _also_ be configurable like
+            # it is in arrowbench
+            if 15625000 <= new_nrows:
+                maxrpg = 15625000
+            else:
+                maxrpg = new_nrows
+            minrpg = maxrpg - 1
+            # but if that's 0, set it to None
+            if maxrpg == 0:
+                maxrpg = None
+                minrpg = None
+
             ds.write_dataset(
                 scanner,
                 output_file,
                 format=dataset_write_format,
                 file_options=write_options,
                 max_rows_per_file=new_nrows,
-                max_rows_per_group=new_nrows if new_nrows != 0 else None,
+                min_rows_per_group=minrpg,
+                max_rows_per_group=maxrpg,
                 file_visitor=file_visitor if config.debug else None,
             )
             if new_nrows == 0:
@@ -671,6 +713,8 @@ def convert_maxrows_parts(tpc_name, scale_factor, parts_or_rows):
 
 
 # Generate a dataset by calling one of the supported external generators
+# TODO: Generator output cannot be used as dataset output directly, because of the
+# trailing columns.
 def generate_dataset(dataset_info, argument_info):
     dataset_name = argument_info.dataset
     log.info(f"Generating {dataset_name} data to cache...")
@@ -686,48 +730,30 @@ def generate_dataset(dataset_info, argument_info):
     try:
         generator_class = generators[dataset_name]
         generator = generator_class(executable_path=argument_info.generator_path)
-        partitions = convert_maxrows_parts(
-            dataset_name, argument_info.scale_factor, argument_info.partition_max_rows
+        new_partitioning = config.get_thread_count()
+        new_maxrows = convert_maxrows_parts(
+            dataset_name, argument_info.scale_factor, new_partitioning
         )
-        if (
-            # don't use more parallelism for csv, we can't perform the conversion due to decimal values
-            # TODO: remove this. conversion is always needed, to remove the trailing column.
-            argument_info.format == "csv"
-            or partitions >= config.get_thread_count()
-            or float(argument_info.scale_factor) <= 1.0
-        ):
-            cached_dataset_path.mkdir(parents=True, exist_ok=True)
-            generator.create_dataset(
-                out_dir=cached_dataset_path,
-                scale_factor=argument_info.scale_factor,
-                partitions=partitions,
-            )
-        else:
-            # If needed, add some parallelism to speed up generation
-            new_partitioning = int(argument_info.scale_factor)
-            new_maxrows = convert_maxrows_parts(
-                dataset_name, argument_info.scale_factor, new_partitioning
-            )
-            cached_dataset_path = create_cached_dataset_path(
-                dataset_name,
-                argument_info.scale_factor,
-                dataset_info["format"],
-                str(new_maxrows),
-                None,
-            )
-            cached_dataset_path.mkdir(parents=True, exist_ok=True)
-            generator.create_dataset(
-                out_dir=cached_dataset_path,
-                scale_factor=argument_info.scale_factor,
-                partitions=new_partitioning,
-            )
-            dataset_info[
-                "partitioning-nrows"
-            ] = new_maxrows  # this will trigger a conversion
+        cached_dataset_path = create_cached_dataset_path(
+            dataset_name,
+            argument_info.scale_factor,
+            dataset_info["format"],
+            str(new_maxrows),
+            None,
+        )
+        cached_dataset_path.mkdir(parents=True, exist_ok=True)
+        generator.create_dataset(
+            out_dir=cached_dataset_path,
+            scale_factor=argument_info.scale_factor,
+            partitions=new_partitioning,
+        )
+        dataset_info[
+            "partitioning-nrows"
+        ] = new_maxrows  # this will likely trigger a conversion
 
         metadata_table_list = []
         for table in tpc_info.tpc_table_names[dataset_name]:
-            input_file = pathlib.Path(cached_dataset_path, table + ".csv")
+            input_file = pathlib.Path(cached_dataset_path, table)
             dataset, scanner = get_dataset(input_file, dataset_info, table)
             metadata_table_list.append(
                 {

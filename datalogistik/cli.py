@@ -179,7 +179,7 @@ def parse_args_and_get_dataset_info():
             # Construct an dataset_info for a generated dataset
             dataset_info = {
                 "name": opts.dataset,
-                "format": "csv",
+                "format": "tpc-raw",
                 "delim": "|",
                 "scale-factor": opts.scale_factor,
                 "partitioning-nrows": opts.partition_max_rows,
