@@ -23,9 +23,10 @@ from datalogistik import config, datalogistik, tpc_info, tpc_validation
 
 
 @pytest.mark.parametrize("dataset_name", tpc_info.tpc_datasets)
+@pytest.mark.parametrize("scale_factor", [1])  # sf1 is the smallest supported by tpc-ds
+# @pytest.mark.parametrize("format", config.supported_formats)
+@pytest.mark.parametrize("format", ["parquet"])
 # this will exercise both parallelization strategies
-@pytest.mark.parametrize("scale_factor", [1, 2])
-@pytest.mark.parametrize("format", config.supported_formats)
 @pytest.mark.parametrize("partitioning", [0, 600000])
 def test_tpc_generation(dataset_name, scale_factor, format, partitioning):
     with tempfile.TemporaryDirectory() as tmpcachepath:
@@ -50,7 +51,8 @@ def test_tpc_generation(dataset_name, scale_factor, format, partitioning):
 
 @pytest.mark.parametrize("dataset_name", tpc_info.tpc_datasets)
 @pytest.mark.parametrize("format", config.supported_formats)
-@pytest.mark.parametrize("partitioning", [0, 600000])
+# @pytest.mark.parametrize("partitioning", [0, 600])  # Chunked TPC-H also needs sorting
+@pytest.mark.parametrize("partitioning", [0])
 def test_validate_tpc_generation(capsys, dataset_name, format, partitioning):
     if dataset_name == "tpc-ds":
         pytest.skip()
