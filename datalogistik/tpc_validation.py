@@ -119,7 +119,7 @@ def validate_tpc_dataset(dataset_name, dataset_path, file_format):
                 for i in range(1, len(column_list)):
                     expr = pc.and_(expr, pc.equal(gen_table[column_list[i]], row[i]))
                 result = pc.filter(gen_table, expr)
-                if result.num_rows != 0:
+                if result.num_rows == 0:
                     failure_occurred = True
                     table_failures += 1
             if table_failures != 0:
