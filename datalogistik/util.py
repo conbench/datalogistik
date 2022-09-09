@@ -691,7 +691,7 @@ def generate_dataset(dataset_info, argument_info):
         )
         if (
             # don't use more parallelism for csv, we can't perform the conversion due to decimal values
-            dataset_info["format"] == "csv"
+            argument_info.format == "csv"
             or partitions >= config.get_thread_count()
             or float(argument_info.scale_factor) <= 1.0
         ):
