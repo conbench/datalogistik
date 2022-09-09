@@ -658,6 +658,7 @@ def convert_dataset(
             if new_nrows == 0:
                 # Convert from name.format/part-0.format to simply a file name.format
                 # To stay consistent with downloaded/generated datasets (without partitioning)
+                # TODO: do we want to change this in accordance to tpc-raw?
                 tmp_dir_name = pathlib.Path(
                     output_file.parent, f"{file_name}.{new_format}.tmp"
                 )
@@ -734,6 +735,8 @@ def generate_dataset(dataset_info, argument_info):
         new_maxrows = convert_maxrows_parts(
             dataset_name, argument_info.scale_factor, new_partitioning
         )
+        # TODO: create 1 partitioning name because we do not want to re-generate
+        # when the user performs additional runs with a different nThreads env var
         cached_dataset_path = create_cached_dataset_path(
             dataset_name,
             argument_info.scale_factor,

@@ -140,6 +140,7 @@ class _TPCBuilder(abc.ABC):
         partitions = 1 if partitions == 0 else partitions
         num_cpus = get_thread_count()
 
+        # TODO: merge partitions and num_cpus, right now they should be the same thing
         with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
             futures = []
             for p in range(1, partitions + 1):
