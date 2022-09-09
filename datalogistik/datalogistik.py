@@ -54,6 +54,7 @@ def main():
     cached_dataset_metadata_file = pathlib.Path(
         cached_dataset_path, config.metadata_filename
     )
+
     if cached_dataset_metadata_file.exists():
         log.debug(f"Found cached dataset at '{cached_dataset_metadata_file}'")
         util.output_result(cached_dataset_path)

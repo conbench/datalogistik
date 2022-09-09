@@ -351,7 +351,7 @@ def test_get_dataset_with_schema():
         ],
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     read_table = dataset.to_table()
 
     assert ref_table == read_table
@@ -499,14 +499,14 @@ def test_convert_dataset_csv_partitioning():
         ],
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
         complete_dataset_info, None, None, format, format, 0, 10
     )
     converted_file = converted_path / file_name
-    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_dataset = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
     assert converted_table == orig_table
     # Now convert it back to single partition
@@ -515,7 +515,7 @@ def test_convert_dataset_csv_partitioning():
         complete_dataset_info, None, None, format, format, 10, 0
     )
     reverted_file = reverted_path / file_name
-    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_dataset = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
     reverted_table = reverted_table.sort_by("e")
     converted_table = converted_table.sort_by("e")
@@ -543,14 +543,14 @@ def test_convert_dataset_parquet_partitioning():
         "partitioning-nrows": 0,
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
         complete_dataset_info, compression, compression, format, format, 0, 10
     )
     converted_file = converted_path / file_name
-    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_dataset = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
     assert converted_table == orig_table
     # Now convert it back to single partition
@@ -559,7 +559,7 @@ def test_convert_dataset_parquet_partitioning():
         complete_dataset_info, compression, compression, format, format, 10, 0
     )
     reverted_file = reverted_path / file_name
-    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_dataset = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
     reverted_table = reverted_table.sort_by("e")
     converted_table = converted_table.sort_by("e")
@@ -593,14 +593,14 @@ def test_convert_dataset_csv_compression():
         ],
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
         complete_dataset_info, None, "gz", format, format, 0, 0
     )
     converted_file = converted_path / f"{file_name}.gz"
-    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_dataset = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
     assert converted_table == orig_table
     # Now decompress it again
@@ -609,7 +609,7 @@ def test_convert_dataset_csv_compression():
         complete_dataset_info, "gz", None, format, format, 0, 0
     )
     reverted_file = reverted_path / file_name
-    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_dataset = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
     reverted_table = reverted_table.sort_by("e")
     converted_table = converted_table.sort_by("e")
@@ -638,14 +638,14 @@ def test_convert_dataset_parquet_compression():
         "partitioning-nrows": 0,
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
         complete_dataset_info, from_compression, to_compression, format, format, 0, 0
     )
     converted_file = converted_path / file_name
-    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_dataset = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
     assert converted_table == orig_table
     # Now convert it back to previous compression
@@ -654,7 +654,7 @@ def test_convert_dataset_parquet_compression():
         complete_dataset_info, to_compression, from_compression, format, format, 0, 0
     )
     reverted_file = reverted_path / file_name
-    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_dataset = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
     reverted_table = reverted_table.sort_by("e")
     converted_table = converted_table.sort_by("e")

@@ -27,7 +27,7 @@ else:  # Unix (Linux or Mac)
     default_cache_location = os.getenv("HOME")
     cache_dir_name = ".datalogistik_cache"
 metadata_filename = "datalogistik_metadata.ini"
-supported_formats = ["parquet", "csv"]
+supported_formats = ["parquet", "csv", "tpc-raw"]
 hashing_chunk_size = 16384
 
 

@@ -441,7 +441,6 @@ def get_table_schema_from_metadata(dataset_info, table_name):
 # Create Arrow Dataset for a given input file
 def get_dataset(input_file, dataset_info, table_name=None):
     # Defaults
-    column_list = None
     schema = None
     format = dataset_info["format"]
     if format == "parquet":
@@ -449,11 +448,10 @@ def get_dataset(input_file, dataset_info, table_name=None):
     if format == "csv":
         dataset_read_format, schema = get_csv_dataset(table_name, dataset_info)
     if format == "tpc-raw":
-        dataset_read_format, column_list = get_raw_tpc_dataset(table_name, dataset_info)
+        dataset_read_format, schema = get_raw_tpc_dataset(table_name, dataset_info)
 
     dataset = ds.dataset(input_file, schema=schema, format=dataset_read_format)
-    scanner = dataset.scanner(columns=column_list)
-    return dataset, scanner
+    return dataset
 
 
 def get_csv_dataset(table_name, dataset_info):
@@ -501,7 +499,6 @@ def get_raw_tpc_dataset(table_name, dataset_info):
         log.error(msg)
         raise ValueError(msg)
     column_types = tpc_info.col_dicts[dataset_info["name"]][table_name]
-    column_list = list(column_types.keys())
 
     # dbgen's .tbl output has a trailing delimiter
     column_types_trailed = column_types.copy()
@@ -510,13 +507,21 @@ def get_raw_tpc_dataset(table_name, dataset_info):
         column_names=column_types_trailed.keys(),
         encoding="iso8859" if dataset_info["name"] == "tpc-ds" else "utf8",
     )
-    co = csv.ConvertOptions(column_types=column_types_trailed)
+
+    co = csv.ConvertOptions(
+        column_types=column_types_trailed,
+        # We should be able to use include_columns here, but I can't
+        # seem to get it to work without duplicating all of the columns all over
+        # include_columns = list(column_types.keys()),
+    )
 
     dataset_read_format = ds.CsvFileFormat(
         read_options=ro, parse_options=po, convert_options=co
     )
 
-    return dataset_read_format, column_list
+    # return the dataset and then also the schema (though the schema cricitally
+    # does not have the extra column at the end here)
+    return dataset_read_format, pa.schema(column_types.copy())
 
 
 # Convert a cached dataset into another format, return the new directory path
@@ -584,7 +589,6 @@ def convert_dataset(
             new_compression,
         )
         output_dir.mkdir(parents=True, exist_ok=True)
-
         for file_name in file_names:
             # TODO: this is a bit of a hack, but generally speaking _all_ partitioned
             # datasets (not just tpc-raw) should not have a file extension in the filename
@@ -594,8 +598,10 @@ def convert_dataset(
                 input_file = pathlib.Path(
                     cached_dataset_path, f"{file_name}.{old_format}"
                 )
-            if old_format != "parquet" and old_compression:
-                input_file = input_file.parent / f"{input_file.name}.{old_compression}"
+                if old_format != "parquet" and old_compression:
+                    input_file = (
+                        input_file.parent / f"{input_file.name}.{old_compression}"
+                    )
             output_file = pathlib.Path(output_dir, f"{file_name}.{new_format}")
             if old_format == "csv" and new_format == "csv" and old_nrows == new_nrows:
                 if new_compression is None:
@@ -606,7 +612,7 @@ def convert_dataset(
                     compress(input_file, output_file.parent, new_compression)
                 continue
 
-            dataset, scanner = get_dataset(input_file, dataset_metadata, file_name)
+            dataset = get_dataset(input_file, dataset_metadata, file_name)
 
             write_options = None  # Default
             if new_format == "parquet":
@@ -646,7 +652,7 @@ def convert_dataset(
                 minrpg = None
 
             ds.write_dataset(
-                scanner,
+                dataset,
                 output_file,
                 format=dataset_write_format,
                 file_options=write_options,
@@ -757,7 +763,7 @@ def generate_dataset(dataset_info, argument_info):
         metadata_table_list = []
         for table in tpc_info.tpc_table_names[dataset_name]:
             input_file = pathlib.Path(cached_dataset_path, table)
-            dataset, scanner = get_dataset(input_file, dataset_info, table)
+            dataset = get_dataset(input_file, dataset_info, table)
             metadata_table_list.append(
                 {
                     "table": table,
@@ -890,7 +896,7 @@ def download_dataset(dataset_info):
         # If the entry in the repo file does not specify the schema, try to detect it
         if not dataset_info.get("tables"):
             try:
-                dataset, scanner = get_dataset(dataset_file_path, dataset_info)
+                dataset = get_dataset(dataset_file_path, dataset_info)
                 dataset_info["tables"] = [
                     {
                         "table": str(pathlib.Path(dataset_file_name).stem),
