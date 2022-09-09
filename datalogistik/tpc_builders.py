@@ -140,87 +140,43 @@ class _TPCBuilder(abc.ABC):
         partitions = 1 if partitions == 0 else partitions
         num_cpus = get_thread_count()
 
-        # We use 2 different approaches for parallelizing the calls to the generators:
-        # When generating un-chunked output (partitions == 1), we call the generators
-        # for each table in parallel.
-        # Otherwise, we use a separate process for each chunk, where each chunk
-        # generates a portion of each table.
-        if partitions == 1:
-            with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
-                futures = []
-                for (table_flag, table_param) in self._get_parallel_table_name_flags():
-                    futures.append(
-                        pool.submit(
-                            _run,
-                            self.executable_path,
-                            self.force_flag,
-                            self.scale_flag,
-                            str(scale_factor),
-                            table_flag,
-                            table_param,
-                            cwd=self.executable_path.parent,
-                        )
+        with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
+            futures = []
+            for p in range(1, partitions + 1):
+                futures.append(
+                    pool.submit(
+                        _run,
+                        self.executable_path,
+                        self.force_flag,
+                        self.scale_flag,
+                        str(scale_factor),
+                        self.partitions_flag,
+                        str(partitions),
+                        self.current_segment_flag,
+                        str(p),
+                        cwd=self.executable_path.parent,
                     )
-
-            for (table_flag, table_param) in self._get_serial_table_name_flags():
-                _run(
-                    self.executable_path,
-                    self.force_flag,
-                    self.scale_flag,
-                    str(scale_factor),
-                    table_flag,
-                    table_param,
-                    cwd=self.executable_path.parent,
                 )
-            # Move the new files to out_dir
-            out_dir = pathlib.Path(out_dir).resolve()
-            for table_name in self.table_names:
-                old_file = self.executable_path.parent / (
-                    f"{table_name}.{self.file_extension}"
-                )
-                new_file = out_dir / (table_name + ".csv")
-                shutil.move(old_file, new_file)
-                # reset permissions to read-only
-                os.chmod(new_file, 0o444)
-                log.debug(f"Created {new_file}")
-        else:
-            with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
-                futures = []
-                for p in range(1, partitions + 1):
-                    futures.append(
-                        pool.submit(
-                            _run,
-                            self.executable_path,
-                            self.force_flag,
-                            self.scale_flag,
-                            str(scale_factor),
-                            self.partitions_flag,
-                            str(partitions),
-                            self.current_segment_flag,
-                            str(p),
-                            cwd=self.executable_path.parent,
-                        )
-                    )
 
-            # Move the new files to out_dir
-            out_dir = pathlib.Path(out_dir).resolve()
-            for table_name in self.table_names:
-                table_output_dir = out_dir / f"{table_name}.csv"
+        # Move the new files to out_dir
+        out_dir = pathlib.Path(out_dir).resolve()
+        for table_name in self.table_names:
+            table_output_dir = out_dir / f"{table_name}"
+            if not table_output_dir.exists():
                 table_output_dir.mkdir()
-                for p in range(1, partitions + 1):
-                    old_file = (
-                        self.executable_path.parent
-                        / self._get_partitioned_filename(table_name, p, partitions)
-                    )
-                    new_file = table_output_dir / f"part-{p}.csv"
-                    # Not all tables will have enough rows for the full nr of partitions
-                    if old_file.exists():
-                        shutil.move(old_file, new_file)
-                        # reset permissions to read-only
-                        os.chmod(new_file, 0o444)
-                        log.debug(f"Created {new_file}")
-                os.chmod(table_output_dir, 0o555)
-                log.debug(f"Created all partitions for {table_name}")
+            for p in range(1, partitions + 1):
+                old_file = self.executable_path.parent / self._get_partitioned_filename(
+                    table_name, p, partitions
+                )
+                new_file = table_output_dir / f"part-{p}.tpc-raw"
+                # Not all tables will have enough rows for the full nr of partitions
+                if old_file.exists():
+                    shutil.move(old_file, new_file)
+                    # reset permissions to read-only
+                    os.chmod(new_file, 0o444)
+                    log.debug(f"Created {new_file}")
+            os.chmod(table_output_dir, 0o555)
+            log.debug(f"Created all partitions for {table_name}")
 
     def _make_executable(self):
         """Clone the repo and build the executable."""
