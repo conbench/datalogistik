@@ -50,4 +50,4 @@ def get_thread_count():
     if get_max_cpu_count() != 0:
         return get_max_cpu_count()
     else:
-        return max(1, multiprocessing.cpu_count() - 1)
+        return max(1, multiprocessing.cpu_count())
