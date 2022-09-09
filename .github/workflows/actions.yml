@@ -52,7 +52,7 @@ jobs:
         run: poetry install --no-root
       - name: Lint
         run: poetry run pre-commit run --all-files
-  test-and-validate-tpc-generation:
+  tests:
     strategy:
       matrix:
         os:
@@ -73,26 +73,7 @@ jobs:
       - name: Create poetry environment
         run: poetry install
       - name: Run tests
-        run: poetry run pytest tests/test_tpc.py
-  unit-tests:
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-      - name: Install Poetry
-        run: pip install poetry
-      - name: Create poetry environment
-        run: poetry install
-      - name: Run tests
-        run: poetry run pytest tests/test_datalogistik.py
+        run: poetry run pytest
   build-wheel:
     runs-on: ubuntu-latest
     steps:

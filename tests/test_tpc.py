@@ -21,32 +21,8 @@ import pytest
 
 from datalogistik import datalogistik, tpc_validation
 
-# TODO: TPC-DS tests
-# TODO: TPC with partitions
-
-
-@pytest.mark.parametrize("dataset_name", ["tpc-h"])
-@pytest.mark.parametrize("scale_factor", [0.01, 0.1])
-@pytest.mark.parametrize("format", ["parquet"])
-def test_tpc_generation(dataset_name, scale_factor, format):
-    with tempfile.TemporaryDirectory() as tmpcachepath:
-        os.environ["DATALOGISTIK_CACHE"] = tmpcachepath
-        with pytest.raises(SystemExit) as e:
-            sys.argv = [
-                "test_tpc",
-                "generate",
-                "-d",
-                dataset_name,
-                "-s",
-                str(scale_factor),
-                "-f",
-                format,
-                "-p",
-                "0",
-            ]
-            datalogistik.main()
-            assert e.type == SystemExit
-            assert e.value.code == 0
+# TODO: TPC-DS tests & validation
+# TODO: add more unittest for testing more parameters (sf, partitions, format)
 
 
 @pytest.mark.parametrize("dataset_name", ["tpc-h"])
