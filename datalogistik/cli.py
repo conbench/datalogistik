@@ -94,13 +94,6 @@ Supported formats: Parquet, csv",
         "git on your PATH) and building the tool (requires make for UNIX or msbuild "
         "for Windows on your PATH).",
     )
-    gen_parser.add_argument(
-        "-p",
-        "--partition-max-rows",
-        type=int,
-        default=0,
-        help="Partition the dataset using this maximum number of rows per file",
-    )
 
     return parser.parse_args()
 
@@ -123,6 +116,10 @@ def handle_cache_command(cache_opts):
 def parse_args_and_get_dataset_info():
     # Parse and check cmdline options
     opts = parse_args()
+
+    # add in partitioning to fake that it exists for now (since we don't want ot expose it, but also don't want to rip up the code)
+    opts.partition_max_rows = 0
+
     if opts.command == "cache":
         handle_cache_command(opts)
         sys.exit(0)
@@ -182,6 +179,7 @@ def parse_args_and_get_dataset_info():
                 "format": "tpc-raw",
                 "delim": "|",
                 "scale-factor": opts.scale_factor,
+                # Not used so far, so 0 for now
                 "partitioning-nrows": opts.partition_max_rows,
             }
 

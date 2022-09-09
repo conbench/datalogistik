@@ -16,7 +16,6 @@ Usage::
         -f FORMAT \
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
-        [-p PARTITION_MAX_ROWS] \
         [-c COMPRESSION]
 
     datalogistik cache [-h] \
@@ -43,10 +42,6 @@ Usage::
     given, ``datalogistik`` will attempt to make it by cloning a repo (requires ``git``
     on your PATH) and building the tool (requires ``make`` for UNIX or ``msbuild`` for
     Windows on your PATH).
-
-``PARTITION_MAX_ROWS``
-    Partition the dataset using this value as the maximum number of rows per partition.
-    Default 0, which means no partitioning.
 
 ``COMPRESSION``
     Compression to be used for the dataset. For Parquet dataset, this value will be
@@ -142,18 +137,16 @@ By default, ``datalogistik`` caches datasets to the local directory
 ``./datalogistik_cache``. This directory is created if it does not exist yet. The
 location is the current working directory, but that can be overridden by setting the
 ``DATALOGISTIK_CACHE`` environment variable. It stores each instance of a dataset that
-the user has requested to instantiate, in addition to different file formats and
-partitionings. There is no manifest that lists what entries are in the cache.
+the user has requested to instantiate, in addition to different file formats. There is no manifest that lists what entries are in the cache.
 ``datalogistik`` searches the cache by using its directory structure:
 
 TPC datasets
-    ``datalogistik_cache/<name>/<scale-factor>/<format>/<partitioning-nrows>``
+    ``datalogistik_cache/<name>/<scale-factor>/<format>/``
 
 Other datasets
-    ``datalogistik_cache/<name>/<format>/<partitioning-nrows>``
+    ``datalogistik_cache/<name>/<format>/``
 
-Note that if ``partitioning-nrows`` is 0, the dataset is not partitioned. Each entry in
-the cache has a metadata file called `datalogistik_metadata.ini`_.
+Each entry in the cache has a metadata file called `datalogistik_metadata.ini`_.
 
 Conversion
 ----------
@@ -161,11 +154,6 @@ Conversion
 ``datalogistik`` uses ``pyarrow`` to convert between formats. It is able to convert
 datasets that are too large to fit in memory by using the ``pyarrow`` Datasets API.
 
-Partitioning
-------------
-
-``datalogistik`` can partition datasets by specifying a maximum number of rows per
-partition.
 
 Repositories
 ------------
@@ -237,9 +225,6 @@ It contains the following properties:
 ``format``
     File format (e.g. csv, parquet) - note that this may differ from the information in
     the repo, because ``datalogistik`` might have performed a format conversion.
-
-``partitioning-nrows``
-    The dataset has been partitioned using this maximum number of rows per partition.
 
 ``scale-factor``
     (optional) In case of a TPC dataset, the scale factor.

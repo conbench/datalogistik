@@ -40,8 +40,6 @@ def test_validate_tpc_generation(capsys, dataset_name, format):
                 "0.001" if dataset_name == "tpc-h" else "1",
                 "-f",
                 format,
-                "-p",
-                "0",
             ]
             datalogistik.main()
             assert e.type == SystemExit
