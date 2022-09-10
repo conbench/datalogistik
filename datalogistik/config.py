@@ -32,6 +32,8 @@ hashing_chunk_size = 16384
 
 
 def get_cache_location():
+    # TODO: Do we want to be able to specify the exact loction, or do we
+    # always want to add a directory here?
     return pathlib.Path(
         os.getenv("DATALOGISTIK_CACHE", default_cache_location),
         cache_dir_name,

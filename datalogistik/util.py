@@ -439,6 +439,7 @@ def get_table_schema_from_metadata(dataset_info, table_name):
 
 
 # Create Arrow Dataset for a given input file
+# TODO: this has been moved to the get_dataset() method
 def get_dataset(input_file, dataset_info, table_name=None):
     # Defaults
     schema = None
