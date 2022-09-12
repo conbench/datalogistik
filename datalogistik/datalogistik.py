@@ -17,6 +17,8 @@ import pathlib
 import sys
 import time
 
+import pyarrow
+
 from . import cli, config, tpc_info, util
 from .log import log
 
@@ -30,16 +32,17 @@ def finish():
     sys.exit(0)
 
 
-local_cache_location = config.get_cache_location()
-
-
 def main():
     (dataset_info, argument_info) = cli.parse_args_and_get_dataset_info()
+    if config.get_max_cpu_count() != 0:
+        pyarrow.set_cpu_count(config.get_max_cpu_count())
+        pyarrow.set_io_thread_count(config.get_max_cpu_count())
     log.info(
         f"Creating an instance of Dataset '{argument_info.dataset}' in "
         f"'{argument_info.format}' format..."
     )
 
+    local_cache_location = config.get_cache_location()
     log.debug(f"Checking local cache at {local_cache_location}")
     cached_dataset_path = util.create_cached_dataset_path(
         argument_info.dataset,
@@ -51,12 +54,17 @@ def main():
     cached_dataset_metadata_file = pathlib.Path(
         cached_dataset_path, config.metadata_filename
     )
+
     if cached_dataset_metadata_file.exists():
         log.debug(f"Found cached dataset at '{cached_dataset_metadata_file}'")
         util.output_result(cached_dataset_path)
         finish()
-    else:  # not found in cache, check if the cache has other formats of this dataset
-        log.debug("Requested dataset not found in cache")
+
+    # Do not convert a tpc dataset to CSV, because Arrow cannot cast decimals to string (ARROW-17458)
+    elif not (
+        argument_info.dataset in tpc_info.tpc_datasets and argument_info.format == "csv"
+    ):
+        # not found in cache, check if the cache has other formats of this dataset
         for cached_file_format in [x for x in config.supported_formats]:
             if argument_info.scale_factor:
                 scale_factor = f"scalefactor_{argument_info.scale_factor}"

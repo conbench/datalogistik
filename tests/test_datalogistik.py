@@ -34,8 +34,7 @@ def test_version():
 
 
 def clean(path):
-    if pathlib.Path(config.get_cache_location(), path).exists():
-        util.prune_cache_entry(path)
+    util.prune_cache_entry(path)
 
 
 test_dataset_info = {
@@ -352,7 +351,7 @@ def test_get_dataset_with_schema():
         ],
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     read_table = dataset.to_table()
 
     assert ref_table == read_table
@@ -365,39 +364,42 @@ def test_write_metadata():
         metadata_file_path = os.path.join(path, config.metadata_filename)
         with open(metadata_file_path) as f:
             written_metadata = json.load(f)
+            # Prevent a possible difference in the creation times
+            written_time = written_metadata["local-creation-date"]
+            expected_metadata["local-creation-date"] = written_time
             assert written_metadata == expected_metadata
 
 
 def test_validate():
-    clean("test_validate")
-    cache_root = config.get_cache_location()
-    path = pathlib.Path(cache_root, "test_validate/csv/partitioning_0/")
-    path.mkdir(parents=True, exist_ok=True)
-    create_test_dataset(path)
-    assert util.validate(path) is True
-    metadata_file_path = pathlib.Path(path, config.metadata_filename)
-    with open(metadata_file_path) as f:
-        written_metadata = json.load(f)
-    file_listing = written_metadata["files"]
-    assert util.validate_files(path, file_listing) is True
-    # Now change an md5sum in the metadata and check if the validation fails:
-    file_listing[0]["md5"] = "00000000000000000000000000000000"
-    assert util.validate_files(path, file_listing) is False
+    with tempfile.TemporaryDirectory() as tmpcachepath:
+        os.environ["DATALOGISTIK_CACHE"] = tmpcachepath
+        cache_root = config.get_cache_location()
+        path = pathlib.Path(cache_root, "test_validate/csv/partitioning_0/")
+        path.mkdir(parents=True, exist_ok=True)
+        create_test_dataset(path)
+        assert util.validate(path) is True
+        metadata_file_path = pathlib.Path(path, config.metadata_filename)
+        with open(metadata_file_path) as f:
+            written_metadata = json.load(f)
+        file_listing = written_metadata["files"]
+        assert util.validate_files(path, file_listing) is True
+        # Now change an md5sum in the metadata and check if the validation fails:
+        file_listing[0]["md5"] = "00000000000000000000000000000000"
+        assert util.validate_files(path, file_listing) is False
 
-    # now test --validate and --prune-invalid
-    util.validate_cache(True)  # this should not delete the entry
-    assert metadata_file_path.exists()
+        # now test --validate and --prune-invalid
+        util.validate_cache(True)  # this should not delete the entry
+        assert metadata_file_path.exists()
 
-    written_metadata["files"] = file_listing
-    json_string = json.dumps(written_metadata)
-    os.chmod(metadata_file_path, 0o666)  # to allow writing
-    with open(metadata_file_path, "w") as f:
-        f.write(json_string)
-    util.validate_cache(False)  # this should not delete the entry, only report
-    assert metadata_file_path.exists()
-    util.validate_cache(True)  # this should delete the entry
-    assert not metadata_file_path.exists()
-    clean("test_validate")
+        written_metadata["files"] = file_listing
+        json_string = json.dumps(written_metadata)
+        os.chmod(metadata_file_path, 0o666)  # to allow writing
+        with open(metadata_file_path, "w") as f:
+            f.write(json_string)
+        util.validate_cache(False)  # this should not delete the entry, only report
+        assert metadata_file_path.exists()
+        util.validate_cache(True)  # this should delete the entry
+        assert not metadata_file_path.exists()
 
 
 def test_convert_dataset_csv_to_parquet():
@@ -497,14 +499,14 @@ def test_convert_dataset_csv_partitioning():
         ],
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
         complete_dataset_info, None, None, format, format, 0, 10
     )
     converted_file = converted_path / file_name
-    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_dataset = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
     assert converted_table == orig_table
     # Now convert it back to single partition
@@ -513,7 +515,7 @@ def test_convert_dataset_csv_partitioning():
         complete_dataset_info, None, None, format, format, 10, 0
     )
     reverted_file = reverted_path / file_name
-    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_dataset = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
     reverted_table = reverted_table.sort_by("e")
     converted_table = converted_table.sort_by("e")
@@ -541,14 +543,14 @@ def test_convert_dataset_parquet_partitioning():
         "partitioning-nrows": 0,
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
         complete_dataset_info, compression, compression, format, format, 0, 10
     )
     converted_file = converted_path / file_name
-    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_dataset = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
     assert converted_table == orig_table
     # Now convert it back to single partition
@@ -557,7 +559,7 @@ def test_convert_dataset_parquet_partitioning():
         complete_dataset_info, compression, compression, format, format, 10, 0
     )
     reverted_file = reverted_path / file_name
-    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_dataset = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
     reverted_table = reverted_table.sort_by("e")
     converted_table = converted_table.sort_by("e")
@@ -591,14 +593,14 @@ def test_convert_dataset_csv_compression():
         ],
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
         complete_dataset_info, None, "gz", format, format, 0, 0
     )
     converted_file = converted_path / f"{file_name}.gz"
-    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_dataset = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
     assert converted_table == orig_table
     # Now decompress it again
@@ -607,7 +609,7 @@ def test_convert_dataset_csv_compression():
         complete_dataset_info, "gz", None, format, format, 0, 0
     )
     reverted_file = reverted_path / file_name
-    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_dataset = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
     reverted_table = reverted_table.sort_by("e")
     converted_table = converted_table.sort_by("e")
@@ -636,14 +638,14 @@ def test_convert_dataset_parquet_compression():
         "partitioning-nrows": 0,
     }
     util.write_metadata(complete_dataset_info, path)
-    dataset, _ = util.get_dataset(test_file, complete_dataset_info)
+    dataset = util.get_dataset(test_file, complete_dataset_info)
     written_table = dataset.to_table()
     assert written_table == orig_table
     converted_path = util.convert_dataset(
         complete_dataset_info, from_compression, to_compression, format, format, 0, 0
     )
     converted_file = converted_path / file_name
-    converted_dataset, _ = util.get_dataset(converted_file, complete_dataset_info)
+    converted_dataset = util.get_dataset(converted_file, complete_dataset_info)
     converted_table = converted_dataset.to_table()
     assert converted_table == orig_table
     # Now convert it back to previous compression
@@ -652,7 +654,7 @@ def test_convert_dataset_parquet_compression():
         complete_dataset_info, to_compression, from_compression, format, format, 0, 0
     )
     reverted_file = reverted_path / file_name
-    reverted_dataset, _ = util.get_dataset(reverted_file, complete_dataset_info)
+    reverted_dataset = util.get_dataset(reverted_file, complete_dataset_info)
     reverted_table = reverted_dataset.to_table()
     reverted_table = reverted_table.sort_by("e")
     converted_table = converted_table.sort_by("e")

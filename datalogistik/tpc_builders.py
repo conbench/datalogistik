@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import abc
+import concurrent.futures
 import os
 import pathlib
 import platform
@@ -20,6 +21,7 @@ import shutil
 import subprocess
 from typing import List, Optional
 
+from .config import get_thread_count
 from .log import log
 from .tpc_info import tpc_table_names
 
@@ -71,6 +73,8 @@ class _TPCBuilder(abc.ABC):
     # details about the generator
     force_flag: str
     scale_flag: str
+    partitions_flag: str
+    current_segment_flag: str
     file_extension: str
     table_names: List[str]
 
@@ -97,7 +101,26 @@ class _TPCBuilder(abc.ABC):
     def _get_default_executable_path(self):
         """Return the executable path for this generator if one isn't given."""
 
-    def create_dataset(self, out_dir: pathlib.Path, scale_factor: int = 1):
+    @abc.abstractmethod
+    def _get_partitioned_filename(self, table_name: str, p: int, partitions: int):
+        """Create the pathname for a file in case of a partitioned output"""
+
+    @abc.abstractmethod
+    def _get_parallel_table_name_flags(self):
+        """Create a list of the flags needed to generate all the individual tables
+        that can be generated in parallel"""
+
+    @abc.abstractmethod
+    def _get_serial_table_name_flags(self):
+        """Create a list of the flags needed to generate all the individual tables
+        that cannot be generated in parallel and should be generated in sequence"""
+
+    def create_dataset(
+        self,
+        out_dir: pathlib.Path,
+        scale_factor: float = 1,
+        partitions: int = 1,
+    ):
         """Call the executable to generate the TPC database.
 
         Parameters
@@ -106,28 +129,55 @@ class _TPCBuilder(abc.ABC):
             The directory to place the CSVs in.
         scale_factor
             The scale factor to use when building the database. Default 1.
+        partitions
+            The number of partitions to create, these will be generated in parallel.
+            Default 1.
         """
         if not self.executable_path or not self.executable_path.exists():
             log.info("Could not find an executable. Attempting to create one.")
             self._make_executable()
 
-        _run(
-            self.executable_path,
-            self.force_flag,
-            self.scale_flag,
-            str(scale_factor),
-            cwd=self.executable_path.parent,
-        )
+        partitions = 1 if partitions == 0 else partitions
+        num_cpus = get_thread_count()
+
+        # TODO: merge partitions and num_cpus, right now they should be the same thing
+        with concurrent.futures.ProcessPoolExecutor(num_cpus) as pool:
+            futures = []
+            for p in range(1, partitions + 1):
+                futures.append(
+                    pool.submit(
+                        _run,
+                        self.executable_path,
+                        self.force_flag,
+                        self.scale_flag,
+                        str(scale_factor),
+                        self.partitions_flag,
+                        str(partitions),
+                        self.current_segment_flag,
+                        str(p),
+                        cwd=self.executable_path.parent,
+                    )
+                )
 
         # Move the new files to out_dir
         out_dir = pathlib.Path(out_dir).resolve()
         for table_name in self.table_names:
-            old_file = self.executable_path.parent / (table_name + self.file_extension)
-            new_file = out_dir / (table_name + ".csv")
-            shutil.move(old_file, new_file)
-            # reset permissions to read-only
-            os.chmod(new_file, 0o444)
-            log.debug(f"Created {new_file}")
+            table_output_dir = out_dir / f"{table_name}"
+            if not table_output_dir.exists():
+                table_output_dir.mkdir()
+            for p in range(1, partitions + 1):
+                old_file = self.executable_path.parent / self._get_partitioned_filename(
+                    table_name, p, partitions
+                )
+                new_file = table_output_dir / f"part-{p}.tpc-raw"
+                # Not all tables will have enough rows for the full nr of partitions
+                if old_file.exists():
+                    shutil.move(old_file, new_file)
+                    # reset permissions to read-only
+                    os.chmod(new_file, 0o444)
+                    log.debug(f"Created {new_file}")
+            os.chmod(table_output_dir, 0o555)
+            log.debug(f"Created all partitions for {table_name}")
 
     def _make_executable(self):
         """Clone the repo and build the executable."""
@@ -171,7 +221,9 @@ class DBGen(_TPCBuilder):
 
     force_flag = "-f"
     scale_flag = "-s"
-    file_extension = ".tbl"
+    partitions_flag = "-C"
+    current_segment_flag = "-S"
+    file_extension = "tbl"
     table_names = tpc_table_names["tpc-h"]
     repo_uri = "https://github.com/electrum/tpch-dbgen.git"
     repo_commit = "32f1c1b92d1664dba542e927d23d86ffa57aa253"
@@ -184,6 +236,21 @@ class DBGen(_TPCBuilder):
             return self.repo_build_path / "Debug" / "dbgen.exe"
         else:
             return self.repo_build_path / "dbgen"
+
+    def _get_partitioned_filename(self, table_name, partition, total_partitions):
+        if table_name == "nation":  # TODO: and total_partitions > some_number
+            return f"nation.{self.file_extension}"
+        if table_name == "region":
+            return f"region.{self.file_extension}"
+        return f"{table_name}.{self.file_extension}.{partition}"
+
+    def _get_parallel_table_name_flags(self):
+        tpch_table_abbrevs = ["c", "L", "n", "O", "P", "r", "s"]
+        return [("-T", t) for t in tpch_table_abbrevs]
+
+    def _get_serial_table_name_flags(self):
+        # Generating table 'S' (partsupp) in parallel causes an error
+        return [("-T", "S")]
 
     def _build_executable_unix(self):
         """Build the executable using 'make' on a UNIX-based system."""
@@ -220,7 +287,9 @@ class DSDGen(_TPCBuilder):
 
     force_flag = "-FORCE"
     scale_flag = "-SCALE"
-    file_extension = ".dat"
+    partitions_flag = "-PARALLEL"
+    current_segment_flag = "-CHILD"
+    file_extension = "dat"
     table_names = tpc_table_names["tpc-ds"]
     repo_uri = "https://github.com/gregrahn/tpcds-kit.git"
     repo_commit = "5a3a81796992b725c2a8b216767e142609966752"
@@ -233,6 +302,19 @@ class DSDGen(_TPCBuilder):
             return self.repo_build_path / "dsdgen.exe"
         else:
             return self.repo_build_path / "dsdgen"
+
+    def _get_parallel_table_name_flags(self):
+        return [
+            ("-TABLE", t)
+            for t in self.table_names
+            if t not in ["web_returns", "store_returns", "catalog_returns"]
+        ]
+
+    def _get_serial_table_name_flags(self):
+        return []
+
+    def _get_partitioned_filename(self, table_name, partition, total_partitions):
+        return f"{table_name}_{partition}_{total_partitions}.{self.file_extension}"
 
     def _build_executable_unix(self):
         """Build the executable using 'make' on a UNIX-based system."""
