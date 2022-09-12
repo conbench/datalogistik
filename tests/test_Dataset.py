@@ -22,16 +22,18 @@ from pyarrow import dataset as pyarrowdataset
 from datalogistik import Dataset
 
 simple_parquet_ds = Dataset.Dataset(
-    metadata_file="./tests/fixtures/.datalogistik_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
+    metadata_file="./tests/fixtures/datalogistik_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
 )
 multi_file_ds = Dataset.Dataset(
-    metadata_file="./tests/fixtures/.datalogistik_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
+    metadata_file="./tests/fixtures/datalogistik_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
 )
 
 
 @pytest.fixture(autouse=True)
 def mock_settings_env_vars():
-    with mock.patch.dict(os.environ, {"DATALOGISTIK_CACHE": "./tests/fixtures/"}):
+    with mock.patch.dict(
+        os.environ, {"DATALOGISTIK_CACHE": "./tests/fixtures/datalogistik_cache"}
+    ):
         yield
 
 
