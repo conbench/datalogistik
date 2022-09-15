@@ -66,9 +66,7 @@
                 "table": "nyctaxi_2010-01",
                 "files": [
                     {
-                        "file_path": "yellow_tripdata_2010-01.csv.gz",
-                        "file_size": 591876633,
-                        "md5": "22bd86bf54da91faf26fa8a243644a9f"
+                        "file_path": "yellow_tripdata_2010-01.csv.gz"
                     }
                 ]
             }
@@ -87,9 +85,7 @@
                 "table": "chi_traffic_2020_Q1",
                 "files": [
                     {
-                        "file_path": "chi_traffic_2020_Q1.parquet",
-                        "file_size": 591876633,
-                        "md5": "22bd86bf54da91faf26fa8a243644a9f"
+                        "file_path": "chi_traffic_2020_Q1.parquet"
                     }
                 ]
             }
@@ -102,7 +98,17 @@
             1000000,
             5
         ],
-        "format": "parquet"
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_strings",
+                "files": [
+                    {
+                        "file_path": "type_strings.parquet"
+                    }
+                ]
+            }
+        ]
     },
     {
         "name": "type_dict",
@@ -111,7 +117,17 @@
             1000000,
             5
         ],
-        "format": "parquet"
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_dict",
+                "files": [
+                    {
+                        "file_path": "type_dict.parquet"
+                    }
+                ]
+            }
+        ]
     },
     {
         "name": "type_integers",
@@ -120,7 +136,17 @@
             1000000,
             5
         ],
-        "format": "parquet"
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_integers",
+                "files": [
+                    {
+                        "file_path": "type_integers.parquet"
+                    }
+                ]
+            }
+        ]
     },
     {
         "name": "type_floats",
@@ -129,7 +155,17 @@
             1000000,
             5
         ],
-        "format": "parquet"
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_floats",
+                "files": [
+                    {
+                        "file_path": "type_floats.parquet"
+                    }
+                ]
+            }
+        ]
     },
     {
         "name": "type_nested",
@@ -138,7 +174,17 @@
             1000000,
             4
         ],
-        "format": "parquet"
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_nested",
+                "files": [
+                    {
+                        "file_path": "type_nested.parquet"
+                    }
+                ]
+            }
+        ]
     },
     {
         "name": "type_simple_features",
@@ -147,6 +193,16 @@
             1000000,
             5
         ],
-        "format": "parquet"
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_simple_features",
+                "files": [
+                    {
+                        "file_path": "type_simple_features.parquet"
+                    }
+                ]
+            }
+        ]
     }
 ]

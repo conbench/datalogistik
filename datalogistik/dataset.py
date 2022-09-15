@@ -188,12 +188,15 @@ class Dataset:
 
         return self.cache_location
 
-    def ensure_table_loc(self, table=None):
+    def ensure_table_loc(self, table=None, parents_only=False):
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
 
         # TODO: check that this file actually exists?
         data_path = pathlib.Path(self.ensure_dataset_loc(), self.get_table_name(table))
+
+        if parents_only:
+            data_path = data_path.parent
 
         # Make the dir if it's not already extant
         if not data_path.exists():
@@ -220,7 +223,6 @@ class Dataset:
             warnings.warn(
                 "This dataset has more than one table, but a table was not specified only returning the first"
             )
-
         return all_tables[index]
 
     def get_csv_dataset(self, table):
@@ -311,7 +313,7 @@ class Dataset:
 
         for table in self.tables:
             # create table dir
-            self.ensure_table_loc(table)
+            self.ensure_table_loc(table, parents_only=True)
 
             for file in table.files:
                 # the path it will be stored at
