@@ -14,7 +14,6 @@
 
 
 import concurrent
-import datetime
 import gzip
 import hashlib
 import json
@@ -22,17 +21,13 @@ import os
 import pathlib
 import shutil
 import time
-from collections import OrderedDict
 from collections.abc import Mapping
 
 import pyarrow as pa
-import urllib3
-from pyarrow import csv
-from pyarrow import dataset as ds
-from pyarrow import parquet as pq
 
 from . import config, tpc_info
 from .log import log
+from .table import Table
 from .tpc_builders import DBGen, DSDGen
 
 
@@ -83,21 +78,10 @@ def file_visitor(written_file):
 
 
 # Construct a path to a dataset entry in the cache (possibly not existing yet)
-def create_cached_dataset_path(
-    name, scale_factor, format, partitioning_nrows, compression
-):
+# TODO: delete me!
+def create_cached_dataset_path(name, hash):
     local_cache_location = config.get_cache_location()
-    scale_factor = f"scalefactor_{scale_factor}" if scale_factor else ""
-    partitioning_nrows = f"partitioning_{partitioning_nrows}"
-    parquet_compression_str = f"compression_{compression}"
-    return pathlib.Path(
-        local_cache_location,
-        name,
-        scale_factor,
-        format,
-        partitioning_nrows,
-        parquet_compression_str,
-    )
+    return pathlib.Path(local_cache_location, name, hash)
 
 
 # For each item in the itemlist, add it to metadata if it exists in dataset_info
@@ -222,46 +206,6 @@ def validate_cache(remove_failing):
                 if remove_failing:
                     log.info("Pruning...")
                     prune_cache_entry(pathlib.Path(dirpath).relative_to(cache_root))
-
-
-# Write the metadata about a newly created dataset instance at path,
-# using the information in dataset_info in addition to some locally generated info.
-def write_metadata(dataset_info, path):
-    metadata = {
-        "local-creation-date": datetime.datetime.now()
-        .astimezone()
-        .strftime("%Y-%m-%dT%H:%M:%S%z")
-    }
-
-    property_list = [
-        "name",
-        "format",
-        "partitioning-nrows",
-        "scale-factor",
-        "dim",
-        "url",
-        "homepage",
-        "files",
-    ]
-    if dataset_info["format"] == "csv":
-        property_list.extend(["header-line", "delim", "tables"])
-
-    # Propagate metadata from dataset_info
-    add_if_present(
-        property_list,
-        dataset_info,
-        metadata,
-    )
-    add_file_listing(metadata, path)
-
-    json_string = json.dumps(metadata)
-    metadata_file_path = pathlib.Path(path, config.metadata_filename)
-    if metadata_file_path.exists():
-        set_readwrite(metadata_file_path)
-    with open(metadata_file_path, "w") as metadata_file:
-        metadata_file.write(json_string)
-
-    set_readonly(metadata_file_path)
 
 
 # Walk up the directory tree up to the root of the cache to find a metadata file.
@@ -427,290 +371,6 @@ def get_arrow_schema(input_schema):
     return output_schema
 
 
-# Lookup the user-specified schema or return None is none was found
-def get_table_schema_from_metadata(dataset_info, table_name):
-    if dataset_info.get("tables"):
-        for table_entry in dataset_info.get("tables"):
-            if table_name is None or table_entry["table"] == table_name:
-                if table_entry.get("schema"):
-                    return table_entry["schema"]
-                break  # there should be only 1
-    return None
-
-
-# Create Arrow Dataset for a given input file
-# TODO: this has been moved to the get_dataset() method
-def get_dataset(input_file, dataset_info, table_name=None):
-    # Defaults
-    schema = None
-    format = dataset_info["format"]
-    if format == "parquet":
-        dataset_read_format = ds.ParquetFileFormat()
-    if format == "csv":
-        dataset_read_format, schema = get_csv_dataset(table_name, dataset_info)
-    if format == "tpc-raw":
-        dataset_read_format, schema = get_raw_tpc_dataset(table_name, dataset_info)
-
-    dataset = ds.dataset(input_file, schema=schema, format=dataset_read_format)
-    return dataset
-
-
-def get_csv_dataset(table_name, dataset_info):
-    # defaults
-    po = csv.ParseOptions()
-    co = csv.ConvertOptions()
-    schema = None
-    # TODO: Should we fall-back to read_csv in case schema detection fails?
-    if "delim" in dataset_info:
-        po = csv.ParseOptions(delimiter=dataset_info["delim"])
-
-    column_names = None
-    autogen_column_names = False
-    table_schema = get_table_schema_from_metadata(dataset_info, table_name)
-    if table_schema:
-        log.debug("Found user-specified schema in metadata")
-        schema = get_arrow_schema(table_schema)
-        column_names = list(table_schema.keys())
-    else:
-        has_header_line = dataset_info.get("header-line", False)
-        autogen_column_names = not has_header_line
-
-    ro = csv.ReadOptions(
-        column_names=column_names,
-        autogenerate_column_names=autogen_column_names,
-    )
-
-    dataset_read_format = ds.CsvFileFormat(
-        read_options=ro, parse_options=po, convert_options=co
-    )
-
-    return dataset_read_format, schema
-
-
-def get_raw_tpc_dataset(table_name, dataset_info):
-    # defaults
-    ro = csv.ReadOptions()
-    po = csv.ParseOptions(delimiter="|")
-
-    if table_name is None:
-        msg = (
-            "dataset is in tpc_datasets but table_name (needed to look up the "
-            "schema) is 'None'"
-        )
-        log.error(msg)
-        raise ValueError(msg)
-    column_types = tpc_info.col_dicts[dataset_info["name"]][table_name]
-
-    # dbgen's .tbl output has a trailing delimiter
-    column_types_trailed = column_types.copy()
-    column_types_trailed["trailing_columns"] = pa.string()
-    ro = csv.ReadOptions(
-        column_names=column_types_trailed.keys(),
-        encoding="iso8859" if dataset_info["name"] == "tpc-ds" else "utf8",
-    )
-
-    co = csv.ConvertOptions(
-        column_types=column_types_trailed,
-        # We should be able to use include_columns here, but I can't
-        # seem to get it to work without duplicating all of the columns all over
-        # include_columns = list(column_types.keys()),
-    )
-
-    dataset_read_format = ds.CsvFileFormat(
-        read_options=ro, parse_options=po, convert_options=co
-    )
-
-    # return the dataset and then also the schema (though the schema cricitally
-    # does not have the extra column at the end here)
-    return dataset_read_format, pa.schema(column_types.copy())
-
-
-# Convert a cached dataset into another format, return the new directory path
-def convert_dataset(
-    dataset_info,
-    old_compression,
-    new_compression,
-    old_format,
-    new_format,
-    old_nrows,
-    new_nrows,
-):
-    log.info(
-        f"Converting and caching dataset from {old_format}, {old_nrows} rows per "
-        f"partition, compression {old_compression} to {new_format}, {new_nrows} rows "
-        f"per partition, compression {new_compression}..."
-    )
-    conv_start = time.perf_counter()
-    dataset_name = dataset_info["name"]
-    scale_factor = dataset_info.get("scale-factor", "")
-    if dataset_name in tpc_info.tpc_datasets:
-        file_names = tpc_info.tpc_table_names[dataset_name]
-    else:
-        dataset_file_name = dataset_info["url"].split("/")[-1]
-        file_names = [dataset_file_name.split(".")[0]]
-    cached_dataset_path = create_cached_dataset_path(
-        dataset_name, scale_factor, old_format, str(old_nrows), old_compression
-    )
-    cached_dataset_metadata_file = pathlib.Path(
-        cached_dataset_path, config.metadata_filename
-    )
-    if not cached_dataset_metadata_file.exists():
-        msg = f"Could not find source dataset at {str(cached_dataset_metadata_file)}"
-        log.error(msg)
-        raise ValueError(msg)
-
-    with open(cached_dataset_metadata_file) as f:
-        dataset_metadata = json.load(f, object_pairs_hook=OrderedDict)
-
-    if (
-        (old_format == new_format)
-        and (old_nrows == new_nrows)
-        and (old_compression == new_compression)
-    ):
-        log.info("Conversion not needed.")
-        return cached_dataset_path
-
-    if (
-        (dataset_info["format"] == new_format)
-        and (dataset_info["partitioning-nrows"] == new_nrows)
-        and (dataset_info.get("file-compression") == new_compression)
-        and (new_compression == "gz")  # Only re-download compressed datasets
-        and dataset_info["name"] not in tpc_info.tpc_datasets
-    ):
-        log.info("Re-downloading instead of converting.")
-        return download_dataset(dataset_info)
-
-    metadata_table_list = []
-    try:
-        output_dir = create_cached_dataset_path(
-            dataset_name,
-            scale_factor,
-            new_format,
-            str(new_nrows),
-            new_compression,
-        )
-        output_dir.mkdir(parents=True, exist_ok=True)
-        for file_name in file_names:
-            # TODO: this is a bit of a hack, but generally speaking _all_ partitioned
-            # datasets (not just tpc-raw) should not have a file extension in the filename
-            if old_format == "tpc-raw":
-                input_file = pathlib.Path(cached_dataset_path, f"{file_name}")
-            else:
-                input_file = pathlib.Path(
-                    cached_dataset_path, f"{file_name}.{old_format}"
-                )
-                if old_format != "parquet" and old_compression:
-                    input_file = (
-                        input_file.parent / f"{input_file.name}.{old_compression}"
-                    )
-            output_file = pathlib.Path(output_dir, f"{file_name}.{new_format}")
-            if old_format == "csv" and new_format == "csv" and old_nrows == new_nrows:
-                if new_compression is None:
-                    log.info(f"decompressing file {input_file} without conversion...")
-                    decompress(input_file, output_file.parent, old_compression)
-                else:
-                    log.info(f"compressing file {input_file} without conversion...")
-                    compress(input_file, output_file.parent, new_compression)
-                continue
-
-            dataset = get_dataset(input_file, dataset_metadata, file_name)
-
-            write_options = None  # Default
-            if new_format == "parquet":
-                dataset_write_format = ds.ParquetFileFormat()
-                write_options = dataset_write_format.make_write_options(
-                    compression=new_compression,
-                    use_deprecated_int96_timestamps=False,
-                    coerce_timestamps="us",
-                    allow_truncated_timestamps=True,
-                )
-            if new_format == "csv":
-                dataset_write_format = ds.CsvFileFormat()
-                # Don't include header if there's a known schema
-                if old_format == "csv" and (
-                    get_table_schema_from_metadata(dataset_info, file_name)
-                    or not dataset_info.get("header-line")
-                ):
-                    write_options = dataset_write_format.make_write_options(
-                        include_header=False
-                    )
-                else:
-                    dataset_info["header-line"] = True
-
-            # Find a reasonable number to set our rows per row group.
-            # and then make sure that max rows per group is less than new_nrows
-            # TODO: This should actually be something that takes into account the
-            # number of cells by default (rows * cols), and then _also_ be configurable like
-            # it is in arrowbench
-            if 15625000 <= new_nrows:
-                maxrpg = 15625000
-            else:
-                maxrpg = new_nrows
-            minrpg = maxrpg - 1
-            # but if that's 0, set it to None
-            if maxrpg == 0:
-                maxrpg = None
-                minrpg = None
-
-            ds.write_dataset(
-                dataset,
-                output_file,
-                format=dataset_write_format,
-                file_options=write_options,
-                max_rows_per_file=new_nrows,
-                min_rows_per_group=minrpg,
-                max_rows_per_group=maxrpg,
-                file_visitor=file_visitor if config.debug else None,
-            )
-            if new_nrows == 0:
-                # Convert from name.format/part-0.format to simply a file name.format
-                # To stay consistent with downloaded/generated datasets (without partitioning)
-                # TODO: do we want to change this in accordance to tpc-raw?
-                tmp_dir_name = pathlib.Path(
-                    output_file.parent, f"{file_name}.{new_format}.tmp"
-                )
-                os.rename(output_file, tmp_dir_name)
-                os.rename(
-                    pathlib.Path(tmp_dir_name, f"part-0.{new_format}"), output_file
-                )
-                tmp_dir_name.rmdir()
-
-            metadata_table_list.append(
-                {
-                    "table": file_name,
-                    # This inferred schema is different from a user-specified schema
-                    "inferred-schema": schema_to_dict(dataset.schema),
-                }
-            )
-            if new_format == "csv" and new_compression:
-                compress(output_file, output_file.parent, new_compression)
-                output_file.unlink()
-
-        conv_time = time.perf_counter() - conv_start
-        log.info("Finished conversion.")
-        log.debug(f"conversion took {conv_time:0.2f} s")
-
-        # Don't insert inferred-schema if a known schema is available already
-        if dataset_info.get("tables") is None:
-            dataset_info["tables"] = metadata_table_list
-        dataset_info["format"] = new_format
-        dataset_info["partitioning-nrows"] = new_nrows
-        if dataset_info.get("files"):
-            # Remove the old file listing, because it is not valid for the new dataset
-            # (write_metadata will generate and add a new file listing with checksums)
-            del dataset_info["files"]
-        write_metadata(dataset_info, output_dir)
-
-        set_readonly_recurse(output_dir)
-
-    except Exception:
-        log.error("An error occurred during conversion.")
-        clean_cache_dir(output_dir)
-        raise
-
-    return output_dir
-
-
 # Convert between max rows per partition and number of partitions
 def convert_maxrows_parts(tpc_name, scale_factor, parts_or_rows):
     # nr of rows in the largest table at sf=1
@@ -723,69 +383,53 @@ def convert_maxrows_parts(tpc_name, scale_factor, parts_or_rows):
 # Generate a dataset by calling one of the supported external generators
 # TODO: Generator output cannot be used as dataset output directly, because of the
 # trailing columns.
-def generate_dataset(dataset_info, argument_info):
-    dataset_name = argument_info.dataset
-    log.info(f"Generating {dataset_name} data to cache...")
+def generate_dataset(dataset):
+    log.info(f"Generating {dataset.name} data to cache...")
     gen_start = time.perf_counter()
-    cached_dataset_path = create_cached_dataset_path(
-        dataset_name,
-        argument_info.scale_factor,
-        dataset_info["format"],
-        str(argument_info.partition_max_rows),
-        None,
-    )
+    dataset_path = dataset.ensure_dataset_loc()
     generators = {"tpc-h": DBGen, "tpc-ds": DSDGen}
+
+    # override the format, since we only know how to directly generate tpc-raw format
+    dataset.format = "tpc-raw"
+
     try:
-        generator_class = generators[dataset_name]
-        generator = generator_class(executable_path=argument_info.generator_path)
-        new_partitioning = config.get_thread_count()
-        new_maxrows = convert_maxrows_parts(
-            dataset_name, argument_info.scale_factor, new_partitioning
-        )
-        # TODO: create 1 partitioning name because we do not want to re-generate
-        # when the user performs additional runs with a different nThreads env var
-        cached_dataset_path = create_cached_dataset_path(
-            dataset_name,
-            argument_info.scale_factor,
-            dataset_info["format"],
-            str(new_maxrows),
-            None,
-        )
-        cached_dataset_path.mkdir(parents=True, exist_ok=True)
+        generator_class = generators[dataset.name]
+        # TODO: suppoer executable_path as env var?
+        generator = generator_class(executable_path=None)
+
+        dataset_path.mkdir(parents=True, exist_ok=True)
         generator.create_dataset(
-            out_dir=cached_dataset_path,
-            scale_factor=argument_info.scale_factor,
-            partitions=new_partitioning,
+            out_dir=dataset_path,
+            scale_factor=dataset.scale_factor,
+            partitions=config.get_thread_count(),
         )
-        dataset_info[
-            "partitioning-nrows"
-        ] = new_maxrows  # this will likely trigger a conversion
 
         metadata_table_list = []
-        for table in tpc_info.tpc_table_names[dataset_name]:
-            input_file = pathlib.Path(cached_dataset_path, table)
-            dataset = get_dataset(input_file, dataset_info, table)
+        for table in tpc_info.tpc_table_names[dataset.name]:
             metadata_table_list.append(
-                {
-                    "table": table,
+                Table(
+                    table=table,
+                    # These will always be multi_file, so we should code that
+                    multi_file=True,
                     # TODO: this schema is not inferred, but it does not have
                     # the same structure of a user-specified schema either
-                    "schema": schema_to_dict(dataset.schema),
-                }
+                    # "schema": schema_to_dict(dataset.schema),
+                )
             )
-        dataset_info["tables"] = metadata_table_list
+        dataset.tables = metadata_table_list
 
         gen_time = time.perf_counter() - gen_start
         log.info("Finished generating.")
         log.debug(f"generation took {gen_time:0.2f} s")
-        write_metadata(dataset_info, cached_dataset_path)
+        dataset.fill_metadata_from_files()
+        dataset.write_metadata()
 
     except Exception:
         log.error("An error occurred during generation.")
-        clean_cache_dir(cached_dataset_path)
+        clean_cache_dir(dataset_path)
         raise
 
-    return cached_dataset_path
+    return dataset
 
 
 def compress(uncompressed_file_path, output_dir, compression):
@@ -840,108 +484,7 @@ def decompress(compressed_file_path, output_dir, compression):
         raise ValueError(msg)
 
 
-def download_dataset(dataset_info):
-    log.info("Downloading to cache...")
-    down_start = time.perf_counter()
-    if dataset_info["format"] == "parquet":
-        # Temporary location until we detect the actual compression
-        compression = "unknown"
-    else:
-        compression = dataset_info.get("file-compression", "none")
-
-    cached_dataset_path = create_cached_dataset_path(
-        dataset_info["name"],
-        "",  # no scale_factor
-        dataset_info["format"],
-        str(dataset_info["partitioning-nrows"]),
-        compression,
-    )
-    cached_dataset_path.mkdir(parents=True, exist_ok=True)
-
-    dataset_file_name = dataset_info["url"].split("/")[-1]
-    dataset_file_path = pathlib.Path(cached_dataset_path, dataset_file_name)
-
-    # If the dataset file already exists, remove it.
-    # It doesn't have a metadata file (otherwise, the cache would have hit),
-    # so something could have gone wrong while downloading/converting previously
-    if dataset_file_path.exists():
-        log.debug(f"Removing existing file '{dataset_file_path}'")
-        dataset_file_path.unlink()
-    url = dataset_info["url"]
-    try:
-        http = urllib3.PoolManager()
-        with http.request("GET", url, preload_content=False) as r, open(
-            dataset_file_path, "wb"
-        ) as out_file:
-            shutil.copyfileobj(r, out_file)  # Performs a chunked copy
-    except Exception:
-        log.error(f"Unable to download from '{url}'")
-        clean_cache_dir(cached_dataset_path)
-        raise
-    down_time = time.perf_counter() - down_start
-    log.debug(f"download took {down_time:0.2f} s")
-    log.info("Finished downloading.")
-    set_readonly(dataset_file_path)
-
-    # Find parquet compression, move to the proper subdir
-    if dataset_info["format"] == "parquet":
-        md = pq.ParquetFile(dataset_file_path).metadata
-        pq_compression = md.row_group(0).column(0).compression.lower()
-        pq_compression = f"compression_{pq_compression}"
-        cached_dataset_path.replace(cached_dataset_path.parent / pq_compression)
-        cached_dataset_path = cached_dataset_path.parent / pq_compression
-        dataset_file_path = pathlib.Path(cached_dataset_path, dataset_file_name)
-
-    # Parquet already stores the schema internally
-    if dataset_info["format"] == "csv":
-        # If the entry in the repo file does not specify the schema, try to detect it
-        if not dataset_info.get("tables"):
-            try:
-                dataset = get_dataset(dataset_file_path, dataset_info)
-                dataset_info["tables"] = [
-                    {
-                        "table": str(pathlib.Path(dataset_file_name).stem),
-                        "inferred-schema": schema_to_dict(dataset.schema),
-                    }
-                ]
-            except Exception:
-                log.error(
-                    "pyarrow.dataset is unable to read schema from downloaded file"
-                )
-                clean_cache_dir(cached_dataset_path)
-                raise
-
-    if dataset_info.get("files"):
-        # In this case, the dataset info contained checksums. Check them
-        if not validate_files(cached_dataset_path, dataset_info.get("files")):
-            clean_cache_dir(cached_dataset_path)
-            msg = "File integrity check for newly created dataset failed."
-            log.error(msg)
-            raise RuntimeError(msg)
-
-    write_metadata(dataset_info, cached_dataset_path)
-    return cached_dataset_path
-
-
-def output_result(dataset_directory):
-    output = {"path": str(dataset_directory)}
-    metadata_file = pathlib.Path(dataset_directory, config.metadata_filename)
-    if metadata_file.exists():
-        with open(metadata_file) as f:
-            metadata = json.load(f)
-            add_if_present(
-                [
-                    "name",
-                    "format",
-                    "partitioning-nrows",
-                    "scale-factor",
-                    "dim",
-                    "delim",
-                    "parquet-compression",
-                ],
-                metadata,
-                output,
-            )
-            output["files"] = [item["file_path"] for item in metadata["files"]]
-
-    print(json.dumps(output))
+# ignore None and [] type values
+class NoNoneDict(dict):
+    def __init__(self, data):
+        super().__init__(x for x in data if x[1])

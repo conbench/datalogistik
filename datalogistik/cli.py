@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import argparse
-import json
 import sys
 
-import urllib3
-
-from . import config, tpc_info, util
+from . import util
+from .dataset import Dataset
 from .log import log
 
 
@@ -84,6 +82,7 @@ Supported formats: Parquet, csv",
         default="",
         help="Scale factor for TPC datasets",
     )
+    # TODO: should this be an env var instead of an argument?
     gen_parser.add_argument(
         "-g",
         "--generator-path",
@@ -125,84 +124,34 @@ def parse_args_and_get_dataset_info():
         sys.exit(0)
 
     elif opts.command == "generate":
-        # Set up repository (local or remote)
-        repo_location = config.get_repo_file_path()
-        if repo_location[0:4] == "http":
-            log.debug(f"Fetching repo from {repo_location}")
-            try:
-                http = urllib3.PoolManager()
-                r = http.request("GET", repo_location)
-                dataset_sources = json.loads(r.data.decode("utf-8"))
-            except Exception:
-                log.error(f"Unable to download from '{repo_location}'")
-                raise
-        else:
-            log.debug(f"Using local repo at {repo_location}")
-            dataset_sources = json.load(open(repo_location))
+        dataset = Dataset(
+            name=opts.dataset,
+            format=opts.format,
+            scale_factor=opts.scale_factor,
+            compression=opts.compression,
+        )
 
-        # Find requested dataset in repository, then in the list of generators
-        dataset_info = None
-        for dataset_source in dataset_sources:
-            if dataset_source["name"] == opts.dataset:
-                dataset_info = dataset_source
-                break
-        if dataset_info is None and opts.dataset not in tpc_info.tpc_datasets:
-            msg = (
-                f"Dataset '{opts.dataset}' not found in repository or list of supported "
-                "generators.\n\nDatasets found in repository: "
-                f"{[source['name'] for source in dataset_sources]}\nSupported generators: "
-                f"{tpc_info.tpc_datasets}"
-            )
-            log.error(msg)
-            raise ValueError(msg)
+        # Set defaults and perform sanity-check for the arguments:
+        # TODO:
+        #  * format
+        #  * scale_factor
+        #  * compression
+        #  * partitioning (later)
 
-        # Set defaults and perform sanity-check for the arguments
-        if opts.format not in config.supported_formats:
-            msg = (
-                f"Format '{opts.format}' not supported. Supported formats: "
-                f"{config.supported_formats}"
-            )
-            log.error(msg)
-            raise ValueError(msg)
+        # TODO: move into tpcinfo?
+        # if opts.dataset in tpc_info.tpc_datasets:
+        #     # Construct an dataset_info for a generated dataset
+        #     dataset_info = {
+        #         "name": opts.dataset,
+        #         "format": "tpc-raw",
+        #         "delim": "|",
+        #         "scale-factor": opts.scale_factor,
+        #         # Not used so far, so 0 for now
+        #         "partitioning-nrows": opts.partition_max_rows,
+        #     }
 
-        if opts.scale_factor != "" and opts.dataset not in tpc_info.tpc_datasets:
-            msg = "scale-factor is only supported for TPC datasets"
-            log.error(msg)
-            raise ValueError(msg)
-        if opts.scale_factor == "" and opts.dataset in tpc_info.tpc_datasets:
-            opts.scale_factor = "1"
-
-        if opts.dataset in tpc_info.tpc_datasets:
-            # Construct an dataset_info for a generated dataset
-            dataset_info = {
-                "name": opts.dataset,
-                "format": "tpc-raw",
-                "delim": "|",
-                "scale-factor": opts.scale_factor,
-                # Not used so far, so 0 for now
-                "partitioning-nrows": opts.partition_max_rows,
-            }
-
-        if opts.compression is None:
-            # Defaults
-            if opts.format == "parquet":
-                opts.compression = "snappy"
-            if opts.format == "csv":
-                # Do not convert unless the user specifically asked
-                opts.compression = dataset_info.get("file-compression")
-        else:
-            if (
-                opts.compression.lower() == "uncompressed"
-                or opts.compression.lower() == "none"
-            ):
-                # Note the difference between None and a string "None".
-                # In various parts of the code, None means uncompressed
-                opts.compression = None
-
-        if "partitioning-nrows" not in dataset_info:
-            dataset_info["partitioning-nrows"] = 0  # Default: no partitioning
-
-        return (dataset_info, opts)
+        # TODO: we actually don't want to find here, we want to let the next step do that
+        return dataset
 
     else:
         msg = "Please specify a command"

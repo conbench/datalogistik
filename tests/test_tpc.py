@@ -48,8 +48,8 @@ def test_validate_tpc_generation(capsys, dataset_name, format):
         captured = capsys.readouterr().out
         dataset_result = json.loads(captured)
         dataset_name = dataset_result["name"]
-        dataset_path = dataset_result["path"]
         file_format = dataset_result["format"]
+        paths_dict = dataset_result["tables"]
         assert tpc_validation.validate_tpc_dataset(
-            dataset_name, dataset_path, file_format
+            dataset_name, paths_dict, file_format
         )

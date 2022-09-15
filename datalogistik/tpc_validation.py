@@ -45,7 +45,7 @@ def print_diff(ref_table, gen_table):
 # For TPC-H, it should have the same scale factor as the reference data (0.001)
 # The TPC-DS reference data is meant to be used on valid test scale factors (e.g. 1000)
 # Returns: True if valid, False if invalid
-def validate_tpc_dataset(dataset_name, dataset_path, file_format):
+def validate_tpc_dataset(dataset_name, dataset_paths, file_format):
     if dataset_name == "tpc-ds":
         encoding = "ISO-8859"
         ext = "vld"
@@ -56,7 +56,7 @@ def validate_tpc_dataset(dataset_name, dataset_path, file_format):
         ref_dataset_subpath = "tpc-h/0.001"
 
     failure_occurred = False
-    for table in tpc_info.tpc_table_names[dataset_name]:
+    for table, path in dataset_paths.items():
         column_types = tpc_info.col_dicts[dataset_name][table]
         column_list = list(column_types.keys())
         # dsdgen's validation output has a duplicated first column that we need to remove
@@ -111,7 +111,7 @@ def validate_tpc_dataset(dataset_name, dataset_path, file_format):
         )
         ref_table = ref_ds.to_table(columns=column_list)
         gen_ds = ds.dataset(
-            f"{dataset_path}/{table}.{file_format}",
+            path,
             format=gen_dataset_read_format,
         )
         gen_table = gen_ds.to_table(columns=column_list)
