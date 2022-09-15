@@ -24,6 +24,7 @@ import time
 from collections.abc import Mapping
 
 import pyarrow as pa
+import urllib3
 
 from . import config, tpc_info
 from .log import log
@@ -411,7 +412,8 @@ def generate_dataset(dataset):
                     table=table,
                     # These will always be multi_file, so we should code that
                     multi_file=True,
-                    # TODO: this schema is not inferred, but it does not have
+                    # TODO: is this line necessary?
+                    # this schema is not inferred, but it does not have
                     # the same structure of a user-specified schema either
                     # "schema": schema_to_dict(dataset.schema),
                 )
@@ -482,6 +484,28 @@ def decompress(compressed_file_path, output_dir, compression):
         log.error(msg)
         clean_cache_dir(output_dir.parent)
         raise ValueError(msg)
+
+
+def download_file(url, output_path):
+    # If the dataset file already exists, remove it.
+    # It doesn't have a metadata file (otherwise, the cache would have hit),
+    # so something could have gone wrong while downloading/converting previously
+    if output_path.exists():
+        log.debug(f"Removing existing file '{output_path}'")
+        output_path.unlink()
+
+    try:
+        http = urllib3.PoolManager()
+        with http.request("GET", url, preload_content=False) as r, open(
+            output_path, "wb"
+        ) as out_file:
+            shutil.copyfileobj(r, out_file)  # Performs a chunked copy
+    except Exception:
+        log.error(f"Unable to download from '{url}'")
+        # TODO: cleanup
+        raise
+
+    return output_path
 
 
 # ignore None and [] type values

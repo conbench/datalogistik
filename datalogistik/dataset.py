@@ -17,7 +17,6 @@ import glob
 import json
 import os
 import pathlib
-import shutil
 import time
 import warnings
 from collections import OrderedDict
@@ -25,7 +24,6 @@ from dataclasses import asdict, dataclass, field
 from typing import List, Optional
 
 import pyarrow as pa
-import urllib3
 from pyarrow import csv
 from pyarrow import dataset as pads
 from pyarrow import parquet as pq
@@ -328,15 +326,9 @@ class Dataset:
                     full_path = full_path + filename
 
                 # TODO: validate checksum, something like:
-                # if self.files:
-                # # In this case, the dataset info contained checksums. Check them
-                # if not validate_files(cached_dataset_path, dataset_info.get("files")):
-                #     util.clean_cache_dir(cached_dataset_path)
-                #     msg = "File integrity check for newly created dataset failed."
-                #     log.error(msg)
-                #     raise RuntimeError(msg)
+                # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
 
-                download_file(self.url, output_path=dataset_file_path)
+                util.download_file(self.url, output_path=dataset_file_path)
                 util.set_readonly(dataset_file_path)
 
         down_time = time.perf_counter() - down_start
@@ -344,7 +336,7 @@ class Dataset:
         log.info("Finished downloading.")
 
     def fill_metadata_from_files(self):
-        # TODO: find format??
+        # TODO: Should we attempt to find format? That should never mismatch...
 
         # Find files for tables
         for table in self.tables:
@@ -375,23 +367,7 @@ class Dataset:
             self.compression = file_metadata.row_group(0).column(0).compression.lower()
 
         # TODO: auto detect csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
-        # if self.format == "csv":
-        #     # If the entry in the repo file does not specify the schema, try to detect it
-        #     if not self.tables:
-        #         try:
-        #             dataset = get_dataset(dataset_file_path, dataset_info)
-        #             dataset_info["tables"] = [
-        #                 {
-        #                     "table": str(pathlib.Path(dataset_file_path).stem),
-        #                     "inferred-schema": schema_to_dict(dataset.schema),
-        #                 }
-        #             ]
-        #         except Exception:
-        #             log.error(
-        #                 "pyarrow.dataset is unable to read schema from downloaded file"
-        #             )
-        #             util.clean_cache_dir(cached_dataset_path)
-        #             raise
+        # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L895-L911
 
     def write_metadata(self):
         # clean up | ensure fiels are populated
@@ -555,6 +531,7 @@ class Dataset:
         return new_dataset
 
     def output_result(self):
+        # TODO: we should also probably include dims here too
         output = {"name": self.name, "format": self.format}
 
         tables = {}
@@ -563,26 +540,3 @@ class Dataset:
         output["tables"] = tables
 
         return json.dumps(output)
-
-
-# TODO: move to utils?
-def download_file(url, output_path):
-    # If the dataset file already exists, remove it.
-    # It doesn't have a metadata file (otherwise, the cache would have hit),
-    # so something could have gone wrong while downloading/converting previously
-    if output_path.exists():
-        log.debug(f"Removing existing file '{output_path}'")
-        output_path.unlink()
-
-    try:
-        http = urllib3.PoolManager()
-        with http.request("GET", url, preload_content=False) as r, open(
-            output_path, "wb"
-        ) as out_file:
-            shutil.copyfileobj(r, out_file)  # Performs a chunked copy
-    except Exception:
-        log.error(f"Unable to download from '{url}'")
-        # TODO: cleanup
-        raise
-
-    return output_path

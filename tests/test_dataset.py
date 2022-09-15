@@ -133,7 +133,7 @@ def test_download_dataset(monkeypatch):
             "tests/fixtures/test_cache/chi_traffic_2020_Q1/raw/chi_traffic_2020_Q1.parquet"
         )
 
-    monkeypatch.setattr("datalogistik.dataset.download_file", _fake_download)
+    monkeypatch.setattr("datalogistik.util.download_file", _fake_download)
     ds_variant_not_available = Dataset(
         name="chi_traffic_2020_Q1", format="csv", compression="gzip"
     )
@@ -207,7 +207,16 @@ def test_output_result():
             "name": "chi_traffic_sample",
             "format": "parquet",
             "tables": {
-                "chi_traffic_sample": "tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/chi_traffic_sample.parquet"
+                "chi_traffic_sample": str(
+                    pathlib.Path(
+                        "tests",
+                        "fixtures",
+                        "test_cache",
+                        "chi_traffic_sample",
+                        "a1fa1fa",
+                        "chi_traffic_sample.parquet",
+                    )
+                )
             },
         }
     )
@@ -220,9 +229,27 @@ def test_output_result():
             "format": "csv",
             "tables": {
                 # This table is a multi file dataset, so just the folder is passed
-                "taxi_2013": "tests/fixtures/test_cache/chi_taxi/dabb1e5/taxi_2013",
+                "taxi_2013": str(
+                    pathlib.Path(
+                        "tests",
+                        "fixtures",
+                        "test_cache",
+                        "chi_taxi",
+                        "dabb1e5",
+                        "taxi_2013",
+                    )
+                ),
                 # This table is a single file dataset, so we have the extension
-                "chi_traffic_sample": "tests/fixtures/test_cache/chi_taxi/dabb1e5/chi_traffic_sample.csv",
+                "chi_traffic_sample": str(
+                    pathlib.Path(
+                        "tests",
+                        "fixtures",
+                        "test_cache",
+                        "chi_taxi",
+                        "dabb1e5",
+                        "chi_traffic_sample.csv",
+                    )
+                ),
             },
         }
     )
@@ -258,30 +285,7 @@ def test_find_close_dataset():
     assert close.format == "csv"
 
 
-# def test_get_dataset_with_schema():
-#     num_rows = 10
-#     name = "test_complete_dataset"
-#     clean(name)
-#     path = util.create_cached_dataset_path(name, None, "csv", 0, None)
-#     path.mkdir(parents=True)
-#     test_file = path / "complete_data.csv"
-#     data = generate_complete_schema_data(num_rows, "csv")
-#     ref_table = pa.table(data, schema=complete_csv_schema)
-#     wo = csv.WriteOptions(include_header=False)
-#     csv.write_csv(ref_table, test_file, write_options=wo)
-#     complete_dataset_info = {
-#         "name": name,
-#         "format": "csv",
-#         "tables": [
-#             {
-#                 "table": "complete_data",
-#                 "schema": json.loads(complete_csv_schema_json_input),
-#             }
-#         ],
-#     }
-#     util.write_metadata(complete_dataset_info, path)
-#     dataset = util.get_dataset(test_file, complete_dataset_info)
-#     read_table = dataset.to_table()
-
-#     assert ref_table == read_table
-#     clean(name)
+def test_get_dataset_with_schema():
+    # TODO: can we alter the schema on the fly like this?
+    # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/tests/test_datalogistik.py#L332-L358
+    pass

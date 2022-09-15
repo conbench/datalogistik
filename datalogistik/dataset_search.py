@@ -54,7 +54,7 @@ def find_close_dataset(dataset):
 
     # order parquet first (sicne they should be fast(er) to convert from)
     # when we support .arrow, those likely should be first, then parquet, et c.
-    # TODO: sort by compression?
+    # TODO: sort by compression too?
     format_preference = {
         "parquet": 0,
         "csv": 1,

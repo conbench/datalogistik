@@ -138,19 +138,6 @@ def parse_args_and_get_dataset_info():
         #  * compression
         #  * partitioning (later)
 
-        # TODO: move into tpcinfo?
-        # if opts.dataset in tpc_info.tpc_datasets:
-        #     # Construct an dataset_info for a generated dataset
-        #     dataset_info = {
-        #         "name": opts.dataset,
-        #         "format": "tpc-raw",
-        #         "delim": "|",
-        #         "scale-factor": opts.scale_factor,
-        #         # Not used so far, so 0 for now
-        #         "partitioning-nrows": opts.partition_max_rows,
-        #     }
-
-        # TODO: we actually don't want to find here, we want to let the next step do that
         return dataset
 
     else:
