@@ -59,7 +59,7 @@ def test_list_variants():
     assert [ds.name for ds in ds_list] == ["chi_traffic_sample", "chi_traffic_sample"]
 
     # assert that the formats are what we expect (so we know we've read in the files)
-    assert [ds.format for ds in ds_list] == ["csv", "parquet"]
+    assert set([ds.format for ds in ds_list]) == set(["csv", "parquet"])
 
 
 def test_ensure_dataset_loc():
