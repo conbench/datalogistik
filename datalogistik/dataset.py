@@ -424,7 +424,7 @@ class Dataset:
         try:
             # ensure that we have a new dataset location
             # TODO: make the hash something more random
-            new_dataset.ensure_dataset_loc(new_hash="new-hash")
+            new_dataset.ensure_dataset_loc(new_hash=util.short_hash())
 
             # grab format output
             # TODO: should we factor this out into a function?

@@ -16,6 +16,7 @@ import copy
 import json
 import os
 import pathlib
+import sys
 
 import pytest
 from pyarrow import dataset as pyarrowdataset
@@ -145,6 +146,7 @@ def test_to_json():
     assert '"name": "chi_traffic_sample"' in json_string
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="windows errors on the cleanup")
 def test_write_metadata():
     # the directory penguins has data _as if_ it were downloaded from a repo for the purposes of testing metadata writing
     test_dir_path = "tests/fixtures/test_cache/penguins/raw"
@@ -172,7 +174,7 @@ def test_write_metadata():
         "tests/fixtures/test_cache/penguins/raw/", config.metadata_filename
     ).exists()
 
-    # cleanup all files that werent' there to start with
+    # cleanup all files that weren't there to start with
     for file in set(os.listdir(test_dir_path)) - set(start_files):
         pathlib.Path(test_dir_path, file).unlink()
 

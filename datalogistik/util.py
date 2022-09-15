@@ -21,6 +21,7 @@ import os
 import pathlib
 import shutil
 import time
+import uuid
 from collections.abc import Mapping
 
 import pyarrow as pa
@@ -506,6 +507,10 @@ def download_file(url, output_path):
         raise
 
     return output_path
+
+
+def short_hash():
+    return uuid.uuid4().hex[1:8]
 
 
 # ignore None and [] type values
