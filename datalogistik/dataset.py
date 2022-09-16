@@ -379,7 +379,7 @@ class Dataset:
         if metadata_file_path.exists():
             util.set_readwrite(metadata_file_path)
         with open(metadata_file_path, "w") as metadata_file:
-            metadata_file.write(json_string)
+            json.dump(obj=json_string, fp=metadata_file)
 
         util.set_readonly(metadata_file_path)
         pass
