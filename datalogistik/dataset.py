@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-import glob
 import json
 import os
 import pathlib
@@ -110,8 +109,8 @@ class Dataset:
 
         return self_dict == other_dict
 
-    @staticmethod
-    def from_json(metadata):
+    @classmethod
+    def from_json(cls, metadata):
         if isinstance(metadata, str) or isinstance(metadata, pathlib.Path):
             with open(metadata) as f:
                 json_dump = json.load(f, object_pairs_hook=OrderedDict)
@@ -134,7 +133,7 @@ class Dataset:
             tables = [Table(**table) for table in tables]
             metadata["tables"] = tables
 
-        return Dataset(**metadata)
+        return cls(**metadata)
 
     # For all datasets with this name in the cache, return a list of them
     def list_variants(self):
@@ -143,12 +142,8 @@ class Dataset:
 
         log.debug(f"Checking local cache at {local_cache_location}")
 
-        metadata_files = glob.glob(
-            # pathlib paths don't glob well, apparently
-            os.path.join(
-                local_cache_location, "**", self.name, "**", config.metadata_filename
-            ),
-            recursive=True,
+        metadata_files = local_cache_location.glob(
+            f"**/{self.name}/**/{config.metadata_filename}"
         )
 
         return [Dataset.from_json(ds) for ds in metadata_files]
@@ -396,22 +391,8 @@ class Dataset:
 
         dict_repr = asdict(self, dict_factory=util.NoNoneDict)
 
-        # convert pathlib.Paths to strings
-        def str_paths(d):
-            for key, value in d.items():
-                if isinstance(value, pathlib.Path):
-                    d[key] = str(value)
-                elif type(value) is list:
-                    for item in value:
-                        if isinstance(item, dict):
-                            str_paths(item)
-                if isinstance(value, dict):
-                    str_paths(value)
-            return d
-
-        dict_repr = str_paths(dict_repr)
         # Note: we don't restore `-`s from the `_`s, we should find a way to be more systematic about that or adopt all and only `_`
-        return json.dumps(dict_repr)
+        return json.dumps(dict_repr, default=str)
 
     def convert(self, new_dataset):
         log.info(
