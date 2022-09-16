@@ -43,14 +43,19 @@ def find_close_dataset(dataset):
             dataset_to_fetch.fill_metadata_from_files()
             dataset_to_fetch.write_metadata()
             variants = [dataset_to_fetch]
-        elif dataset.name in tpc_info.tpc_datasets:
-            # this is generatable
+
+    if dataset.name in tpc_info.tpc_datasets:
+        # filter variants to the same scale factor (and all tpc datasets require scale factor...)
+        variants = [x for x in variants if x.scale_factor == dataset.scale_factor]
+        if variants == []:
+            # this is generatable + must be generated
             variants = [util.generate_dataset(dataset)]
 
-        else:
-            msg = f"Unknown dataset {dataset.name}"
-            log.error(msg)
-            raise RuntimeError(msg)
+    # We still can't find any variants!
+    if variants == []:
+        msg = f"Unknown dataset {dataset.name}"
+        log.error(msg)
+        raise RuntimeError(msg)
 
     # order parquet first (sicne they should be fast(er) to convert from)
     # when we support .arrow, those likely should be first, then parquet, et c.

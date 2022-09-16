@@ -388,7 +388,8 @@ def convert_maxrows_parts(tpc_name, scale_factor, parts_or_rows):
 def generate_dataset(dataset):
     log.info(f"Generating {dataset.name} data to cache...")
     gen_start = time.perf_counter()
-    dataset_path = dataset.ensure_dataset_loc()
+    # This naming assumes the scale factor is always peresent, which is true for TPC-H but possibly not all generated datasets
+    dataset_path = dataset.ensure_dataset_loc(new_hash=f"raw_{dataset.scale_factor}")
     generators = {"tpc-h": DBGen, "tpc-ds": DSDGen}
 
     # override the format, since we only know how to directly generate tpc-raw format

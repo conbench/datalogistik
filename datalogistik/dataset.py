@@ -218,7 +218,8 @@ class Dataset:
             )
         return all_tables[index]
 
-    def get_csv_dataset(self, table):
+    # TODO: should these not return the specs, but the dataset itself?
+    def get_csv_dataset_spec(self, table):
         # defaults
         po = csv.ParseOptions()
         co = csv.ConvertOptions()
@@ -230,11 +231,9 @@ class Dataset:
         column_names = None
         # TODO: Where does this go?
         # autogen_column_names = False
-        table_schema = table.schema
-        if table_schema:
-            log.debug("Found user-specified schema in metadata")
-            schema = util.get_arrow_schema(table_schema)
-            column_names = list(table_schema.keys())
+        if table.schema:
+            schema = util.get_arrow_schema(table.schema)
+            column_names = list(table.schema.keys())
 
         ro = csv.ReadOptions(
             column_names=column_names,
@@ -247,20 +246,21 @@ class Dataset:
 
         return dataset_read_format, schema
 
-    def get_raw_tpc_dataset(self, table):
+    def get_raw_tpc_dataset_spec(self, table):
         # defaults
-        ro = csv.ReadOptions()
-        po = csv.ParseOptions(delimiter="|")
 
         column_types = tpc_info.col_dicts[self.name][table.table]
 
         # dbgen's .tbl output has a trailing delimiter
         column_types_trailed = column_types.copy()
         column_types_trailed["trailing_columns"] = pa.string()
+
         ro = csv.ReadOptions(
             column_names=column_types_trailed.keys(),
             encoding="iso8859" if self.name == "tpc-ds" else "utf8",
         )
+
+        po = csv.ParseOptions(delimiter="|")
 
         co = csv.ConvertOptions(
             column_types=column_types_trailed,
@@ -277,7 +277,7 @@ class Dataset:
         # does not have the extra column at the end here)
         return dataset_read_format, pa.schema(column_types.copy())
 
-    def get_table(self, table=None):
+    def get_table_dataset(self, table=None):
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
 
@@ -286,9 +286,9 @@ class Dataset:
         if self.format == "parquet":
             dataset_read_format = pads.ParquetFileFormat()
         if self.format == "csv":
-            dataset_read_format, schema = self.get_csv_dataset(table)
+            dataset_read_format, schema = self.get_csv_dataset_spec(table)
         if self.format == "tpc-raw":
-            dataset_read_format, schema = self.get_raw_tpc_dataset(table)
+            dataset_read_format, schema = self.get_raw_tpc_dataset_spec(table)
 
         return pads.dataset(
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
@@ -311,7 +311,7 @@ class Dataset:
             for file in table.files:
                 # the path it will be stored at
                 filename = file.get("file_path")
-                dataset_file_path = pathlib.Path(cached_dataset_path, filename)
+                dataset_file_path = cached_dataset_path / filename
 
                 # craft the URL (need to be careful since sometimes it will contain the name of the dataset)
                 full_path = self.url
@@ -323,7 +323,7 @@ class Dataset:
                 # TODO: validate checksum, something like:
                 # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
 
-                util.download_file(self.url, output_path=dataset_file_path)
+                util.download_file(full_path, output_path=dataset_file_path)
                 util.set_readonly(dataset_file_path)
 
         down_time = time.perf_counter() - down_start
@@ -372,7 +372,7 @@ class Dataset:
         json_string = self.to_json()
 
         # establish the metadata_file path
-        metadata_file_path = pathlib.Path(self.cache_location, config.metadata_filename)
+        metadata_file_path = self.cache_location / config.metadata_filename
         self.metadata_file = metadata_file_path
 
         # write
@@ -441,7 +441,7 @@ class Dataset:
                 new_dataset.tables.append(new_table)
 
                 # TODO: possible schema changes here at the table level
-                table_pads = self.get_table(old_table)
+                table_pads = self.get_table_dataset(old_table)
                 output_file = new_dataset.ensure_table_loc(i_table)
 
                 # TODO: get nrows form the dataset (we should use the metadata if we have it to not need to poke the metadata)

@@ -119,8 +119,8 @@ def test_get_one_table():
 @pytest.mark.parametrize(
     "test_dataset", [simple_parquet_ds, multi_file_ds, multi_table_ds]
 )
-def test_get_table(test_dataset):
-    arrow_ds = test_dataset.get_table(0)
+def test_get_table_dataset(test_dataset):
+    arrow_ds = test_dataset.get_table_dataset(0)
     assert isinstance(arrow_ds, pyarrowdataset.Dataset)
 
 
@@ -272,19 +272,35 @@ def test_find_dataset():
     assert find_exact_dataset(ds_variant_not_found) is None
 
 
-def test_find_close_dataset():
-    ds_variant_not_found = Dataset(
-        name="chi_traffic_sample", format="csv", compression="gzip"
-    )
-    close = find_close_dataset(ds_variant_not_found)
-    # We prefer Parquet if we have it
-    assert close.format == "parquet"
-    assert simple_parquet_ds == close
+# def test_find_close_dataset():
+#     ds_variant_not_found = Dataset(
+#         name="chi_traffic_sample", format="csv", compression="gzip"
+#     )
+#     close = find_close_dataset(ds_variant_not_found)
+#     # We prefer Parquet if we have it
+#     assert close.format == "parquet"
+#     assert simple_parquet_ds == close
 
-    ds_variant_not_found = Dataset(name="nyctaxi_sample", format="parquet")
-    close = find_close_dataset(ds_variant_not_found)
-    # But can fall back
-    assert close.format == "csv"
+#     ds_variant_not_found = Dataset(name="nyctaxi_sample", format="parquet")
+#     close = find_close_dataset(ds_variant_not_found)
+#     # But can fall back
+#     assert close.format == "csv"
+
+
+def test_find_close_dataset_sf_mismatch(monkeypatch):
+    # Mock the generation, cause all we care about here is that that would be called
+    good_return = Dataset(name="tpc-h", scale_factor=10, format="tpc-raw")
+
+    def _fake_generate(dataset):
+        return good_return
+
+    monkeypatch.setattr("datalogistik.util.generate_dataset", _fake_generate)
+
+    # but some properties don't constitute a match:
+    ds_diff_scale_factor = Dataset(name="tpc-h", scale_factor=10)
+    output = find_close_dataset(ds_diff_scale_factor)
+
+    assert output is good_return
 
 
 def test_get_dataset_with_schema():
