@@ -57,7 +57,7 @@ def main():
         finish()
 
     # At this point, we don't have any matches, so we need to bail
-    log.debug(
+    log.info(
         f"Could not find any datasets that are feasible for {dataset.name}. Please check the name."
     )
 
