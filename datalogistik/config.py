@@ -21,21 +21,20 @@ debug = True
 
 default_repo_file = str(pathlib.Path(__file__).parent.parent / "repo.json")
 if platform.system() == "Windows":
-    default_cache_location = os.getenv("LOCALAPPDATA")
-    cache_dir_name = "datalogistik_cache"
+    default_cache_location = os.path.join(
+        os.getenv("LOCALAPPDATA"), "datalogistik_cache"
+    )
 else:  # Unix (Linux or Mac)
-    default_cache_location = os.getenv("HOME")
-    cache_dir_name = ".datalogistik_cache"
+    default_cache_location = os.path.join(os.getenv("HOME"), ".datalogistik_cache")
 metadata_filename = "datalogistik_metadata.ini"
 supported_formats = ["parquet", "csv", "tpc-raw"]
 hashing_chunk_size = 16384
 
 
 def get_cache_location():
-    return pathlib.Path(
-        os.getenv("DATALOGISTIK_CACHE", default_cache_location),
-        cache_dir_name,
-    )
+    # TODO: Do we want to be able to specify the exact loction, or do we
+    # always want to add a directory here?
+    return pathlib.Path(os.getenv("DATALOGISTIK_CACHE", default_cache_location))
 
 
 def get_repo_file_path():
