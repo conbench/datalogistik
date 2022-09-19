@@ -169,10 +169,15 @@ def test_write_metadata():
     penguins.ensure_dataset_loc("raw")
     penguins.write_metadata()
 
-    # now there is
-    assert pathlib.Path(
+    metadata_out = pathlib.Path(
         "tests/fixtures/test_cache/penguins/raw/", config.metadata_filename
-    ).exists()
+    )
+    # now there is
+    assert metadata_out.exists()
+
+    # and we can read it in!
+    read_dataset = Dataset.from_json(metadata_out)
+    assert read_dataset.name == "penguins"
 
     # cleanup all files that weren't there to start with
     for file in set(os.listdir(test_dir_path)) - set(start_files):

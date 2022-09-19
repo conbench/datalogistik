@@ -79,13 +79,6 @@ def file_visitor(written_file):
     log.debug(f"metadata={written_file.metadata}")
 
 
-# Construct a path to a dataset entry in the cache (possibly not existing yet)
-# TODO: delete me!
-def create_cached_dataset_path(name, hash):
-    local_cache_location = config.get_cache_location()
-    return pathlib.Path(local_cache_location, name, hash)
-
-
 # For each item in the itemlist, add it to metadata if it exists in dataset_info
 def add_if_present(itemlist, dataset_info, metadata):
     for item in itemlist:
@@ -397,7 +390,7 @@ def generate_dataset(dataset):
 
     try:
         generator_class = generators[dataset.name]
-        # TODO: suppoer executable_path as env var?
+        # TODO: support executable_path as env var?
         generator = generator_class(executable_path=None)
 
         dataset_path.mkdir(parents=True, exist_ok=True)

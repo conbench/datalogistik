@@ -23,6 +23,7 @@ include = ["repo.json"]
 python = "^3.8"
 pyarrow = "^9.0.0"
 urllib3 = "^1.26.9"
+certifi = "^2022.6.15"
 
 [tool.poetry.dev-dependencies]
 black = "22.6.0"
