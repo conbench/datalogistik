@@ -13,6 +13,7 @@
         "tables": [
             {
                 "table": "2016Q4",
+                "files": [{"file_path": "2016Q4.csv.gz"}],
                 "schema": {
                     "LOAN_ID": "string",
                     "ACT_PERIOD": "string",
