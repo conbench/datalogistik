@@ -47,7 +47,7 @@ def search_repo(name, repo):
 
     # No dataset is found
     # TODO: do we actually need this tpc exception here?
-    if index is [] and name not in tpc_info.tpc_datasets:
+    if name not in index and name not in tpc_info.tpc_datasets:
         msg = (
             f"Dataset '{name}' not found in repository or list of supported "
             "generators.\n\nDatasets found in repository: "
