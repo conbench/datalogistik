@@ -28,7 +28,7 @@ def find_exact_dataset(dataset):
 
 
 # Will also download if no close variant is found (is this right? should this happen higher up?)
-def find_close_dataset(dataset):
+def find_or_instantiate_close_dataset(dataset):
     # make a copy so we don't alter the dataset passed
     dataset = copy.deepcopy(dataset)
     variants = dataset.list_variants()

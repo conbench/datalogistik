@@ -19,7 +19,7 @@ import pathlib
 import time
 import warnings
 from collections import OrderedDict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from typing import List, Optional
 
 import pyarrow as pa
@@ -79,6 +79,13 @@ class Dataset:
     local_creation_date: Optional[str] = None
 
     # TODO: Post-init validation for things like delim if csv, etc.
+    def __post_init__(self):
+        if self.format not in config.supported_formats:
+            msg = f"Unsupported format: {self.format}. Supported formats: {config.supported_formats}"
+            log.error(msg)
+            raise RuntimeError(msg)
+        if self.scale_factor is None and self.name in tpc_info.tpc_datasets:
+            self.scale_factor = 1.0
 
     def __eq__(self, other):
         if not isinstance(other, Dataset):
@@ -521,3 +528,14 @@ class Dataset:
         output["tables"] = tables
 
         return json.dumps(output)
+
+    def fill_in_nones(self, other_dataset_info):
+        for dataset_field in fields(self):
+            attr = dataset_field.name
+            # import pdb; pdb.set_trace()
+            print(f"attr: {attr}, value: {getattr(other_dataset_info, attr)}")
+            if (
+                getattr(self, attr) is None
+                and getattr(other_dataset_info, attr) is not None
+            ):
+                setattr(self, attr, getattr(other_dataset_info, attr))

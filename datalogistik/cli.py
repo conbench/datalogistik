@@ -15,7 +15,7 @@
 import argparse
 import sys
 
-from . import util
+from . import repo, util
 from .dataset import Dataset
 from .log import log
 
@@ -64,7 +64,6 @@ def parse_args():
         "-f",
         "--format",
         type=str,
-        required=True,
         help="Format for the dataset (convert if necessary). \
 Supported formats: Parquet, csv",
     )
@@ -133,10 +132,10 @@ def parse_args_and_get_dataset_info():
 
         # Set defaults and perform sanity-check for the arguments:
         # TODO:
-        #  * format
-        #  * scale_factor
         #  * compression
         #  * partitioning (later)
+        dataset_info = repo.search_repo(opts.dataset, repo.get_repo())
+        dataset.fill_in_nones(dataset_info)
 
         return dataset
 
