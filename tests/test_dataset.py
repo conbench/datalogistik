@@ -21,11 +21,9 @@ import sys
 import pytest
 from pyarrow import dataset as pyarrowdataset
 
-from datalogistik import config
+from datalogistik import config, dataset_search
 from datalogistik.dataset import Dataset
 from datalogistik.table import Table
-
-from . import dataset_search
 
 simple_parquet_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
@@ -215,16 +213,18 @@ def test_output_result():
             "name": "chi_traffic_sample",
             "format": "parquet",
             "tables": {
-                "chi_traffic_sample": str(
-                    pathlib.Path(
-                        "tests",
-                        "fixtures",
-                        "test_cache",
-                        "chi_traffic_sample",
-                        "a1fa1fa",
-                        "chi_traffic_sample.parquet",
+                "chi_traffic_sample": {
+                    "path": str(
+                        pathlib.Path(
+                            "tests",
+                            "fixtures",
+                            "test_cache",
+                            "chi_traffic_sample",
+                            "a1fa1fa",
+                            "chi_traffic_sample.parquet",
+                        )
                     )
-                )
+                }
             },
         }
     )
@@ -237,27 +237,31 @@ def test_output_result():
             "format": "csv",
             "tables": {
                 # This table is a multi file dataset, so just the folder is passed
-                "taxi_2013": str(
-                    pathlib.Path(
-                        "tests",
-                        "fixtures",
-                        "test_cache",
-                        "chi_taxi",
-                        "dabb1e5",
-                        "taxi_2013",
+                "taxi_2013": {
+                    "path": str(
+                        pathlib.Path(
+                            "tests",
+                            "fixtures",
+                            "test_cache",
+                            "chi_taxi",
+                            "dabb1e5",
+                            "taxi_2013",
+                        )
                     )
-                ),
+                },
                 # This table is a single file dataset, so we have the extension
-                "chi_traffic_sample": str(
-                    pathlib.Path(
-                        "tests",
-                        "fixtures",
-                        "test_cache",
-                        "chi_taxi",
-                        "dabb1e5",
-                        "chi_traffic_sample.csv",
+                "chi_traffic_sample": {
+                    "path": str(
+                        pathlib.Path(
+                            "tests",
+                            "fixtures",
+                            "test_cache",
+                            "chi_taxi",
+                            "dabb1e5",
+                            "chi_traffic_sample.csv",
+                        )
                     )
-                ),
+                },
             },
         }
     )

@@ -56,7 +56,8 @@ def validate_tpc_dataset(dataset_name, dataset_paths, file_format):
         ref_dataset_subpath = "tpc-h/0.001"
 
     failure_occurred = False
-    for table, path in dataset_paths.items():
+    for table, entry in dataset_paths.items():
+        path = entry["path"]
         column_types = tpc_info.col_dicts[dataset_name][table]
         column_list = list(column_types.keys())
         # dsdgen's validation output has a duplicated first column that we need to remove
