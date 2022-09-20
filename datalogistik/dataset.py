@@ -270,7 +270,7 @@ class Dataset:
             read_options=ro, parse_options=po, convert_options=co
         )
 
-        # return the dataset and then also the schema (though the schema cricitally
+        # return the dataset and then also the schema (though the schema critically
         # does not have the extra column at the end here)
         return dataset_read_format, pa.schema(column_types.copy())
 
@@ -362,7 +362,7 @@ class Dataset:
         # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L895-L911
 
     def write_metadata(self):
-        # clean up | ensure fiels are populated
+        # clean up | ensure fields are populated
         self.fill_metadata_from_files()
 
         # JSONify
@@ -441,7 +441,7 @@ class Dataset:
                 table_pads = self.get_table_dataset(old_table)
                 output_file = new_dataset.ensure_table_loc(i_table)
 
-                # TODO: get nrows form the dataset (we should use the metadata if we have it to not need to poke the metadata)
+                # TODO: get nrows from the dataset (we should use the metadata if we have it to not need to poke the data)
                 nrows = table_pads.count_rows()
 
                 # Find a reasonable number to set our rows per row group.
@@ -470,7 +470,7 @@ class Dataset:
                     file_visitor=util.file_visitor if config.debug else None,
                 )
 
-                # TODO: this partitioning flag isn't quite right, but we should make a new attribute that basically is all and only if it's a multi-file table or
+                # TODO: this partitioning flag isn't quite right, we should make a new attribute that encodes whether this is a multi-file table
                 if new_table.partitioning is None:
                     # Convert from name.format/part-0.format to simply a file name.format
                     # To stay consistent with downloaded/generated datasets (without partitioning)
@@ -485,7 +485,7 @@ class Dataset:
                     )
                     tmp_dir_name.rmdir()
 
-                # TODO: this probablyisn't quite right, we should do something else (use arrow?)
+                # TODO: this probably isn't quite right, we should do something else (use arrow?)
                 if new_dataset.format == "csv" and new_dataset.compression:
                     util.compress(
                         output_file, output_file.parent, new_dataset.compression

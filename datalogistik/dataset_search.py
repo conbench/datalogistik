@@ -57,7 +57,7 @@ def find_close_dataset(dataset):
         log.error(msg)
         raise RuntimeError(msg)
 
-    # order parquet first (sicne they should be fast(er) to convert from)
+    # order parquet first (since they should be fast(er) to convert from)
     # when we support .arrow, those likely should be first, then parquet, et c.
     # TODO: sort by compression too?
     format_preference = {

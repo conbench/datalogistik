@@ -116,7 +116,7 @@ def parse_args_and_get_dataset_info():
     # Parse and check cmdline options
     opts = parse_args()
 
-    # add in partitioning to fake that it exists for now (since we don't want ot expose it, but also don't want to rip up the code)
+    # add in partitioning to fake that it exists for now (since we don't want to expose it, but also don't want to rip up the code)
     opts.partition_max_rows = 0
 
     if opts.command == "cache":
