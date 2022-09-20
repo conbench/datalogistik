@@ -27,7 +27,7 @@ def parse_args():
     )
     sub_parsers = parser.add_subparsers(dest="command")
     cache_parser = sub_parsers.add_parser("cache")
-    gen_parser = sub_parsers.add_parser("generate")
+    gen_parser = sub_parsers.add_parser("get")
 
     cache_group = cache_parser.add_mutually_exclusive_group()
     cache_group.add_argument(
@@ -123,7 +123,7 @@ def parse_args_and_get_dataset_info():
         handle_cache_command(opts)
         sys.exit(0)
 
-    elif opts.command == "generate":
+    elif opts.command == "get":
         dataset = Dataset(
             name=opts.dataset,
             format=opts.format,
