@@ -67,9 +67,6 @@ class Dataset:
     metadata_file: Optional[pathlib.Path] = None
     url: Optional[str] = None
     homepage: Optional[str] = None
-    # TODO: should dim actually be at the Table level?
-    # until it is, its entries should correspond to the entries in the tables list
-    dim: Optional[List] = field(default_factory=list)
 
     # To be filled in at run time only
     cache_location: Optional[pathlib.Path] = None
@@ -80,7 +77,7 @@ class Dataset:
 
     # TODO: Post-init validation for things like delim if csv, etc.
     def __post_init__(self):
-        if self.format not in config.supported_formats:
+        if self.format is not None and self.format not in config.supported_formats:
             msg = f"Unsupported format: {self.format}. Supported formats: {config.supported_formats}"
             log.error(msg)
             raise RuntimeError(msg)
@@ -519,12 +516,14 @@ class Dataset:
 
     def output_result(self):
         output = {"name": self.name, "format": self.format}
-        if self.dim:
-            output["dim"] = self.dim
 
         tables = {}
         for table in self.tables:
-            tables[table.table] = str(self.ensure_table_loc(table))
+            table_entry = {}
+            if table.dim:
+                table_entry["dim"] = table.dim
+            table_entry["path"] = str(self.ensure_table_loc(table))
+            tables[table.table] = table_entry
         output["tables"] = tables
 
         return json.dumps(output)
