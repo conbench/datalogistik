@@ -23,8 +23,9 @@ from pyarrow import dataset as pyarrowdataset
 
 from datalogistik import config
 from datalogistik.dataset import Dataset
-from datalogistik.dataset_search import find_close_dataset, find_exact_dataset
 from datalogistik.table import Table
+
+from . import dataset_search
 
 simple_parquet_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
@@ -268,13 +269,13 @@ def test_output_result():
 
 def test_find_dataset():
     ds_to_find = Dataset(name="chi_traffic_sample", format="parquet")
-    assert simple_parquet_ds == find_exact_dataset(ds_to_find)
+    assert simple_parquet_ds == dataset_search.find_exact_dataset(ds_to_find)
 
     # but if there's no exact match, we get None
     ds_variant_not_found = Dataset(
         name="chi_traffic_sample", format="csv", compression="gzip"
     )
-    assert find_exact_dataset(ds_variant_not_found) is None
+    assert dataset_search.find_exact_dataset(ds_variant_not_found) is None
 
 
 # def test_find_close_dataset():
@@ -303,7 +304,7 @@ def test_find_close_dataset_sf_mismatch(monkeypatch):
 
     # but some properties don't constitute a match:
     ds_diff_scale_factor = Dataset(name="tpc-h", scale_factor=10)
-    output = find_close_dataset(ds_diff_scale_factor)
+    output = dataset_search.find_or_instantiate_close_dataset(ds_diff_scale_factor)
 
     assert output is good_return
 

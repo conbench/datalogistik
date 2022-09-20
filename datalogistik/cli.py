@@ -132,10 +132,11 @@ def parse_args_and_get_dataset_info():
 
         # Set defaults and perform sanity-check for the arguments:
         # TODO:
-        #  * compression
+        #  * compression (in particular: test supported file-compression, set snappy for parquet)
         #  * partitioning (later)
         dataset_info = repo.search_repo(opts.dataset, repo.get_repo())
-        dataset.fill_in_nones(dataset_info)
+        if dataset_info:
+            dataset.fill_in_nones(dataset_info)
 
         return dataset
 
