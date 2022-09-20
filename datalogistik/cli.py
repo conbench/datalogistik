@@ -79,7 +79,7 @@ Supported formats: Parquet, csv",
         "-s",
         "--scale-factor",
         type=str,
-        default="",
+        default=None,
         help="Scale factor for TPC datasets",
     )
     # TODO: should this be an env var instead of an argument?

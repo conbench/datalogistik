@@ -76,9 +76,6 @@ class Dataset:
     # To be filled in programmatically when a dataset is created
     local_creation_date: Optional[str] = None
 
-    # TODO: probably can be deleted
-    rel_path: Optional[pathlib.Path] = None
-
     # TODO: Post-init validation for things like delim if csv, etc.
 
     def __eq__(self, other):
@@ -379,7 +376,8 @@ class Dataset:
         if metadata_file_path.exists():
             util.set_readwrite(metadata_file_path)
         with open(metadata_file_path, "w") as metadata_file:
-            json.dump(obj=json_string, fp=metadata_file)
+            # TODO: how could we use json.dump(self, metadata_file) while still getting the custom serializer to_json() below?
+            metadata_file.write(json_string)
 
         util.set_readonly(metadata_file_path)
         pass
@@ -404,7 +402,6 @@ class Dataset:
 
         try:
             # ensure that we have a new dataset location
-            # TODO: make the hash something more random
             new_dataset.ensure_dataset_loc(new_hash=util.short_hash())
 
             # grab format output
