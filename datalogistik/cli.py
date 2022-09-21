@@ -133,11 +133,13 @@ def parse_args_and_get_dataset_info():
 
         # Set defaults and perform sanity-check for the arguments:
         # TODO:
-        #  * compression (in particular: test supported file-compression, set snappy for parquet)
+        #  * compression (in particular: test supported file-compression)
         #  * partitioning (later)
         dataset_info = repo.search_repo(opts.dataset, repo.get_repo())
         if dataset_info:
             dataset.fill_in_nones(dataset_info)
+        if dataset.compression is None and dataset.format == "parquet":
+            dataset.compression = "snappy"
 
         return dataset
 
