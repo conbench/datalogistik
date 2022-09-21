@@ -332,6 +332,7 @@ class Dataset:
         for table in self.tables:
             table_loc = self.ensure_table_loc(table)
             if table_loc.is_file():
+                probe_file = table_loc
                 # one file table
                 table.files = [
                     {
@@ -341,6 +342,7 @@ class Dataset:
                     }
                 ]
             elif table_loc.is_dir():
+                probe_file = next(table_loc.iterdir())
                 # multi file table
                 table.files = [
                     {
@@ -351,9 +353,9 @@ class Dataset:
                     for subfile in table_loc.iterdir()
                     if subfile.is_file()
                 ]
-        # Find parquet compression, move to the proper subdir
+        # Find parquet compression
         if self.format == "parquet":
-            file_metadata = pq.ParquetFile(self.ensure_table_loc(0)).metadata
+            file_metadata = pq.ParquetFile(probe_file).metadata
             self.compression = file_metadata.row_group(0).column(0).compression.lower()
 
         # TODO: auto detect csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
@@ -419,8 +421,7 @@ class Dataset:
                 dataset_write_format = pads.CsvFileFormat()
 
             # convert each table
-            for i_table, _ in enumerate(self.tables):
-                old_table = self.tables[i_table]
+            for old_table in self.tables:
 
                 # add this table to the new dataset
                 new_table = Table(table=old_table.table)
@@ -434,7 +435,7 @@ class Dataset:
 
                 # TODO: possible schema changes here at the table level
                 table_pads = self.get_table_dataset(old_table)
-                output_file = new_dataset.ensure_table_loc(i_table)
+                output_file = new_dataset.ensure_table_loc(old_table.table)
 
                 # TODO: get nrows from the dataset (we should use the metadata if we have it to not need to poke the data)
                 nrows = table_pads.count_rows()
