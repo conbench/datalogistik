@@ -41,7 +41,7 @@ def test_validate_tpc_generation(capsys, dataset_name, format):
                 "-f",
                 format,
             ]
-            datalogistik.main(dataset=cli.parse_args_and_get_dataset_info())
+            datalogistik.main()
             assert e.type == SystemExit
             assert e.value.code == 0
 
