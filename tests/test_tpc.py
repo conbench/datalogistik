@@ -19,7 +19,7 @@ import tempfile
 
 import pytest
 
-from datalogistik import cli, datalogistik, tpc_validation
+from datalogistik import datalogistik, tpc_validation
 
 # TODO: TPC-DS tests & validation
 # TODO: add more unittest for testing more parameters (sf, partitions, format)
