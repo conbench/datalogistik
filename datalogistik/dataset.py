@@ -57,8 +57,6 @@ class Dataset:
     # TODO: literal type? for specific values
     format: Optional[str] = None
     compression: Optional[str] = None
-    # TODO: should header_line actually be at the Table level?
-    header_line: Optional[bool] = None
     tables: Optional[List] = field(default_factory=list)
     local_creation_date: Optional[str] = None
     # TODO: is this the right default?
@@ -118,10 +116,6 @@ class Dataset:
                 metadata = json_dump
 
         # But replace all -s with _s
-        # TODO: remove this or make it actually more systematic
-        metadata = OrderedDict(
-            (key.replace("-", "_"), value) for key, value in metadata.items()
-        )
 
         # Construct the tables, adding them back in
         # TODO: handle the case where there is a single file and no table attribute?
@@ -234,7 +228,7 @@ class Dataset:
 
         ro = csv.ReadOptions(
             column_names=column_names,
-            autogenerate_column_names=not self.header_line,
+            autogenerate_column_names=not table.header_line,
         )
 
         dataset_read_format = pads.CsvFileFormat(
@@ -419,15 +413,6 @@ class Dataset:
 
             if new_dataset.format == "csv":
                 dataset_write_format = pads.CsvFileFormat()
-                # TODO: Do we also need to not include header if there's a known schema
-                if new_dataset.header_line is None:
-                    new_dataset.header_line = self.header_line
-
-                # IFF header_line is False, then add that to the write options
-                if new_dataset.header_line is False:
-                    write_options = dataset_write_format.make_write_options(
-                        include_header=False
-                    )
 
             # convert each table
             for i_table, _ in enumerate(self.tables):
@@ -436,6 +421,12 @@ class Dataset:
                 # add this table to the new dataset
                 new_table = Table(table=old_table.table)
                 new_dataset.tables.append(new_table)
+
+                # IFF header_line is False, then add that to the write options
+                if new_table.header_line is False:
+                    write_options = dataset_write_format.make_write_options(
+                        include_header=False
+                    )
 
                 # TODO: possible schema changes here at the table level
                 table_pads = self.get_table_dataset(old_table)

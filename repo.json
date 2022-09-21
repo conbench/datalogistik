@@ -59,11 +59,11 @@
             18
         ],
         "format": "csv",
-        "header-line": true,
         "compression": "gz",
         "tables": [
             {
                 "table": "nyctaxi_2010-01",
+                "header_line": true,
                 "files": [
                     {
                         "file_path": "yellow_tripdata_2010-01.csv.gz"

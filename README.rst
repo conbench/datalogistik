@@ -188,7 +188,7 @@ In addition, entries can have the following optional properties:
 ``dim``
     Dimensions ([rows, columns]).
 
-``file-compression``
+``compression``
     File-level compression (e.g. gz for GZip), that needs to be decoded before an
     application can use the file. Some formats like parquet use internal compression,
     but that is not what is meant here.
@@ -210,7 +210,7 @@ In addition, entries can have the following optional properties:
         "c": {"type_name": "decimal", "arguments": [7, 3]}
     }
 
-``header-line``
+``header_line``
     Boolean denoting whether the first line of a CSV file contains the column names (default: false)
 
 Output
@@ -226,7 +226,7 @@ It contains the following properties:
     File format (e.g. csv, parquet) - note that this may differ from the information in
     the repo, because ``datalogistik`` might have performed a format conversion.
 
-``scale-factor``
+``scale_factor``
     (optional) In case of a TPC dataset, the scale factor.
 
 ``delim``
@@ -235,17 +235,13 @@ It contains the following properties:
 ``dim``
     Dimensions ([rows, columns]).
 
-``parquet-compression``
-    When the parquet format is used, what compression standard was used internally. Note
-    that this is different from file-compression.
-
 
 The dataset itself contains a metadata file with the following additional properties:
 
 datalogistik_metadata.ini
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``local-creation-date``
+``local_creation_date``
     Date and time when this dataset was downloaded or generated to the cache.
 
 
