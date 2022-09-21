@@ -17,8 +17,7 @@ import time
 
 import pyarrow
 
-from . import cli, config
-from .dataset_search import find_close_dataset, find_exact_dataset
+from . import cli, config, dataset_search
 from .log import log
 
 total_start = time.perf_counter()
@@ -43,23 +42,19 @@ def main():
     )
 
     # Get dataset if it already exists in the cache
-    exact_match = find_exact_dataset(dataset)
+    exact_match = dataset_search.find_exact_dataset(dataset)
 
     if exact_match:
         print(exact_match.output_result())
         finish()
 
     # Convert if not
-    close_match = find_close_dataset(dataset)
-    if close_match:
+    close_match = dataset_search.find_or_instantiate_close_dataset(dataset)
+    if close_match != dataset:
         new_dataset = close_match.convert(dataset)
         print(new_dataset.output_result())
-        finish()
 
-    # At this point, we don't have any matches, so we need to bail
-    log.info(
-        f"Could not find any datasets that are feasible for {dataset.name}. Please check the name."
-    )
+    finish()
 
 
 if __name__ == "__main__":

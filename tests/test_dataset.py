@@ -21,9 +21,8 @@ import sys
 import pytest
 from pyarrow import dataset as pyarrowdataset
 
-from datalogistik import config
+from datalogistik import config, dataset_search
 from datalogistik.dataset import Dataset
-from datalogistik.dataset_search import find_close_dataset, find_exact_dataset
 from datalogistik.table import Table
 
 simple_parquet_ds = Dataset.from_json(
@@ -214,16 +213,19 @@ def test_output_result():
             "name": "chi_traffic_sample",
             "format": "parquet",
             "tables": {
-                "chi_traffic_sample": str(
-                    pathlib.Path(
-                        "tests",
-                        "fixtures",
-                        "test_cache",
-                        "chi_traffic_sample",
-                        "a1fa1fa",
-                        "chi_traffic_sample.parquet",
-                    )
-                )
+                "chi_traffic_sample": {
+                    "path": str(
+                        pathlib.Path(
+                            "tests",
+                            "fixtures",
+                            "test_cache",
+                            "chi_traffic_sample",
+                            "a1fa1fa",
+                            "chi_traffic_sample.parquet",
+                        )
+                    ),
+                    "dim": [],
+                }
             },
         }
     )
@@ -236,27 +238,33 @@ def test_output_result():
             "format": "csv",
             "tables": {
                 # This table is multi-file, so just the folder is passed
-                "taxi_2013": str(
-                    pathlib.Path(
-                        "tests",
-                        "fixtures",
-                        "test_cache",
-                        "chi_taxi",
-                        "dabb1e5",
-                        "taxi_2013",
-                    )
-                ),
+                "taxi_2013": {
+                    "path": str(
+                        pathlib.Path(
+                            "tests",
+                            "fixtures",
+                            "test_cache",
+                            "chi_taxi",
+                            "dabb1e5",
+                            "taxi_2013",
+                        )
+                    ),
+                    "dim": [],
+                },
                 # This table is a single file, so we have the extension
-                "chi_traffic_sample": str(
-                    pathlib.Path(
-                        "tests",
-                        "fixtures",
-                        "test_cache",
-                        "chi_taxi",
-                        "dabb1e5",
-                        "chi_traffic_sample.csv.gz",
-                    )
-                ),
+                "chi_traffic_sample": {
+                    "path": str(
+                        pathlib.Path(
+                            "tests",
+                            "fixtures",
+                            "test_cache",
+                            "chi_taxi",
+                            "dabb1e5",
+                            "chi_traffic_sample.csv.gz",
+                        )
+                    ),
+                    "dim": [],
+                },
             },
         }
     )
@@ -268,13 +276,13 @@ def test_output_result():
 
 def test_find_dataset():
     ds_to_find = Dataset(name="chi_traffic_sample", format="parquet")
-    assert simple_parquet_ds == find_exact_dataset(ds_to_find)
+    assert simple_parquet_ds == dataset_search.find_exact_dataset(ds_to_find)
 
     # but if there's no exact match, we get None
     ds_variant_not_found = Dataset(
         name="chi_traffic_sample", format="csv", compression="gzip"
     )
-    assert find_exact_dataset(ds_variant_not_found) is None
+    assert dataset_search.find_exact_dataset(ds_variant_not_found) is None
 
 
 # def test_find_close_dataset():
@@ -303,7 +311,7 @@ def test_find_close_dataset_sf_mismatch(monkeypatch):
 
     # but some properties don't constitute a match:
     ds_diff_scale_factor = Dataset(name="tpc-h", scale_factor=10)
-    output = find_close_dataset(ds_diff_scale_factor)
+    output = dataset_search.find_or_instantiate_close_dataset(ds_diff_scale_factor)
 
     assert output is good_return
 

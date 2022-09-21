@@ -31,3 +31,4 @@ class Table:
     schema: Optional[dict] = None
     multi_file: Optional[bool] = None
     header_line: Optional[bool] = None
+    dim: Optional[List] = field(default_factory=list)
