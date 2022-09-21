@@ -31,6 +31,9 @@ def finish():
 
 
 def main(dataset=None):
+    # dataset here should typically be None, so then we use parse_args_and_get_dataset_info() to
+    # create the dataset to use. But it can be helpful in tests to construct ones own dataset
+    # with Dataset(name="my dataset", format="very_fancy") and pass it as the dataset argument
     if dataset is None:
         dataset = cli.parse_args_and_get_dataset_info()
 
