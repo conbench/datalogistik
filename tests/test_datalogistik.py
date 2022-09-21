@@ -20,6 +20,7 @@ import pathlib
 import random
 import shutil
 import string
+import sys
 
 import pyarrow as pa
 import pytest
@@ -355,6 +356,7 @@ def test_main(capsys):
     assert isinstance(captured["tables"], dict)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="windows errors on the cleanup")
 def test_main_with_convert(capsys):
     # the directory penguins has data _as if_ it were downloaded from a repo for the purposes of testing metadata writing
     test_dir_path = "tests/fixtures/test_cache/fanniemae_sample"
