@@ -81,16 +81,16 @@ def test_ensure_dataset_loc():
     # TODO: assert the dir is made?
 
 
-def test_get_table_name():
+def test_get_table_filename():
     assert (
-        simple_parquet_ds.get_table_name(simple_parquet_ds.tables[0])
+        simple_parquet_ds.get_table_filename(simple_parquet_ds.tables[0])
         == "chi_traffic_sample.parquet"
     )
 
     # now fake a multi-file name:
     new_ds = copy.deepcopy(simple_parquet_ds)
     new_ds.tables[0].multi_file = True
-    assert new_ds.get_table_name(new_ds.tables[0]) == "chi_traffic_sample"
+    assert new_ds.get_table_filename(new_ds.tables[0]) == "chi_traffic_sample"
 
 
 def test_ensure_table_loc():
@@ -163,7 +163,7 @@ def test_write_metadata():
     penguins = Dataset(
         name="penguins",
         format="parquet",
-        tables=[Table(table="penguins", files=["penguins.parquet"])],
+        tables=[Table(table="penguins", files=[{"file_path": "penguins.parquet"}])],
     )
     # We would use ensure_dataset in download, so use it here too
     penguins.ensure_dataset_loc("raw")
@@ -235,7 +235,7 @@ def test_output_result():
             "name": "chi_taxi",
             "format": "csv",
             "tables": {
-                # This table is a multi file dataset, so just the folder is passed
+                # This table is multi-file, so just the folder is passed
                 "taxi_2013": str(
                     pathlib.Path(
                         "tests",
@@ -246,7 +246,7 @@ def test_output_result():
                         "taxi_2013",
                     )
                 ),
-                # This table is a single file dataset, so we have the extension
+                # This table is a single file, so we have the extension
                 "chi_traffic_sample": str(
                     pathlib.Path(
                         "tests",
@@ -254,7 +254,7 @@ def test_output_result():
                         "test_cache",
                         "chi_taxi",
                         "dabb1e5",
-                        "chi_traffic_sample.csv",
+                        "chi_traffic_sample.csv.gz",
                     )
                 ),
             },

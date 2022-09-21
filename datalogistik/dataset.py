@@ -139,14 +139,17 @@ class Dataset:
 
         return [Dataset.from_json(ds) for ds in metadata_files]
 
-    def get_table_name(self, table):
-        # TODO: allow for compression extension bits (probably need to abstract into a name generator)
+    def get_table_filename(self, table):
         name = table.table
         # if we are a single-file table (or the default of no files), add the extension
         if len(table.files) > 1 or table.multi_file:
             name = name
-        else:
+        elif self.name in tpc_info.tpc_datasets:
             name = name + os.extsep + self.format
+            if self.format == "csv" and self.compression != "uncompressed":
+                name = name + os.extsep + self.compression
+        else:
+            name = table.files[0]["file_path"]
 
         return name
 
@@ -176,8 +179,9 @@ class Dataset:
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
 
-        # TODO: check that this file actually exists?
-        data_path = pathlib.Path(self.ensure_dataset_loc(), self.get_table_name(table))
+        data_path = pathlib.Path(
+            self.ensure_dataset_loc(), self.get_table_filename(table)
+        )
 
         if parents_only:
             data_path = data_path.parent
@@ -331,7 +335,7 @@ class Dataset:
                 # one file table
                 table.files = [
                     {
-                        "rel_path": table_loc.relative_to(self.ensure_dataset_loc()),
+                        "file_path": table_loc.relative_to(self.ensure_dataset_loc()),
                         "file_size": table_loc.lstat().st_size,
                         "md5": util.calculate_checksum(table_loc),
                     }
@@ -340,7 +344,7 @@ class Dataset:
                 # multi file table
                 table.files = [
                     {
-                        "rel_path": subfile.relative_to(self.ensure_dataset_loc()),
+                        "file_path": subfile.relative_to(self.ensure_dataset_loc()),
                         "file_size": subfile.lstat().st_size,
                         "md5": util.calculate_checksum(subfile),
                     }

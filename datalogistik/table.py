@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathlib
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -28,7 +27,6 @@ class Table:
     table: str
     # partitioning is not fully implemented and should not be exposed to the user
     partitioning: Optional[int] = None
-    rel_path: Optional[pathlib.Path] = None
     files: Optional[List] = field(default_factory=list)
     schema: Optional[dict] = None
     multi_file: Optional[bool] = None
