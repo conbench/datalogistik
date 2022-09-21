@@ -65,8 +65,8 @@ def parse_args():
         "--format",
         type=str,
         required=True,
-        help="Format for the dataset (convert if necessary). \
-Supported formats: Parquet, csv",
+        help="Format for the dataset (convert if necessary). "
+        "Supported formats: parquet, csv",
     )
     gen_parser.add_argument(
         "-c",
