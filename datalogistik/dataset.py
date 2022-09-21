@@ -139,17 +139,27 @@ class Dataset:
 
         return [Dataset.from_json(ds) for ds in metadata_files]
 
+    def generate_filename(self, table):
+        name = table.table + os.extsep + self.format
+        if self.format == "csv" and self.compression not in [
+            None,
+            "none",
+            "uncompressed",
+        ]:
+            name = name + os.extsep + self.compression
+        return name
+
     def get_table_filename(self, table):
-        name = table.table
-        # if we are a single-file table (or the default of no files), add the extension
         if len(table.files) > 1 or table.multi_file:
-            name = name
+            name = table.table
         elif self.name in tpc_info.tpc_datasets:
-            name = name + os.extsep + self.format
-            if self.format == "csv" and self.compression != "uncompressed":
-                name = name + os.extsep + self.compression
+            return self.generate_filename(table)
         else:
-            name = table.files[0]["file_path"]
+            if table.files:
+                # If there is a files entry, use it
+                name = table.files[0]["file_path"]
+            else:
+                return self.generate_filename(table)
 
         return name
 
@@ -435,7 +445,16 @@ class Dataset:
 
                 # TODO: possible schema changes here at the table level
                 table_pads = self.get_table_dataset(old_table)
-                output_file = new_dataset.ensure_table_loc(old_table.table)
+                output_file = pathlib.Path(
+                    new_dataset.ensure_dataset_loc(),
+                    new_dataset.get_table_filename(
+                        new_dataset.get_one_table(old_table.table)
+                    ),
+                )
+                if new_dataset.format == "csv" and new_dataset.compression:
+                    # Remove compression extension from filename, pads cannot compress on the fly
+                    # so we need to compress as an extra step and then we'll add the extension.
+                    output_file = output_file.parent / output_file.stem
 
                 # TODO: get nrows from the dataset (we should use the metadata if we have it to not need to poke the data)
                 nrows = table_pads.count_rows()
