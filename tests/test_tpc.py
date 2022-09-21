@@ -33,7 +33,7 @@ def test_validate_tpc_generation(capsys, dataset_name, format):
         with pytest.raises(SystemExit) as e:
             sys.argv = [
                 "test_tpc",
-                "generate",
+                "get",
                 "-d",
                 dataset_name,
                 "-s",

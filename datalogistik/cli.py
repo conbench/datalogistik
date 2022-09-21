@@ -27,7 +27,7 @@ def parse_args():
     )
     sub_parsers = parser.add_subparsers(dest="command")
     cache_parser = sub_parsers.add_parser("cache")
-    gen_parser = sub_parsers.add_parser("generate")
+    gen_parser = sub_parsers.add_parser("get")
 
     cache_group = cache_parser.add_mutually_exclusive_group()
     cache_group.add_argument(
@@ -64,8 +64,9 @@ def parse_args():
         "-f",
         "--format",
         type=str,
-        help="Format for the dataset (convert if necessary). \
-Supported formats: Parquet, csv",
+        required=True,
+        help="Format for the dataset (convert if necessary). "
+        "Supported formats: parquet, csv",
     )
     gen_parser.add_argument(
         "-c",
@@ -115,14 +116,14 @@ def parse_args_and_get_dataset_info():
     # Parse and check cmdline options
     opts = parse_args()
 
-    # add in partitioning to fake that it exists for now (since we don't want ot expose it, but also don't want to rip up the code)
+    # add in partitioning to fake that it exists for now (since we don't want to expose it, but also don't want to rip up the code)
     opts.partition_max_rows = 0
 
     if opts.command == "cache":
         handle_cache_command(opts)
         sys.exit(0)
 
-    elif opts.command == "generate":
+    elif opts.command == "get":
         dataset = Dataset(
             name=opts.dataset,
             format=opts.format,

@@ -430,7 +430,11 @@ def generate_dataset(dataset):
 
 
 def compress(uncompressed_file_path, output_dir, compression):
-    if compression is None:
+    if (
+        compression is None
+        or compression.lower() == "none"
+        or compression == "uncompressed"
+    ):
         return
     if compression == "gz":
         log.debug(
@@ -457,7 +461,12 @@ def compress(uncompressed_file_path, output_dir, compression):
 
 
 def decompress(compressed_file_path, output_dir, compression):
-    if compression is None:
+    if (
+        compression is None
+        or compression is None
+        or compression.lower() == "none"
+        or compression == "uncompressed"
+    ):
         return
     if compression == "gz":
         log.debug(

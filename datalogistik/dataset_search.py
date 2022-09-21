@@ -51,7 +51,7 @@ def find_or_instantiate_close_dataset(dataset):
             # this is generatable + must be generated
             variants = [util.generate_dataset(dataset)]
 
-    # order parquet first (sicne they should be fast(er) to convert from)
+    # order parquet first (since they should be fast(er) to convert from)
     # when we support .arrow, those likely should be first, then parquet, et c.
     # TODO: sort by compression too?
     format_preference = {

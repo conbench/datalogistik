@@ -123,5 +123,5 @@ jobs:
       - name: Install package
         run: ${{ matrix.installer }} install '${{ matrix.installee }}'
       - name: Test downloading and converting a dataset
-        run: datalogistik generate -d type_floats -f csv
+        run: datalogistik get -d type_floats -f csv
 

@@ -20,6 +20,7 @@ import random
 import string
 
 import pyarrow as pa
+import pytest
 
 from datalogistik import __version__, util
 
@@ -322,3 +323,10 @@ def test_schema_to_dict():
     assert (
         str(util.schema_to_dict(complete_csv_schema)) == complete_csv_schema_json_output
     )
+
+
+@pytest.mark.parametrize("comp_string", [None, "none", "NoNe", "uncompressed"])
+def test_compress(comp_string):
+    # These should all not compress/decompress since they are "the same"
+    assert util.compress("uncompressed_file_path", "output_dir", comp_string) is None
+    assert util.decompress("uncompressed_file_path", "output_dir", comp_string) is None
