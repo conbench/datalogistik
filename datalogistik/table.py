@@ -32,3 +32,4 @@ class Table:
     files: Optional[List] = field(default_factory=list)
     schema: Optional[dict] = None
     multi_file: Optional[bool] = None
+    dim: Optional[List] = field(default_factory=list)

@@ -15,7 +15,6 @@
 import copy
 
 from . import repo, tpc_info, util
-from .log import log
 
 
 def find_exact_dataset(dataset):
@@ -29,13 +28,14 @@ def find_exact_dataset(dataset):
 
 
 # Will also download if no close variant is found (is this right? should this happen higher up?)
-def find_close_dataset(dataset):
+def find_or_instantiate_close_dataset(dataset):
     # make a copy so we don't alter the dataset passed
     dataset = copy.deepcopy(dataset)
     variants = dataset.list_variants()
 
     # If no variants are available, ensure that one is
     if variants == []:
+        # N. B. this will raise an error for unrecognized datasets
         dataset_to_fetch = repo.search_repo(dataset.name, repo.get_repo())
         if dataset_to_fetch:
             # we found a dataset, so we can use it
@@ -50,12 +50,6 @@ def find_close_dataset(dataset):
         if variants == []:
             # this is generatable + must be generated
             variants = [util.generate_dataset(dataset)]
-
-    # We still can't find any variants!
-    if variants == []:
-        msg = f"Unknown dataset {dataset.name}"
-        log.error(msg)
-        raise RuntimeError(msg)
 
     # order parquet first (since they should be fast(er) to convert from)
     # when we support .arrow, those likely should be first, then parquet, et c.

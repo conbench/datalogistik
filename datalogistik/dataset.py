@@ -19,7 +19,7 @@ import pathlib
 import time
 import warnings
 from collections import OrderedDict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from typing import List, Optional
 
 import pyarrow as pa
@@ -67,7 +67,6 @@ class Dataset:
     metadata_file: Optional[pathlib.Path] = None
     url: Optional[str] = None
     homepage: Optional[str] = None
-    dim: Optional[List] = field(default_factory=list)
 
     # To be filled in at run time only
     cache_location: Optional[pathlib.Path] = None
@@ -76,7 +75,13 @@ class Dataset:
     # To be filled in programmatically when a dataset is created
     local_creation_date: Optional[str] = None
 
-    # TODO: Post-init validation for things like delim if csv, etc.
+    def __post_init__(self):
+        if self.format is not None and self.format not in config.supported_formats:
+            msg = f"Unsupported format: {self.format}. Supported formats: {config.supported_formats}"
+            log.error(msg)
+            raise RuntimeError(msg)
+        if self.scale_factor is None and self.name in tpc_info.tpc_datasets:
+            self.scale_factor = 1.0
 
     def __eq__(self, other):
         if not isinstance(other, Dataset):
@@ -509,12 +514,24 @@ class Dataset:
         return new_dataset
 
     def output_result(self):
-        # TODO: we should also probably include dims here too
         output = {"name": self.name, "format": self.format}
 
         tables = {}
         for table in self.tables:
-            tables[table.table] = str(self.ensure_table_loc(table))
+            tables[table.table] = {
+                "path": str(self.ensure_table_loc(table)),
+                "dim": table.dim,
+            }
         output["tables"] = tables
 
         return json.dumps(output)
+
+    def fill_in_defaults(self, dataset_for_defaults):
+        """overwrites fields that are none with values from the given dataset"""
+        for dataset_field in fields(self):
+            attr = dataset_field.name
+            if (
+                getattr(self, attr) is None
+                and getattr(dataset_for_defaults, attr) is not None
+            ):
+                setattr(self, attr, getattr(dataset_for_defaults, attr))

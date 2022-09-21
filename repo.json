@@ -4,15 +4,16 @@
         "url": "https://ursa-qa.s3.amazonaws.com/fanniemae_loanperf/2016Q4.csv.gz",
         "homepage": "https://capitalmarkets.fanniemae.com/credit-risk-transfer/single-family-credit-risk-transfer/fannie-mae-single-family-loan-performance-data",
         "delim": "|",
-        "dim": [
-            22180168,
-            31
-        ],
         "format": "csv",
         "compression": "gz",
         "tables": [
             {
                 "table": "2016Q4",
+                "files": [{"file_path": "2016Q4.csv.gz"}],
+                "dim": [
+                    22180168,
+                    31
+                ],
                 "schema": {
                     "LOAN_ID": "string",
                     "ACT_PERIOD": "string",
@@ -54,16 +55,16 @@
         "url": "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
         "homepage": "https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
         "delim": ",",
-        "dim": [
-            14863778,
-            18
-        ],
         "format": "csv",
         "header-line": true,
         "compression": "gz",
         "tables": [
             {
                 "table": "nyctaxi_2010-01",
+                "dim": [
+                    14863778,
+                    18
+                ],
                 "files": [
                     {
                         "file_path": "yellow_tripdata_2010-01.csv.gz"
@@ -75,14 +76,14 @@
     {
         "name": "chi_traffic_2020_Q1",
         "url": "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
-        "dim": [
-            13038291,
-            23
-        ],
         "format": "parquet",
         "tables": [
             {
                 "table": "chi_traffic_2020_Q1",
+                "dim": [
+                    13038291,
+                    23
+                ],
                 "files": [
                     {
                         "file_path": "chi_traffic_2020_Q1.parquet"
@@ -94,14 +95,14 @@
     {
         "name": "type_strings",
         "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_strings.parquet",
-        "dim": [
-            1000000,
-            5
-        ],
         "format": "parquet",
         "tables": [
             {
                 "table": "type_strings",
+                "dim": [
+                    1000000,
+                    5
+                ],
                 "files": [
                     {
                         "file_path": "type_strings.parquet"
@@ -113,14 +114,14 @@
     {
         "name": "type_dict",
         "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_dict.parquet",
-        "dim": [
-            1000000,
-            5
-        ],
         "format": "parquet",
         "tables": [
             {
                 "table": "type_dict",
+                "dim": [
+                    1000000,
+                    5
+                ],
                 "files": [
                     {
                         "file_path": "type_dict.parquet"
@@ -132,14 +133,14 @@
     {
         "name": "type_integers",
         "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_integers.parquet",
-        "dim": [
-            1000000,
-            5
-        ],
         "format": "parquet",
         "tables": [
             {
                 "table": "type_integers",
+                "dim": [
+                    1000000,
+                    5
+                ],
                 "files": [
                     {
                         "file_path": "type_integers.parquet"
@@ -151,14 +152,14 @@
     {
         "name": "type_floats",
         "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_floats.parquet",
-        "dim": [
-            1000000,
-            5
-        ],
         "format": "parquet",
         "tables": [
             {
                 "table": "type_floats",
+                "dim": [
+                    1000000,
+                    5
+                ],
                 "files": [
                     {
                         "file_path": "type_floats.parquet"
@@ -170,14 +171,14 @@
     {
         "name": "type_nested",
         "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_nested.parquet",
-        "dim": [
-            1000000,
-            4
-        ],
         "format": "parquet",
         "tables": [
             {
                 "table": "type_nested",
+                "dim": [
+                    1000000,
+                    4
+                ],
                 "files": [
                     {
                         "file_path": "type_nested.parquet"
@@ -189,14 +190,14 @@
     {
         "name": "type_simple_features",
         "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_simple_features.parquet",
-        "dim": [
-            1000000,
-            5
-        ],
         "format": "parquet",
         "tables": [
             {
                 "table": "type_simple_features",
+                "dim": [
+                    1000000,
+                    5
+                ],
                 "files": [
                     {
                         "file_path": "type_simple_features.parquet"
