@@ -21,7 +21,7 @@ import sys
 import pytest
 from pyarrow import dataset as pyarrowdataset
 
-from datalogistik import config, datalogistik
+from datalogistik import config
 from datalogistik.dataset import Dataset
 from datalogistik.dataset_search import find_close_dataset, find_exact_dataset
 from datalogistik.table import Table
@@ -312,25 +312,3 @@ def test_get_dataset_with_schema():
     # TODO: can we alter the schema on the fly like this?
     # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/tests/test_datalogistik.py#L332-L358
     pass
-
-
-def test_metadata_command(capsys):
-    metadata_file = "./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
-    with open(metadata_file) as f:
-        metadata = json.load(f)
-    with pytest.raises(SystemExit) as e:
-        sys.argv = [
-            "test_dataset",
-            "metadata",
-            "-d",
-            "chi_traffic_sample",
-            "-f",
-            "parquet",
-        ]
-        datalogistik.main()
-        assert e.type == SystemExit
-        assert e.value.code == 0
-
-    captured = capsys.readouterr().out
-    output = json.loads(captured)
-    assert output == metadata
