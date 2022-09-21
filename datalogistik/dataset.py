@@ -480,9 +480,7 @@ class Dataset:
                     # Convert from name.format/part-0.format to simply a file name.format
                     # To stay consistent with downloaded/generated datasets (without partitioning)
                     # TODO: do we want to change this in accordance to tpc-raw?
-                    tmp_dir_name = pathlib.Path(
-                        output_file.parent, f"{output_file}.tmp"
-                    )
+                    tmp_dir_name = pathlib.Path(f"{output_file}.tmp")
                     os.rename(output_file, tmp_dir_name)
                     os.rename(
                         pathlib.Path(tmp_dir_name, f"part-0.{new_dataset.format}"),
