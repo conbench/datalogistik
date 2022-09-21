@@ -223,7 +223,8 @@ def test_output_result():
                             "a1fa1fa",
                             "chi_traffic_sample.parquet",
                         )
-                    )
+                    ),
+                    "dim": [],
                 }
             },
         }
@@ -247,7 +248,8 @@ def test_output_result():
                             "dabb1e5",
                             "taxi_2013",
                         )
-                    )
+                    ),
+                    "dim": [],
                 },
                 # This table is a single file dataset, so we have the extension
                 "chi_traffic_sample": {
@@ -260,7 +262,8 @@ def test_output_result():
                             "dabb1e5",
                             "chi_traffic_sample.csv",
                         )
-                    )
+                    ),
+                    "dim": [],
                 },
             },
         }

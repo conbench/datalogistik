@@ -75,7 +75,6 @@ class Dataset:
     # To be filled in programmatically when a dataset is created
     local_creation_date: Optional[str] = None
 
-    # TODO: Post-init validation for things like delim if csv, etc.
     def __post_init__(self):
         if self.format is not None and self.format not in config.supported_formats:
             msg = f"Unsupported format: {self.format}. Supported formats: {config.supported_formats}"
@@ -519,20 +518,20 @@ class Dataset:
 
         tables = {}
         for table in self.tables:
-            table_entry = {}
-            if table.dim:
-                table_entry["dim"] = table.dim
-            table_entry["path"] = str(self.ensure_table_loc(table))
-            tables[table.table] = table_entry
+            tables[table.table] = {
+                "path": str(self.ensure_table_loc(table)),
+                "dim": table.dim,
+            }
         output["tables"] = tables
 
         return json.dumps(output)
 
-    def fill_in_nones(self, other_dataset_info):
+    def fill_in_defaults(self, dataset_for_defaults):
+        """overwrites fields that are none with values from the given dataset"""
         for dataset_field in fields(self):
             attr = dataset_field.name
             if (
                 getattr(self, attr) is None
-                and getattr(other_dataset_info, attr) is not None
+                and getattr(dataset_for_defaults, attr) is not None
             ):
-                setattr(self, attr, getattr(other_dataset_info, attr))
+                setattr(self, attr, getattr(dataset_for_defaults, attr))
