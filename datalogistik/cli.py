@@ -17,7 +17,6 @@ import sys
 
 from . import util
 from .dataset import Dataset
-from .dataset_search import find_exact_dataset
 from .log import log
 
 
@@ -29,7 +28,6 @@ def parse_args():
     sub_parsers = parser.add_subparsers(dest="command")
     cache_parser = sub_parsers.add_parser("cache")
     gen_parser = sub_parsers.add_parser("get")
-    meta_parser = sub_parsers.add_parser("metadata")
 
     cache_group = cache_parser.add_mutually_exclusive_group()
     cache_group.add_argument(
@@ -96,36 +94,6 @@ Supported formats: Parquet, csv",
         "for Windows on your PATH).",
     )
 
-    meta_parser.add_argument(
-        "-d",
-        "--dataset",
-        type=str,
-        required=True,
-        help="Name of the dataset",
-    )
-    meta_parser.add_argument(
-        "-f",
-        "--format",
-        type=str,
-        required=True,
-        help="Format for the dataset. \
-Supported formats: Parquet, csv",
-    )
-    meta_parser.add_argument(
-        "-c",
-        "--compression",
-        type=str,
-        help="Compression (for parquet: passed to parquet writer, "
-        "for csv: either None or gz)",
-    )
-    meta_parser.add_argument(
-        "-s",
-        "--scale-factor",
-        type=str,
-        default=None,
-        help="Scale factor for TPC datasets",
-    )
-
     return parser.parse_args()
 
 
@@ -144,26 +112,6 @@ def handle_cache_command(cache_opts):
         raise RuntimeError(msg)
 
 
-def handle_metadata_command(opts):
-    dataset = Dataset(
-        name=opts.dataset,
-        format=opts.format,
-        scale_factor=opts.scale_factor,
-        compression=opts.compression,
-    )
-    # Get dataset if it already exists in the cache
-    exact_match = find_exact_dataset(dataset)
-
-    if exact_match:
-        with open(exact_match.metadata_file) as metadata_file:
-            print(metadata_file.read())
-    else:
-        log.info(
-            "Could not find a corresponding dataset in the cache. \n"
-            "Make sure this dataset is instantiated by running the 'get' command first."
-        )
-
-
 def parse_args_and_get_dataset_info():
     # Parse and check cmdline options
     opts = parse_args()
@@ -173,10 +121,6 @@ def parse_args_and_get_dataset_info():
 
     if opts.command == "cache":
         handle_cache_command(opts)
-        sys.exit(0)
-
-    elif opts.command == "metadata":
-        handle_metadata_command(opts)
         sys.exit(0)
 
     elif opts.command == "get":
