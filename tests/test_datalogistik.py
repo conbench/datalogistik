@@ -16,13 +16,20 @@ import datetime
 import decimal
 import json
 import os
+import pathlib
 import random
+import shutil
 import string
 
 import pyarrow as pa
 import pytest
 
-from datalogistik import __version__, util
+from datalogistik import __version__, datalogistik, dataset, util
+
+
+@pytest.fixture(autouse=True)
+def mock_settings_env_vars(monkeypatch):
+    monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/test_cache")
 
 
 def test_version():
@@ -330,3 +337,46 @@ def test_compress(comp_string):
     # These should all not compress/decompress since they are "the same"
     assert util.compress("uncompressed_file_path", "output_dir", comp_string) is None
     assert util.decompress("uncompressed_file_path", "output_dir", comp_string) is None
+
+
+# Integration-style tests
+def test_main(capsys):
+    # This should be in the cache already, so no conversion needed
+    exact_dataset = dataset.Dataset(name="fanniemae_sample", format="csv", delim="|")
+
+    with pytest.raises(SystemExit) as e:
+        datalogistik.main(exact_dataset)
+        assert e.type == SystemExit
+        assert e.value.code == 0
+
+    captured = json.loads(capsys.readouterr().out)
+    assert captured["name"] == "fanniemae_sample"
+    assert captured["format"] == "csv"
+    assert isinstance(captured["tables"], dict)
+
+
+def test_main_with_convert(capsys):
+    # the directory penguins has data _as if_ it were downloaded from a repo for the purposes of testing metadata writing
+    test_dir_path = "tests/fixtures/test_cache/fanniemae_sample"
+
+    # this should be only `penguins.parquet`
+    start_files = os.listdir(test_dir_path)
+    try:
+
+        # This should be in the cache, but needs to be converted
+        close_dataset = dataset.Dataset(name="fanniemae_sample", format="parquet")
+
+        with pytest.raises(SystemExit) as e:
+            datalogistik.main(close_dataset)
+            assert e.type == SystemExit
+            assert e.value.code == 0
+
+        captured = json.loads(capsys.readouterr().out)
+        assert captured["name"] == "fanniemae_sample"
+        assert captured["format"] == "parquet"
+        assert isinstance(captured["tables"], dict)
+
+    finally:
+        # cleanup all files that weren't there to start with
+        for file in set(os.listdir(test_dir_path)) - set(start_files):
+            shutil.rmtree(pathlib.Path(test_dir_path, file))

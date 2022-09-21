@@ -19,7 +19,7 @@ import tempfile
 
 import pytest
 
-from datalogistik import datalogistik, tpc_validation
+from datalogistik import cli, datalogistik, tpc_validation
 
 # TODO: TPC-DS tests & validation
 # TODO: add more unittest for testing more parameters (sf, partitions, format)
@@ -41,7 +41,7 @@ def test_validate_tpc_generation(capsys, dataset_name, format):
                 "-f",
                 format,
             ]
-            datalogistik.main()
+            datalogistik.main(dataset=cli.parse_args_and_get_dataset_info())
             assert e.type == SystemExit
             assert e.value.code == 0
 

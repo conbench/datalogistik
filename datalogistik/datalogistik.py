@@ -30,9 +30,7 @@ def finish():
     sys.exit(0)
 
 
-def main():
-    dataset = cli.parse_args_and_get_dataset_info()
-
+def main(dataset):
     if config.get_max_cpu_count() != 0:
         pyarrow.set_cpu_count(config.get_max_cpu_count())
         pyarrow.set_io_thread_count(config.get_max_cpu_count())
@@ -58,4 +56,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(dataset=cli.parse_args_and_get_dataset_info())
