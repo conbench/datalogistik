@@ -54,9 +54,12 @@ def main(dataset=None):
 
     # Convert if not
     close_match = dataset_search.find_or_instantiate_close_dataset(dataset)
-    if close_match:
+    if close_match != dataset:
         new_dataset = close_match.convert(dataset)
-        print(new_dataset.output_result())
+    else:
+        # but if the downloaded datset is an exact match, we print it
+        new_dataset = close_match
+    print(new_dataset.output_result())
 
     finish()
 
