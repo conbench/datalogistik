@@ -67,6 +67,8 @@ class Dataset:
     metadata_file: Optional[pathlib.Path] = None
     url: Optional[str] = None
     homepage: Optional[str] = None
+    # a list of strings that can be added when csv parsing to treat as if they were nulls
+    extra_nulls: Optional[List] = field(default_factory=list)
 
     # To be filled in at run time only
     cache_location: Optional[pathlib.Path] = None
@@ -91,6 +93,10 @@ class Dataset:
             or self.compression.lower() == "uncompressed"
         ):
             self.compression = None
+
+        # munge gz to gzip
+        if self.compression is not None and self.compression.lower().startswith("gz"):
+            self.compression = "gzip"
 
     def __eq__(self, other):
         if not isinstance(other, Dataset):
@@ -166,7 +172,11 @@ class Dataset:
         if len(table.files) > 1 or table.multi_file:
             name = name
         else:
-            name = name + os.extsep + self.format
+            ext_string = self.format
+            # custom extension for the special case .csv.gz
+            if self.format == "csv" and self.compression == "gzip":
+                ext_string = ext_string + os.extsep + "gz"
+            name = name + os.extsep + ext_string
 
         return name
 
@@ -239,6 +249,10 @@ class Dataset:
         if self.delim:
             po = csv.ParseOptions(delimiter=self.delim)
 
+        # add extra nulls
+        if self.extra_nulls:
+            co.null_values = co.null_values + self.extra_nulls
+
         column_names = None
         # TODO: Where does this go?
         # autogen_column_names = False
@@ -248,7 +262,8 @@ class Dataset:
 
         ro = csv.ReadOptions(
             column_names=column_names,
-            autogenerate_column_names=not self.header_line,
+            # if column_names are provided, we cannot autogenerate, after the defer to header_line
+            autogenerate_column_names=column_names is None and not self.header_line,
         )
 
         dataset_read_format = pads.CsvFileFormat(
@@ -322,7 +337,12 @@ class Dataset:
             for file in table.files:
                 # the path it will be stored at
                 filename = file.get("file_path")
-                dataset_file_path = cached_dataset_path / filename
+                # we want to use the table_name incase the file stored has a different name than the tablename
+                if len(table.files) == 1:
+                    dataset_file_path = cached_dataset_path / self.get_table_name(table)
+                else:
+                    # TODO: this isn't quite right, but _should_ work
+                    dataset_file_path = cached_dataset_path / filename
 
                 # craft the URL (need to be careful since sometimes it will contain the name of the dataset)
                 full_path = self.url
@@ -540,5 +560,6 @@ class Dataset:
             if (
                 getattr(self, attr) is None
                 and getattr(dataset_for_defaults, attr) is not None
+                and attr != "compression"
             ):
                 setattr(self, attr, getattr(dataset_for_defaults, attr))
