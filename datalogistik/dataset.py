@@ -80,15 +80,6 @@ class Dataset:
         if self.scale_factor is None and self.name in tpc_info.tpc_datasets:
             self.scale_factor = 1.0
 
-        # Use None as the true default for uncompressed
-        # the first comparisson is a bit redundant, but None.lower() fails
-        if (
-            self.compression is None
-            or self.compression.lower() == "none"
-            or self.compression.lower() == "uncompressed"
-        ):
-            self.compression = None
-
     def __eq__(self, other):
         if not isinstance(other, Dataset):
             return NotImplemented

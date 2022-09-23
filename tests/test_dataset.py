@@ -207,16 +207,6 @@ def test_eq():
     assert ds1 == ds2
 
 
-def test_post_init():
-    # We get defautl scale_factor=1
-    ds = Dataset(name="tpc-h")
-    assert ds.scale_factor == 1
-
-    # uncompressed all uses None
-    ds = Dataset(name="posty", compression="uncompressed")
-    assert ds.compression is None
-
-
 def test_output_result():
     expected = json.dumps(
         {
