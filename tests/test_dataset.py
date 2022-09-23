@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import json
 import os
 import pathlib
@@ -78,18 +77,6 @@ def test_ensure_dataset_loc():
     new_ds = Dataset(name="new_dataset", cache_location=pathlib.Path("foo/bar/baz"))
     assert new_ds.ensure_dataset_loc() == pathlib.Path("foo/bar/baz")
     # TODO: assert the dir is made?
-
-
-def test_get_table_filename():
-    assert (
-        simple_parquet_ds.get_table_filename(simple_parquet_ds.tables[0])
-        == "chi_traffic_sample.parquet"
-    )
-
-    # now fake a multi-file name:
-    new_ds = copy.deepcopy(simple_parquet_ds)
-    new_ds.tables[0].multi_file = True
-    assert new_ds.get_table_filename(new_ds.tables[0]) == "chi_traffic_sample"
 
 
 def test_ensure_table_loc():
