@@ -91,6 +91,13 @@ def test_get_table_name():
     new_ds.tables[0].multi_file = True
     assert new_ds.get_table_name(new_ds.tables[0]) == "chi_traffic_sample"
 
+    # And we do the right thing with gzip, too
+    # we use the second table here because it is a single file table (where this matters)
+    assert (
+        multi_table_ds.get_table_name(multi_table_ds.tables[1])
+        == "chi_traffic_sample.csv.gz"
+    )
+
 
 def test_ensure_table_loc():
     assert simple_parquet_ds.ensure_table_loc() == pathlib.Path(
@@ -216,6 +223,10 @@ def test_post_init():
     ds = Dataset(name="posty", compression="uncompressed")
     assert ds.compression is None
 
+    # gzip and gz are both gzip
+    ds = Dataset(name="posty", compression="gz")
+    assert ds.compression == "gzip"
+
 
 def test_output_result():
     expected = json.dumps(
@@ -270,7 +281,7 @@ def test_output_result():
                             "test_cache",
                             "chi_taxi",
                             "dabb1e5",
-                            "chi_traffic_sample.csv",
+                            "chi_traffic_sample.csv.gz",
                         )
                     ),
                     "dim": [],
@@ -324,6 +335,39 @@ def test_find_close_dataset_sf_mismatch(monkeypatch):
     output = dataset_search.find_or_instantiate_close_dataset(ds_diff_scale_factor)
 
     assert output is good_return
+
+
+def test_get_csv_dataset_spec():
+    ds = Dataset(
+        name="tester",
+        format="csv",
+        extra_nulls=["FANCY_NULL"],
+        tables=[Table(table="foo")],
+    )
+    spec, schema = ds.get_csv_dataset_spec(ds.tables[0])
+    # it's a pyarrow quirk that the convert_options are under `default_fragment_scan_options`
+    assert (
+        "FANCY_NULL" in spec.default_fragment_scan_options.convert_options.null_values
+    )
+
+
+def test_fill_in_defaults():
+    ds = Dataset(name="fanniemae_sample")
+    dataset_from_repo = Dataset(name="fanniemae_sample", format="csv", delim="|")
+
+    ds.fill_in_defaults(dataset_from_repo)
+    assert ds.format == "csv"
+    assert ds.delim == "|"
+
+    # but we don't over-write if an attribute is given, and we never over-write compression (cause that turns into some weird circumstances)
+    ds = Dataset(name="fanniemae_sample", format="parquet")
+    dataset_from_repo = Dataset(
+        name="fanniemae_sample", format="csv", delim="|", compression="gz"
+    )
+
+    ds.fill_in_defaults(dataset_from_repo)
+    assert ds.format == "parquet"  # NB: not csv
+    assert ds.compression is None
 
 
 def test_get_dataset_with_schema():
