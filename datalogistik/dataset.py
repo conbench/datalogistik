@@ -59,7 +59,6 @@ class Dataset:
     compression: Optional[str] = None
     tables: Optional[List] = field(default_factory=list)
     local_creation_date: Optional[str] = None
-    # TODO: is this the right default?
     scale_factor: Optional[float] = None
     delim: Optional[str] = None
     metadata_file: Optional[pathlib.Path] = None
@@ -128,8 +127,6 @@ class Dataset:
                 json_dump["metadata_file"] = pathlib.Path(metadata)
 
                 metadata = json_dump
-
-        # But replace all -s with _s
 
         # Construct the tables, adding them back in
         # TODO: handle the case where there is a single file and no table attribute?
