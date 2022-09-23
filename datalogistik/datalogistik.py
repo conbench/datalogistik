@@ -54,7 +54,6 @@ def main(dataset=None):
 
     # Convert if not
     close_match = dataset_search.find_or_instantiate_close_dataset(dataset)
-
     if close_match != dataset:
         new_dataset = close_match.convert(dataset)
     else:
