@@ -160,20 +160,6 @@ class Dataset:
             name = name + os.extsep + self.compression
         return name
 
-    def get_table_filename(self, table):
-        if len(table.files) > 1 or table.multi_file:
-            name = table.table
-        elif self.name in tpc_info.tpc_datasets:
-            return self.generate_filename(table)
-        else:
-            if table.files:
-                # If there is a files entry, use it
-                name = table.files[0]["file_path"]
-            else:
-                return self.generate_filename(table)
-
-        return name
-
     def ensure_dataset_loc(self, new_hash="raw"):
         # If this is set, return
         if self.cache_location is not None:
@@ -196,22 +182,20 @@ class Dataset:
 
         return self.cache_location
 
-    def ensure_table_loc(self, table=None, parents_only=False):
+    def ensure_table_loc(self, table=None):
+        dataset_path = self.ensure_dataset_loc()
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
 
-        data_path = pathlib.Path(
-            self.ensure_dataset_loc(), self.get_table_filename(table)
-        )
-
-        if parents_only:
-            data_path = data_path.parent
-
-        # Make the dir if it's not already extant
-        if not data_path.exists():
-            data_path.mkdir(parents=True, exist_ok=True)
-
-        return data_path
+        if len(table.files) > 1 or table.multi_file:
+            table_path = pathlib.Path(dataset_path, table.table)
+            table_path.mkdir(exist_ok=True)
+        elif self.name not in tpc_info.tpc_datasets and table.files:
+            # If there is a files entry, use it
+            table_path = pathlib.Path(dataset_path, table.files[0]["file_path"])
+        else:
+            table_path = pathlib.Path(dataset_path, self.generate_filename(table))
+        return table_path
 
     def get_one_table(self, table=None):
         if isinstance(table, Table):
@@ -322,7 +306,7 @@ class Dataset:
 
         for table in self.tables:
             # create table dir
-            self.ensure_table_loc(table, parents_only=True)
+            self.ensure_table_loc(table)
 
             for file in table.files:
                 # the path it will be stored at
@@ -456,12 +440,7 @@ class Dataset:
 
                 # TODO: possible schema changes here at the table level
                 table_pads = self.get_table_dataset(old_table)
-                output_file = pathlib.Path(
-                    new_dataset.ensure_dataset_loc(),
-                    new_dataset.get_table_filename(
-                        new_dataset.get_one_table(old_table.table)
-                    ),
-                )
+                output_file = new_dataset.ensure_table_loc(new_table.table)
                 if new_dataset.format == "csv" and new_dataset.compression:
                     # Remove compression extension from filename, pads cannot compress on the fly
                     # so we need to compress as an extra step and then we'll add the extension.
