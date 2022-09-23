@@ -220,15 +220,17 @@ class Dataset:
             po = csv.ParseOptions(delimiter=self.delim)
 
         column_names = None
-        # TODO: Where does this go?
-        # autogen_column_names = False
+        autogen_column_names = False
+
         if table.schema:
             schema = util.get_arrow_schema(table.schema)
             column_names = list(table.schema.keys())
+        else:
+            autogen_column_names = not table.header_line
 
         ro = csv.ReadOptions(
             column_names=column_names,
-            autogenerate_column_names=not table.header_line,
+            autogenerate_column_names=autogen_column_names,
         )
 
         dataset_read_format = pads.CsvFileFormat(
