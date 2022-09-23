@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import dataclasses
 import datetime
 import json
 import os
@@ -421,8 +422,25 @@ class Dataset:
             # convert each table
             for old_table in self.tables:
 
-                # add this table to the new dataset
-                new_table = Table(table=old_table.table)
+                # TODO: possible schema changes here at the table level
+                table_pads = self.get_table_dataset(old_table)
+
+                # Make a copy of the original table object. we should overwrite any
+                # properties changed by the conversion
+                new_table = dataclasses.replace(old_table)
+                # TODO: the partitioning properties should be set from what was specified on the cmdline
+                new_table.partitioning = None
+                new_table.multi_file = None
+                new_table.files = []  # will be re-populated after conversion
+
+                if not new_table.dim:
+                    # TODO: we should check if these are still valid after conversion
+                    nrows = table_pads.count_rows()
+                    ncols = len(table_pads.schema.names)
+                    new_table.dim = [nrows, ncols]
+                else:
+                    nrows = new_table.dim[0]
+
                 new_dataset.tables.append(new_table)
 
                 # IFF header_line is False, then add that to the write options
@@ -431,16 +449,11 @@ class Dataset:
                         include_header=False
                     )
 
-                # TODO: possible schema changes here at the table level
-                table_pads = self.get_table_dataset(old_table)
                 output_file = new_dataset.ensure_table_loc(new_table.table)
                 if new_dataset.format == "csv" and new_dataset.compression:
                     # Remove compression extension from filename, pads cannot compress on the fly
                     # so we need to compress as an extra step and then we'll add the extension.
                     output_file = output_file.parent / output_file.stem
-
-                # TODO: get nrows from the dataset (we should use the metadata if we have it to not need to poke the data)
-                nrows = table_pads.count_rows()
 
                 # Find a reasonable number to set our rows per row group.
                 # and then make sure that max rows per group is less than new_nrows
