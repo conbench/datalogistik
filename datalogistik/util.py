@@ -436,7 +436,7 @@ def compress(uncompressed_file_path, output_dir, compression):
         or compression == "uncompressed"
     ):
         return
-    if compression == "gz":
+    if compression == "gzip":
         log.debug(
             f"Compressing GZip dataset {uncompressed_file_path} into " f"{output_dir}"
         )
@@ -468,7 +468,7 @@ def decompress(compressed_file_path, output_dir, compression):
         or compression == "uncompressed"
     ):
         return
-    if compression == "gz":
+    if compression == "gzip":
         log.debug(
             f"Decompressing GZip dataset {compressed_file_path} into " f"{output_dir}"
         )

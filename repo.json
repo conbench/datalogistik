@@ -9,7 +9,11 @@
         "tables": [
             {
                 "table": "2016Q4",
-                "files": [{"file_path": "2016Q4.csv.gz"}],
+                "files": [
+                    {
+                        "file_path": "2016Q4.csv.gz"
+                    }
+                ],
                 "dim": [
                     22180168,
                     31
@@ -57,6 +61,9 @@
         "delim": ",",
         "format": "csv",
         "compression": "gz",
+        "extra_nulls": [
+            "*"
+        ],
         "tables": [
             {
                 "table": "nyctaxi_2010-01",

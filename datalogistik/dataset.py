@@ -65,6 +65,8 @@ class Dataset:
     metadata_file: Optional[pathlib.Path] = None
     url: Optional[str] = None
     homepage: Optional[str] = None
+    # a list of strings that can be added when csv parsing to treat as if they were nulls
+    extra_nulls: Optional[List] = field(default_factory=list)
 
     # To be filled in at run time only
     cache_location: Optional[pathlib.Path] = None
@@ -80,6 +82,19 @@ class Dataset:
             raise RuntimeError(msg)
         if self.scale_factor is None and self.name in tpc_info.tpc_datasets:
             self.scale_factor = 1.0
+
+        # Use None as the true default for uncompressed
+        # the first comparison is a bit redundant, but None.lower() fails
+        if (
+            self.compression is None
+            or self.compression.lower() == "none"
+            or self.compression.lower() == "uncompressed"
+        ):
+            self.compression = None
+
+        # munge gz to gzip
+        if self.compression is not None and self.compression.lower().startswith("gz"):
+            self.compression = "gzip"
 
     def __eq__(self, other):
         if not isinstance(other, Dataset):
@@ -142,14 +157,10 @@ class Dataset:
 
         return [Dataset.from_json(ds) for ds in metadata_files]
 
-    def generate_filename(self, table):
+    def get_table_filename(self, table):
         name = table.table + os.extsep + self.format
-        if self.format == "csv" and self.compression not in [
-            None,
-            "none",
-            "uncompressed",
-        ]:
-            name = name + os.extsep + self.compression
+        if self.format == "csv" and self.compression == "gzip":
+            name = name + os.extsep + "gz"
         return name
 
     def ensure_dataset_loc(self, new_hash="raw"):
@@ -186,7 +197,7 @@ class Dataset:
             # If there is a files entry, use it
             table_path = pathlib.Path(dataset_path, table.files[0]["file_path"])
         else:
-            table_path = pathlib.Path(dataset_path, self.generate_filename(table))
+            table_path = pathlib.Path(dataset_path, self.get_table_filename(table))
         return table_path
 
     def get_one_table(self, table=None):
@@ -220,18 +231,19 @@ class Dataset:
         if self.delim:
             po = csv.ParseOptions(delimiter=self.delim)
 
-        column_names = None
-        autogen_column_names = False
+        # add extra nulls
+        if self.extra_nulls:
+            co.null_values = co.null_values + self.extra_nulls
 
+        column_names = None
         if table.schema:
             schema = util.get_arrow_schema(table.schema)
             column_names = list(table.schema.keys())
-        else:
-            autogen_column_names = not table.header_line
 
         ro = csv.ReadOptions(
             column_names=column_names,
-            autogenerate_column_names=autogen_column_names,
+            # if column_names are provided, we cannot autogenerate, after the defer to header_line
+            autogenerate_column_names=column_names is None and not table.header_line,
         )
 
         dataset_read_format = pads.CsvFileFormat(
@@ -305,7 +317,14 @@ class Dataset:
             for file in table.files:
                 # the path it will be stored at
                 filename = file.get("file_path")
-                dataset_file_path = cached_dataset_path / filename
+                # we want to use the table_name incase the file stored has a different name than the tablename
+                if len(table.files) == 1:
+                    dataset_file_path = cached_dataset_path / self.get_table_filename(
+                        table
+                    )
+                else:
+                    # TODO: this isn't quite right, but _should_ work
+                    dataset_file_path = cached_dataset_path / filename
 
                 # craft the URL (need to be careful since sometimes it will contain the name of the dataset)
                 full_path = self.url
@@ -537,5 +556,6 @@ class Dataset:
             if (
                 getattr(self, attr) is None
                 and getattr(dataset_for_defaults, attr) is not None
+                and attr != "compression"
             ):
                 setattr(self, attr, getattr(dataset_for_defaults, attr))
