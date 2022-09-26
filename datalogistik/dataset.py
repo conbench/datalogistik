@@ -420,7 +420,9 @@ class Dataset:
 
         try:
             # ensure that we have a new dataset location
-            new_dataset.ensure_dataset_loc(new_hash=util.short_hash())
+            new_dataset_path = new_dataset.ensure_dataset_loc(
+                new_hash=util.short_hash()
+            )
 
             # grab format output
             # TODO: should we factor this out into a function?
@@ -531,7 +533,7 @@ class Dataset:
             util.set_readonly_recurse(output_file)
         except Exception:
             log.error("An error occurred during conversion.")
-            # util.clean_cache_dir(output_file)
+            util.clean_cache_dir(new_dataset_path)
             raise
 
         return new_dataset
