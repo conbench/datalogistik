@@ -291,6 +291,7 @@ class Dataset:
         schema = table.schema
         if self.format == "parquet":
             dataset_read_format = pads.ParquetFileFormat()
+            schema = None
         if self.format == "csv":
             dataset_read_format, schema = self.get_csv_dataset_spec(table)
         if self.format == "tpc-raw":
