@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import concurrent
 import datetime
 import json
 import os
@@ -364,26 +364,33 @@ class Dataset:
     def fill_metadata_from_files(self):
         # TODO: Should we attempt to find format? That should never mismatch...
 
+        path = self.ensure_dataset_loc()
+        # Calculate checksums in parallel because this can be slow for large files
+        with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
+            futures = []
+            for cur_path, dirs, files in os.walk(path):
+                for file_name in files:
+                    futures.append(
+                        pool.submit(
+                            util.file_listing_item,
+                            path,
+                            os.path.join(cur_path, file_name),
+                        )
+                    )
+            file_list = {}
+            for f in futures:
+                file_list[f.result()["rel_path"]] = f.result()
+
         # Find files for tables
         for table in self.tables:
             table_loc = self.ensure_table_loc(table)
             if table_loc.is_file():
                 # one file table
-                table.files = [
-                    {
-                        "rel_path": table_loc.relative_to(self.ensure_dataset_loc()),
-                        "file_size": table_loc.lstat().st_size,
-                        "md5": util.calculate_checksum(table_loc),
-                    }
-                ]
+                table.files = [file_list[str(table_loc.relative_to(path))]]
             elif table_loc.is_dir():
                 # multi file table
                 table.files = [
-                    {
-                        "rel_path": subfile.relative_to(self.ensure_dataset_loc()),
-                        "file_size": subfile.lstat().st_size,
-                        "md5": util.calculate_checksum(subfile),
-                    }
+                    file_list[str(subfile.relative_to(path))]
                     for subfile in table_loc.iterdir()
                     if subfile.is_file()
                 ]
