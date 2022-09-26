@@ -101,7 +101,7 @@ def file_listing_item(dataset_path, file_path):
     rel_path = os.path.relpath(file_path, dataset_path)
     file_size = os.path.getsize(file_path)
     file_md5 = calculate_checksum(file_path)
-    return {"file_path": rel_path, "file_size": file_size, "md5": file_md5}
+    return {"rel_path": rel_path, "file_size": file_size, "md5": file_md5}
 
 
 def add_file_listing(metadata, path):
@@ -117,7 +117,7 @@ def add_file_listing(metadata, path):
         file_list = []
         for f in futures:
             file_list.append(f.result())
-    metadata["files"] = sorted(file_list, key=lambda item: item["file_path"])
+    metadata["files"] = sorted(file_list, key=lambda item: item["rel_path"])
 
 
 # Returns true if the given path contains a dataset with a metadata file that contains
@@ -135,7 +135,7 @@ def contains_dataset(path):
     metadata_file = pathlib.Path(path, config.metadata_filename)
     if metadata_file.exists():
         with open(metadata_file) as f:
-            if json.load(f).get("files"):
+            if json.load(f).get("tables"):
                 return True
     return False
 
@@ -151,8 +151,22 @@ def validate(path):
         raise RuntimeError(msg)
     metadata_file = pathlib.Path(path, config.metadata_filename)
     with open(metadata_file) as f:
-        orig_file_listing = json.load(f).get("files")
-    dataset_valid = validate_files(path, orig_file_listing)
+        tables = json.load(f).get("tables")
+        if not tables:
+            log.info(
+                "No tables metadata found, could not perform validation (assuming valid)"
+            )
+            return True
+        dataset_valid = True
+        for table in tables:
+            orig_file_listing = table.get("files")
+            if not orig_file_listing:
+                log.info(
+                    f"No metadata found for table {table}, could not perform validation (assuming valid)"
+                )
+            dataset_valid = validate_files(path, orig_file_listing)
+            if not dataset_valid:
+                break
     log.info(f"Dataset at {path} is{'' if dataset_valid else ' NOT'} valid")
     return dataset_valid
 
@@ -170,11 +184,11 @@ def validate_files(path, file_listing):
     for orig_file in file_listing:
         found = None
         for new_file in new_file_listing:
-            if new_file["file_path"] == orig_file["file_path"]:
+            if new_file["rel_path"] == orig_file["rel_path"]:
                 found = new_file
                 break
         if found is None:
-            orig_file_path = orig_file["file_path"]
+            orig_file_path = orig_file["rel_path"]
             log.error(f"Missing file: {orig_file_path}")
             listings_are_equal = False
         if orig_file != new_file:
@@ -201,6 +215,7 @@ def validate_cache(remove_failing):
                 if remove_failing:
                     log.info("Pruning...")
                     prune_cache_entry(pathlib.Path(dirpath).relative_to(cache_root))
+    clean_cache()
 
 
 # Walk up the directory tree up to the root of the cache to find a metadata file.
@@ -258,23 +273,17 @@ def clean_cache():
 
 # Remove an entry from the cache by the given subdir.
 def prune_cache_entry(sub_path):
-    log.debug(f"Pruning cache entries below cache subdir '{sub_path}'")
+    log.debug(f"Pruning cache entry '{sub_path}'")
     cache_root = config.get_cache_location()
     path = pathlib.Path(cache_root, sub_path)
     if not path.exists():
         log.info("Could not find entry in cache.")
         return
-    if not contains_dataset(path):
-        # check if this path is a subdir of a valid dataset
-        if valid_metadata_in_parent_dirs(path.parent):
-            msg = f"Path '{path}' seems to be a subdirectory of a valid dataset, refusing to remove it."
-            log.error(msg)
-            raise RuntimeError(msg)
 
     log.info(f"Pruning Directory {path}")
     set_readwrite_recurse(path)
     shutil.rmtree(path, ignore_errors=True)
-    clean_cache_dir(path)
+    clean_cache()
 
 
 # Convert a pyarrow.schema to a dict that can be serialized to JSON
