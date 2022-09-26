@@ -129,13 +129,6 @@ def parse_args_and_get_dataset_info():
         compression=opts.compression,
     )
 
-    # Set defaults and perform sanity-check for the arguments:
-    # TODO:
-    #  * compression (in particular: test supported file-compression)
-    #  * partitioning (later)
-    dataset_from_repo = repo.search_repo(opts.dataset, repo.get_repo())
-    if dataset_from_repo:
-        dataset.fill_in_defaults(dataset_from_repo)
     if dataset.compression is None and dataset.format == "parquet":
         dataset.compression = "snappy"
 
@@ -143,6 +136,13 @@ def parse_args_and_get_dataset_info():
     opts.partition_max_rows = 0
 
     if opts.command == "get":
+        # Set defaults and perform sanity-check for the arguments:
+        # TODO:
+        #  * compression (in particular: test supported file-compression)
+        #  * partitioning (later)
+        dataset_from_repo = repo.search_repo(opts.dataset, repo.get_repo())
+        if dataset_from_repo:
+            dataset.fill_in_defaults(dataset_from_repo)
         return dataset
 
     entry = dataset_search.find_exact_dataset(dataset)
