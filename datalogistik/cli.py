@@ -97,31 +97,74 @@ def parse_args():
     return parser.parse_args()
 
 
-def parse_args_and_get_dataset_info():
+def list_cache_entries(opts):
+    if opts.repo:
+        log.info(
+            "Datasets found in repository: "
+            f"{[source.name for source in repo]}\nSupported generators: "
+            f"{tpc_info.tpc_datasets}"
+        )
+    else:  # assume --cache
+        log.info("Dataset entries currently present in cache:")
+        for dataset in config.get_cache_location().iterdir():
+            metadata_files = config.get_cache_location().glob(
+                f"**/{dataset.name}/**/{config.metadata_filename}"
+            )
+
+            for entry in [Dataset.from_json(ds) for ds in metadata_files]:
+                log.info(entry)
+
+
+def validate(opts):
+    if opts.all and (opts.dataset or opts.format or opts.compression):
+        log.info(
+            "Cannot combine --all flag with dataset name, format or compression options"
+        )
+        sys.exit(1)
+    if opts.all:
+        util.validate_cache(opts.remove)
+    else:
+        dataset = Dataset(
+            name=opts.dataset,
+            format=opts.format,
+            scale_factor=opts.scale_factor,
+            compression=opts.compression,
+        )
+        entry = dataset_search.find_exact_dataset(dataset)
+        if entry:
+            util.validate(entry.ensure_dataset_loc())
+        else:
+            log.info("Could not find entry in cache.")
+
+
+def instantiate(dataset):
+    log.info(
+        f"Creating an instance of Dataset '{dataset.name}' in "
+        f"'{dataset.format}' format..."
+    )
+
+    # Get dataset if it already exists in the cache
+    exact_match = dataset_search.find_exact_dataset(dataset)
+
+    if exact_match:
+        print(exact_match.output_result())
+    else:
+        # Convert if not
+        close_match = dataset_search.find_or_instantiate_close_dataset(dataset)
+        if close_match != dataset:
+            new_dataset = close_match.convert(dataset)
+        else:
+            # but if the downloaded datset is an exact match, we print it
+            new_dataset = close_match
+        print(new_dataset.output_result())
+
+
+def parse_and_run():
     # Parse and check cmdline options
     opts = parse_args()
 
-    if opts.command == "clean":
-        util.clean_cache()
-        sys.exit(0)
-    if opts.command == "list":
-        if opts.repo:
-            log.info(
-                "Datasets found in repository: "
-                f"{[source.name for source in repo]}\nSupported generators: "
-                f"{tpc_info.tpc_datasets}"
-            )
-        else:  # assume --cache
-            log.info("Dataset entries currently present in cache:")
-            for dataset in config.get_cache_location().iterdir():
-                metadata_files = config.get_cache_location().glob(
-                    f"**/{dataset.name}/**/{config.metadata_filename}"
-                )
-
-                for entry in [Dataset.from_json(ds) for ds in metadata_files]:
-                    log.info(entry)
-        sys.exit(0)
-
+    # add in partitioning to fake that it exists for now (since we don't want to expose it, but also don't want to rip up the code)
+    opts.partition_max_rows = 0
     dataset = Dataset(
         name=opts.dataset,
         format=opts.format,
@@ -129,13 +172,11 @@ def parse_args_and_get_dataset_info():
         compression=opts.compression,
     )
 
-    if dataset.compression is None and dataset.format == "parquet":
-        dataset.compression = "snappy"
-
-    # add in partitioning to fake that it exists for now (since we don't want to expose it, but also don't want to rip up the code)
-    opts.partition_max_rows = 0
-
-    if opts.command == "get":
+    if opts.command == "clean":
+        util.clean_cache()
+    elif opts.command == "list":
+        list_cache_entries(opts)
+    elif opts.command == "get":
         # Set defaults and perform sanity-check for the arguments:
         # TODO:
         #  * compression (in particular: test supported file-compression)
@@ -143,30 +184,16 @@ def parse_args_and_get_dataset_info():
         dataset_from_repo = repo.search_repo(opts.dataset, repo.get_repo())
         if dataset_from_repo:
             dataset.fill_in_defaults(dataset_from_repo)
-        return dataset
+        instantiate(dataset)
 
-    entry = dataset_search.find_exact_dataset(dataset)
-    if opts.command == "validate":
-        if opts.all and (opts.dataset or opts.format or opts.compression):
-            log.info(
-                "Cannot combine --all flag with dataset name, format or compression options"
-            )
-            sys.exit(1)
-        if opts.all:
-            util.validate_cache(opts.remove)
-        else:
-            if entry:
-                util.validate(entry.ensure_dataset_loc())
-            else:
-                log.info("Could not find entry in cache.")
-        sys.exit(0)
-
+    elif opts.command == "validate":
+        validate(opts)
     elif opts.command == "prune":
+        entry = dataset_search.find_exact_dataset(dataset)
         if entry:
             util.prune_cache_entry(entry.ensure_dataset_loc())
         else:
             log.info("Could not find entry in cache.")
-        sys.exit(0)
 
     else:
         msg = "Please specify a command"
