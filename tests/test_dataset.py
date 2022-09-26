@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import json
 import os
 import pathlib
@@ -27,6 +26,9 @@ from datalogistik.table import Table
 
 simple_parquet_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
+)
+simple_csv_ds = Dataset.from_json(
+    metadata="./tests/fixtures/test_cache/chi_traffic_sample/babb1e5/datalogistik_metadata.ini"
 )
 multi_file_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
@@ -86,13 +88,7 @@ def test_get_table_filename():
         == "chi_traffic_sample.parquet"
     )
 
-    # now fake a multi-file name:
-    new_ds = copy.deepcopy(simple_parquet_ds)
-    new_ds.tables[0].multi_file = True
-    assert new_ds.get_table_filename(new_ds.tables[0]) == "chi_traffic_sample"
-
     # And we do the right thing with gzip, too
-    # we use the second table here because it is a single file table (where this matters)
     assert (
         multi_table_ds.get_table_filename(multi_table_ds.tables[1])
         == "chi_traffic_sample.csv.gz"
@@ -105,6 +101,10 @@ def test_ensure_table_loc():
     )
     assert multi_file_ds.ensure_table_loc() == pathlib.Path(
         "tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013"
+    )
+
+    assert simple_csv_ds.ensure_table_loc() == pathlib.Path(
+        "tests/fixtures/test_cache/chi_traffic_sample/babb1e5/chi_traffic_sample.csv"
     )
 
 
