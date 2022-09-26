@@ -325,7 +325,9 @@ class Dataset:
                         "file_path"
                     )  # this may override the filename in the url
                     if len(table.files) > 1 and file_name:
-                        download_path = table_path / file_name
+                        # We only use the file name, because we rely on the convention
+                        # that all files constituting a table are in dir table.name
+                        download_path = table_path / pathlib.Path(file_name).name
                     util.download_file(file.get("url"), output_path=download_path)
 
             self.fill_metadata_from_files()
