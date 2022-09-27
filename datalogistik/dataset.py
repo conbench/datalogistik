@@ -338,7 +338,10 @@ class Dataset:
             # If there is a toplevel url, download it directly.
             # Otherwise, each individual file will have a url
             if self.url:
-                util.download_file(self.url, output_path=self.ensure_table_loc())
+                if self.url[0:2] == "s3":
+                    util.download_s3_bucket(self.url, dataset_path)
+                else:
+                    util.download_file(self.url, output_path=self.ensure_table_loc())
             else:
                 # For now, we always download all tables. So we need to loop through each table
                 for table in self.tables:

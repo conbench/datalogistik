@@ -490,6 +490,21 @@ def decompress(compressed_file_path, output_dir, compression):
         raise ValueError(msg)
 
 
+def download_s3_bucket(url, output_path):
+    import boto3
+    bucket = url.removeprefix("s3://")
+    s3=boto3.client('s3')
+    contents=s3.list_objects(Bucket=bucket)['Contents']
+    for key in contents:
+        object = key['Key']
+        if not object.endswith("/"):
+            s3.download_file(bucket, object, str(output_path) + "/" + object)
+        else:
+            import os
+            if not os.path.exists(object):
+                os.makedirs(object)
+
+
 def download_file(url, output_path):
     # If the dataset file already exists, remove it.
     # It doesn't have a metadata file (otherwise, the cache would have hit),
