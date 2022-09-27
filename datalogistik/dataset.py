@@ -446,7 +446,6 @@ class Dataset:
                 new_hash=util.short_hash()
             )
 
-
             # convert each table
             for old_table in self.tables:
 
@@ -470,7 +469,9 @@ class Dataset:
                     nrows = new_table.dim[0]
 
                 new_dataset.tables.append(new_table)
-                dataset_write_format, write_options = new_dataset.get_write_format(new_table)
+                dataset_write_format, write_options = new_dataset.get_write_format(
+                    new_table
+                )
                 output_file = new_dataset.ensure_table_loc(new_table.table)
                 if new_dataset.format == "csv" and new_dataset.compression:
                     # Remove compression extension from filename, pads cannot compress on the fly
