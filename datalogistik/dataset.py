@@ -339,7 +339,7 @@ class Dataset:
 
             for file in table.files:
                 # the path it will be stored at
-                filename = file.get("file_path")
+                filename = file.get("rel_path")
                 # we want to use the table_name incase the file stored has a different name than the tablename
                 if len(table.files) == 1:
                     dataset_file_path = cached_dataset_path / self.get_table_name(table)
@@ -354,11 +354,15 @@ class Dataset:
                 if not full_path.endswith(filename):
                     full_path = full_path + filename
 
-                # TODO: validate checksum, something like:
-                # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
-
                 util.download_file(full_path, output_path=dataset_file_path)
                 util.set_readonly(dataset_file_path)
+
+        # Try validation in case the dataset info contained checksums
+        if not util.validate_files(self.cache_location, table.files):
+            util.clean_cache_dir(self.cache_location)
+            msg = "File integrity check for newly downloaded dataset failed."
+            log.error(msg)
+            raise RuntimeError(msg)
 
         down_time = time.perf_counter() - down_start
         log.debug(f"download took {down_time:0.2f} s")

@@ -58,12 +58,12 @@ expected_metadata = {
     .strftime("%Y-%m-%dT%H:%M:%S%z"),
     "files": [
         {
-            "file_path": "testfile",
+            "rel_path": "testfile",
             "file_size": 18,
             "md5": "891bcd3700619af5151bf95b836ff9b1",
         },
         {
-            "file_path": os.path.join("tmp2", "testfile2"),
+            "rel_path": os.path.join("tmp2", "testfile2"),
             "file_size": 20,
             "md5": "0ccc9b1a435e7d40a91ac7dd04c67fe8",
         },

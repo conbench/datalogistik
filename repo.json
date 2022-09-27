@@ -11,7 +11,7 @@
                 "table": "2016Q4",
                 "files": [
                     {
-                        "file_path": "2016Q4.csv.gz"
+                        "rel_path": "2016Q4.csv.gz"
                     }
                 ],
                 "dim": [
@@ -74,7 +74,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "yellow_tripdata_2010-01.csv.gz"
+                        "rel_path": "yellow_tripdata_2010-01.csv.gz"
                     }
                 ]
             }
@@ -93,7 +93,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "chi_traffic_2020_Q1.parquet"
+                        "rel_path": "chi_traffic_2020_Q1.parquet"
                     }
                 ]
             }
@@ -112,7 +112,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "type_strings.parquet"
+                        "rel_path": "type_strings.parquet"
                     }
                 ]
             }
@@ -131,7 +131,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "type_dict.parquet"
+                        "rel_path": "type_dict.parquet"
                     }
                 ]
             }
@@ -150,7 +150,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "type_integers.parquet"
+                        "rel_path": "type_integers.parquet"
                     }
                 ]
             }
@@ -169,7 +169,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "type_floats.parquet"
+                        "rel_path": "type_floats.parquet"
                     }
                 ]
             }
@@ -188,7 +188,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "type_nested.parquet"
+                        "rel_path": "type_nested.parquet"
                     }
                 ]
             }
@@ -207,7 +207,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "type_simple_features.parquet"
+                        "rel_path": "type_simple_features.parquet"
                     }
                 ]
             }

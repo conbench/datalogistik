@@ -182,16 +182,22 @@ def validate_files(path, file_listing):
     # Also, it would be nice to show the user which files failed.
     listings_are_equal = True
     for orig_file in file_listing:
+        if not orig_file.get("md5"):
+            log.info(
+                f"No checksum found for file {orig_file}, could not perform validation (assuming valid)"
+            )
+            continue
         found = None
         for new_file in new_file_listing:
             if new_file["rel_path"] == orig_file["rel_path"]:
                 found = new_file
                 break
+
         if found is None:
             orig_file_path = orig_file["rel_path"]
             log.error(f"Missing file: {orig_file_path}")
             listings_are_equal = False
-        if orig_file != new_file:
+        elif orig_file != new_file:
             log.error(
                 "File integrity compromised: (top:properties in metadata bottom:calculated properties)"
             )
@@ -199,8 +205,8 @@ def validate_files(path, file_listing):
             log.error(new_file)
             listings_are_equal = False
 
-        log.debug(f"Dataset is{'' if listings_are_equal else ' NOT'} valid!")
-        return listings_are_equal
+    log.debug(f"Dataset is{'' if listings_are_equal else ' NOT'} valid!")
+    return listings_are_equal
 
 
 # Validate all entries in the cache
