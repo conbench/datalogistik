@@ -15,7 +15,7 @@
 import argparse
 import sys
 
-from . import config, dataset_search, repo, tpc_info, util
+from . import dataset_search, repo, util
 from .dataset import Dataset
 from .log import log
 
@@ -27,28 +27,14 @@ def parse_args():
     )
     sub_parsers = parser.add_subparsers(dest="command")
     sub_parsers.add_parser("clean")
-    list_parser = sub_parsers.add_parser("list")
     gen_parser = sub_parsers.add_parser("get")
     prune_parser = sub_parsers.add_parser("prune")
     val_parser = sub_parsers.add_parser("validate")
-
     val_parser.add_argument(
         "-a", "--all", action="store_true", help="Validate all entries"
     )
     val_parser.add_argument(
         "-r", "--remove", action="store_true", help="Remove entries failing validation"
-    )
-    list_parser.add_argument(
-        "-c",
-        "--cache",
-        action="store_true",
-        help="List all datasets and their variants present in the cache",
-    )
-    list_parser.add_argument(
-        "-r",
-        "--repo",
-        action="store_true",
-        help="List all datasets that can be generated or downloaded using current repo file",
     )
 
     for sub_parser in {gen_parser, val_parser, prune_parser}:
@@ -103,23 +89,6 @@ def parse_args_and_get_dataset_info():
 
     if opts.command == "clean":
         util.clean_cache()
-        sys.exit(0)
-    if opts.command == "list":
-        if opts.repo:
-            log.info(
-                "Datasets found in repository: "
-                f"{[source.name for source in repo]}\nSupported generators: "
-                f"{tpc_info.tpc_datasets}"
-            )
-        else:  # assume --cache
-            log.info("Dataset entries currently present in cache:")
-            for dataset in config.get_cache_location().iterdir():
-                metadata_files = config.get_cache_location().glob(
-                    f"**/{dataset.name}/**/{config.metadata_filename}"
-                )
-
-                for entry in [Dataset.from_json(ds) for ds in metadata_files]:
-                    log.info(entry)
         sys.exit(0)
 
     dataset = Dataset(
