@@ -82,17 +82,14 @@ def test_ensure_dataset_loc():
     # TODO: assert the dir is made?
 
 
-def test_get_table_filename():
-    assert (
-        simple_parquet_ds.get_table_filename(simple_parquet_ds.tables[0])
-        == "chi_traffic_sample.parquet"
-    )
+def test_get_extension():
+    assert simple_parquet_ds.get_extension(simple_parquet_ds.tables[0]) == ".parquet"
 
-    # And we do the right thing with gzip, too
-    assert (
-        multi_table_ds.get_table_filename(multi_table_ds.tables[1])
-        == "chi_traffic_sample.csv.gz"
-    )
+    # And we do the right thing with csv (gzipped and not), too
+    assert multi_table_ds.get_extension(multi_table_ds.tables[1]) == ".csv.gz"
+    assert simple_csv_ds.get_extension(simple_csv_ds.tables[0]) == ".csv"
+
+    # Note; get_table_filename() is not used for multi-file tables
 
 
 def test_ensure_table_loc():

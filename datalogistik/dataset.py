@@ -157,12 +157,6 @@ class Dataset:
 
         return [Dataset.from_json(ds) for ds in metadata_files]
 
-    def get_table_filename(self, table):
-        name = table.table + os.extsep + self.format
-        if self.format == "csv" and self.compression == "gzip":
-            name = name + os.extsep + "gz"
-        return name
-
     def ensure_dataset_loc(self, new_hash="raw"):
         # If this is set, return
         if self.cache_location is not None:
@@ -185,19 +179,25 @@ class Dataset:
 
         return self.cache_location
 
+    def get_extension(self, table):
+        ext = os.extsep + self.format
+        if self.format == "csv" and self.compression == "gzip":
+            ext = ext + os.extsep + "gz"
+        return ext
+
     def ensure_table_loc(self, table=None):
         dataset_path = self.ensure_dataset_loc()
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
 
         if len(table.files) > 1 or table.multi_file:
-            table_path = pathlib.Path(dataset_path, table.table)
+            table_path = dataset_path / table.table
             table_path.mkdir(exist_ok=True)
         elif self.name not in tpc_info.tpc_datasets and table.files:
             # If there is a files entry, use it
-            table_path = pathlib.Path(dataset_path, table.files[0]["file_path"])
+            table_path = dataset_path / table.files[0]["file_path"]
         else:
-            table_path = pathlib.Path(dataset_path, self.get_table_filename(table))
+            table_path = dataset_path / (table.table + self.get_extension(table))
         return table_path
 
     def get_one_table(self, table=None):
@@ -321,12 +321,11 @@ class Dataset:
                     # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
 
                     download_path = table_path
-                    file_name = file.get(
-                        "file_path"
-                    )  # this may override the filename in the url
+                    # this may override the filename in the url
+                    file_name = file.get("file_path")
                     if len(table.files) > 1 and file_name:
-                        # We only use the file name, because we rely on the convention
-                        # that all files constituting a table are in dir table.name
+                        # We only use file.name, because we need all files constituting
+                        # a table to be in a dir with name table.name (created by ensure_table_loc)
                         download_path = table_path / pathlib.Path(file_name).name
                     util.download_file(file.get("url"), output_path=download_path)
 
@@ -349,7 +348,7 @@ class Dataset:
         for table in self.tables:
             table_loc = self.ensure_table_loc(table)
             if table_loc.is_file():
-                probe_file = table_loc
+                probe_file = table_loc  # for probing parquet compression later
                 # one file table
                 table.files = [
                     {
