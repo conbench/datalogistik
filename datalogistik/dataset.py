@@ -186,6 +186,11 @@ class Dataset:
         return ext
 
     def ensure_table_loc(self, table=None):
+        """This function will get the location of a table to be used + passed to
+        a pyarrow dataset. It will ensure that all the directories leading up to
+        the files that contain the data all exist (but will not create the data
+        files themselves, directly). This function should be used to get the location
+        of a table rather than constructing it oneself"""
         dataset_path = self.ensure_dataset_loc()
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
