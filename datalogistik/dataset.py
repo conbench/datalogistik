@@ -311,8 +311,6 @@ class Dataset:
         )
 
     def get_write_format(self, table):
-        # grab format output
-        # TODO: should we factor this out into a function?
         write_options = None  # Default
         if self.format == "parquet":
             dataset_write_format = pads.ParquetFileFormat()
