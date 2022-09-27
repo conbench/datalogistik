@@ -96,6 +96,10 @@ class Dataset:
         if self.compression is not None and self.compression.lower().startswith("gz"):
             self.compression = "gzip"
 
+        # Parse back to a pathlib, because we write paths out to JSON as strings
+        if type(self.cache_location) is str:
+            self.cache_location = pathlib.Path(self.cache_location)
+
     def __eq__(self, other):
         if not isinstance(other, Dataset):
             return NotImplemented
