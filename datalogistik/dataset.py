@@ -306,6 +306,29 @@ class Dataset:
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
         )
 
+    def get_write_format(self, table):
+        # grab format output
+        # TODO: should we factor this out into a function?
+        write_options = None  # Default
+        if self.format == "parquet":
+            dataset_write_format = pads.ParquetFileFormat()
+            write_options = dataset_write_format.make_write_options(
+                compression=self.compression,
+                # We might want to percolate these up?
+                use_deprecated_int96_timestamps=False,
+                coerce_timestamps="us",
+                allow_truncated_timestamps=True,
+            )
+
+        if self.format == "csv":
+            dataset_write_format = pads.CsvFileFormat()
+            # IFF header_line is False, then add that to the write options
+            if table.header_line is False:
+                write_options = dataset_write_format.make_write_options(
+                    include_header=False
+                )
+        return dataset_write_format, write_options
+
     def download(self):
         log.info("Downloading to cache...")
         down_start = time.perf_counter()
@@ -427,21 +450,6 @@ class Dataset:
                 new_hash=util.short_hash()
             )
 
-            # grab format output
-            # TODO: should we factor this out into a function?
-            write_options = None  # Default
-            if new_dataset.format == "parquet":
-                dataset_write_format = pads.ParquetFileFormat()
-                write_options = dataset_write_format.make_write_options(
-                    compression=new_dataset.compression,
-                    # We might want to percolate these up?
-                    use_deprecated_int96_timestamps=False,
-                    coerce_timestamps="us",
-                    allow_truncated_timestamps=True,
-                )
-
-            if new_dataset.format == "csv":
-                dataset_write_format = pads.CsvFileFormat()
 
             # convert each table
             for old_table in self.tables:
@@ -466,13 +474,7 @@ class Dataset:
                     nrows = new_table.dim[0]
 
                 new_dataset.tables.append(new_table)
-
-                # IFF header_line is False, then add that to the write options
-                if new_table.header_line is False:
-                    write_options = dataset_write_format.make_write_options(
-                        include_header=False
-                    )
-
+                dataset_write_format, write_options = new_dataset.get_write_format(new_table)
                 output_file = new_dataset.ensure_table_loc(new_table.table)
                 if new_dataset.format == "csv" and new_dataset.compression:
                     # Remove compression extension from filename, pads cannot compress on the fly
