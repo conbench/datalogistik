@@ -215,8 +215,13 @@
         ]
     },
     {
-        "name": "ursa-taxi-data",
+        "name": "ursa-taxi-data-2009",
         "url": "s3://ursa-labs-taxi-data",
-        "format": "parquet"
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "2009"
+            }
+        ]
     }
 ]
