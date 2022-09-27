@@ -94,9 +94,6 @@ class Dataset:
         ):
             self.compression = None
 
-        if self.compression is None and self.format == "parquet":
-            self.compression = "snappy"
-
         # munge gz to gzip
         if self.compression is not None and self.compression.lower().startswith("gz"):
             self.compression = "gzip"

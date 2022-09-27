@@ -15,7 +15,6 @@
 import copy
 
 from . import repo, tpc_info, util
-from .log import log
 
 
 def find_exact_dataset(dataset):
@@ -51,16 +50,6 @@ def find_or_instantiate_close_dataset(dataset):
         if variants == []:
             # this is generatable + must be generated
             variants = [util.generate_dataset(dataset)]
-
-    if variants == []:
-        msg = (
-            f"Dataset '{dataset.name}' not found in repository or list of supported "
-            "generators.\n\nDatasets found in repository: "
-            f"{[source.name for source in repo.get_repo()]}\nSupported generators: "
-            f"{tpc_info.tpc_datasets}"
-        )
-        log.error(msg)
-        raise ValueError(msg)
 
     # order parquet first (since they should be fast(er) to convert from)
     # when we support .arrow, those likely should be first, then parquet, et c.

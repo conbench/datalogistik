@@ -13,19 +13,55 @@
 # limitations under the License.
 
 import sys
+import time
 
 import pyarrow
 
-from . import cli, config
+from . import cli, config, dataset_search
+from .log import log
+
+total_start = time.perf_counter()
 
 
-def main():
+def finish():
+    total_time = time.perf_counter() - total_start
+    log.info("Done.")
+    log.debug(f"Full process took {total_time:0.2f} s")
+    sys.exit(0)
+
+
+def main(dataset=None):
+    # dataset here should typically be None, so then we use parse_args_and_get_dataset_info() to
+    # create the dataset to use. But it can be helpful in tests to construct ones own dataset
+    # with Dataset(name="my dataset", format="very_fancy") and pass it as the dataset argument
+    if dataset is None:
+        dataset = cli.parse_args_and_get_dataset_info()
+
     if config.get_max_cpu_count() != 0:
         pyarrow.set_cpu_count(config.get_max_cpu_count())
         pyarrow.set_io_thread_count(config.get_max_cpu_count())
+    log.info(
+        f"Creating an instance of Dataset '{dataset.name}' in "
+        f"'{dataset.format}' format..."
+    )
 
-    cli.parse_and_run()
-    sys.exit(0)
+    # Get dataset if it already exists in the cache
+    exact_match = dataset_search.find_exact_dataset(dataset)
+
+    if exact_match:
+        print(exact_match.output_result())
+        finish()
+
+    # Convert if not
+    close_match = dataset_search.find_or_instantiate_close_dataset(dataset)
+    if close_match != dataset:
+        new_dataset = close_match.convert(dataset)
+    else:
+        # but if the downloaded datset is an exact match, we print it
+        new_dataset = close_match
+    print(new_dataset.output_result())
+
+    finish()
 
 
 if __name__ == "__main__":

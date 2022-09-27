@@ -25,7 +25,7 @@ import sys
 import pyarrow as pa
 import pytest
 
-from datalogistik import __version__, cli, datalogistik, dataset, util
+from datalogistik import __version__, datalogistik, dataset, util
 
 
 @pytest.fixture(autouse=True)
@@ -340,55 +340,13 @@ def test_compress(comp_string):
     assert util.decompress("uncompressed_file_path", "output_dir", comp_string) is None
 
 
-def test_instantiate(capsys):
+# Integration-style tests
+def test_main(capsys):
     # This should be in the cache already, so no conversion needed
     exact_dataset = dataset.Dataset(name="fanniemae_sample", format="csv", delim="|")
 
-    cli.instantiate(exact_dataset)
-
-    captured = json.loads(capsys.readouterr().out)
-    assert captured["name"] == "fanniemae_sample"
-    assert captured["format"] == "csv"
-    assert isinstance(captured["tables"], dict)
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="windows errors on the cleanup")
-def test_instantiate_with_convert(capsys):
-    # the directory penguins has data _as if_ it were downloaded from a repo for the purposes of testing metadata writing
-    test_dir_path = "tests/fixtures/test_cache/fanniemae_sample"
-
-    # this should be only `penguins.parquet`
-    start_files = os.listdir(test_dir_path)
-    try:
-
-        # This should be in the cache, but needs to be converted
-        close_dataset = dataset.Dataset(name="fanniemae_sample", format="parquet")
-
-        cli.instantiate(close_dataset)
-
-        captured = json.loads(capsys.readouterr().out)
-        assert captured["name"] == "fanniemae_sample"
-        assert captured["format"] == "parquet"
-        assert isinstance(captured["tables"], dict)
-
-    finally:
-        # cleanup all files that weren't there to start with
-        for file in set(os.listdir(test_dir_path)) - set(start_files):
-            shutil.rmtree(pathlib.Path(test_dir_path, file))
-
-
-# Integration-style tests
-def test_main(capsys):
     with pytest.raises(SystemExit) as e:
-        sys.argv = [
-            "datalogistik",
-            "get",
-            "-d",
-            "fanniemae_sample",
-            "-f",
-            "csv",
-        ]
-        datalogistik.main()
+        datalogistik.main(exact_dataset)
         assert e.type == SystemExit
         assert e.value.code == 0
 
@@ -407,16 +365,11 @@ def test_main_with_convert(capsys):
     start_files = os.listdir(test_dir_path)
     try:
 
+        # This should be in the cache, but needs to be converted
+        close_dataset = dataset.Dataset(name="fanniemae_sample", format="parquet")
+
         with pytest.raises(SystemExit) as e:
-            sys.argv = [
-                "datalogistik",
-                "get",
-                "-d",
-                "fanniemae_sample",
-                "-f",
-                "parquet",
-            ]
-            datalogistik.main()
+            datalogistik.main(close_dataset)
             assert e.type == SystemExit
             assert e.value.code == 0
 

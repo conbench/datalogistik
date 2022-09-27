@@ -367,10 +367,7 @@ def test_fill_in_defaults():
 
     ds.fill_in_defaults(dataset_from_repo)
     assert ds.format == "parquet"  # NB: not csv
-    if ds.format == "parquet":
-        assert ds.compression == "snappy"
-    else:
-        assert ds.compression is None
+    assert ds.compression is None
 
 
 def test_get_dataset_with_schema():
