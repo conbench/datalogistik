@@ -177,7 +177,6 @@ class Dataset:
                 config.get_cache_location(), self.name, self.hash
             )
 
-        # Make the dir if it's not already extant
         if not self.cache_location.exists():
             self.cache_location.mkdir(parents=True, exist_ok=True)
 
@@ -219,7 +218,6 @@ class Dataset:
         # default to the first table
         index = 0
 
-        # TODO: name-based indexing?
         if isinstance(table, int):
             index = table
         elif isinstance(table, str):
@@ -236,7 +234,6 @@ class Dataset:
         po = csv.ParseOptions()
         co = csv.ConvertOptions()
         schema = None
-        # TODO: Should we fall-back to read_csv in case schema detection fails?
         if self.delim:
             po = csv.ParseOptions(delimiter=self.delim)
 
@@ -262,8 +259,6 @@ class Dataset:
         return dataset_read_format, schema
 
     def get_raw_tpc_dataset_spec(self, table):
-        # defaults
-
         column_types = tpc_info.col_dicts[self.name][table.table]
 
         # dbgen's .tbl output has a trailing delimiter
@@ -404,7 +399,7 @@ class Dataset:
             file_metadata = pq.ParquetFile(probe_file).metadata
             self.compression = file_metadata.row_group(0).column(0).compression.lower()
 
-        # TODO: auto detect csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
+        # TODO: add auto-detected csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
         # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L895-L911
 
     def write_metadata(self):
@@ -435,7 +430,6 @@ class Dataset:
 
         dict_repr = asdict(self, dict_factory=util.NoNoneDict)
 
-        # Note: we don't restore `-`s from the `_`s, we should find a way to be more systematic about that or adopt all and only `_`
         return json.dumps(dict_repr, default=str)
 
     def convert(self, new_dataset):
