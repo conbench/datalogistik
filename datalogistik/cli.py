@@ -60,14 +60,14 @@ def parse_args():
         type=str,
         required=True,
         help="Format for the dataset (convert if necessary). "
-             "Supported formats: parquet, csv",
+        "Supported formats: parquet, csv",
     )
     gen_parser.add_argument(
         "-c",
         "--compression",
         type=str,
         help="Compression (for parquet: passed to parquet writer, "
-             "for csv: either None or gz)",
+        "for csv: either None or gz)",
     )
     gen_parser.add_argument(
         "-s",
@@ -83,9 +83,9 @@ def parse_args():
         type=str,
         default=None,
         help="Path to the location of the external generator (e.g. TPC-H's dbgen). If "
-             "not given, datalogistik will attempt to make it by cloning a repo (requires "
-             "git on your PATH) and building the tool (requires make for UNIX or msbuild "
-             "for Windows on your PATH).",
+        "not given, datalogistik will attempt to make it by cloning a repo (requires "
+        "git on your PATH) and building the tool (requires make for UNIX or msbuild "
+        "for Windows on your PATH).",
     )
 
     return parser.parse_args()
