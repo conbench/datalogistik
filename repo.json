@@ -9,6 +9,7 @@
         "tables": [
             {
                 "table": "2016Q4",
+                "header_line": false,
                 "files": [
                     {
                         "file_path": "2016Q4.csv.gz"
@@ -60,7 +61,6 @@
         "homepage": "https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
         "delim": ",",
         "format": "csv",
-        "header-line": true,
         "compression": "gz",
         "extra_nulls": [
             "*"
@@ -68,13 +68,14 @@
         "tables": [
             {
                 "table": "nyctaxi_2010-01",
+                "header_line": true,
                 "dim": [
                     14863778,
                     18
                 ],
                 "files": [
                     {
-                        "file_path": "yellow_tripdata_2010-01.csv.gz"
+                        "file_path": "nyctaxi_2010-01.csv.gz"
                     }
                 ]
             }

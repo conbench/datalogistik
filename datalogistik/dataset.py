@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import dataclasses
 import datetime
 import json
 import os
@@ -57,11 +58,8 @@ class Dataset:
     # TODO: literal type? for specific values
     format: Optional[str] = None
     compression: Optional[str] = None
-    # TODO: should header_line actually be at the Table level?
-    header_line: Optional[bool] = None
     tables: Optional[List] = field(default_factory=list)
     local_creation_date: Optional[str] = None
-    # TODO: is this the right default?
     scale_factor: Optional[float] = None
     delim: Optional[str] = None
     metadata_file: Optional[pathlib.Path] = None
@@ -86,7 +84,7 @@ class Dataset:
             self.scale_factor = 1.0
 
         # Use None as the true default for uncompressed
-        # the first comparisson is a bit redundant, but None.lower() fails
+        # the first comparison is a bit redundant, but None.lower() fails
         if (
             self.compression is None
             or self.compression.lower() == "none"
@@ -97,6 +95,10 @@ class Dataset:
         # munge gz to gzip
         if self.compression is not None and self.compression.lower().startswith("gz"):
             self.compression = "gzip"
+
+        # Parse back to a pathlib, because we write paths out to JSON as strings
+        if type(self.cache_location) is str:
+            self.cache_location = pathlib.Path(self.cache_location)
 
     def __eq__(self, other):
         if not isinstance(other, Dataset):
@@ -137,12 +139,6 @@ class Dataset:
 
                 metadata = json_dump
 
-        # But replace all -s with _s
-        # TODO: remove this or make it actually more systematic
-        metadata = OrderedDict(
-            (key.replace("-", "_"), value) for key, value in metadata.items()
-        )
-
         # Construct the tables, adding them back in
         # TODO: handle the case where there is a single file and no table attribute?
         tables = metadata.pop("tables", None)
@@ -165,21 +161,6 @@ class Dataset:
 
         return [Dataset.from_json(ds) for ds in metadata_files]
 
-    def get_table_name(self, table):
-        # TODO: allow for compression extension bits (probably need to abstract into a name generator)
-        name = table.table
-        # if we are a single-file table (or the default of no files), add the extension
-        if len(table.files) > 1 or table.multi_file:
-            name = name
-        else:
-            ext_string = self.format
-            # custom extension for the special case .csv.gz
-            if self.format == "csv" and self.compression == "gzip":
-                ext_string = ext_string + os.extsep + "gz"
-            name = name + os.extsep + ext_string
-
-        return name
-
     def ensure_dataset_loc(self, new_hash="raw"):
         # If this is set, return
         if self.cache_location is not None:
@@ -196,27 +177,33 @@ class Dataset:
                 config.get_cache_location(), self.name, self.hash
             )
 
-        # Make the dir if it's not already extant
         if not self.cache_location.exists():
             self.cache_location.mkdir(parents=True, exist_ok=True)
 
         return self.cache_location
 
-    def ensure_table_loc(self, table=None, parents_only=False):
+    def get_extension(self):
+        ext = os.extsep + self.format
+        if self.format == "csv" and self.compression == "gzip":
+            ext = ext + os.extsep + "gz"
+        return ext
+
+    def ensure_table_loc(self, table=None):
+        """This function will get the location of a table to be used + passed to
+        a pyarrow dataset. It will ensure that all the directories leading up to
+        the files that contain the data all exist (but will not create the data
+        files themselves, directly). This function should be used to get the location
+        of a table rather than constructing it oneself"""
+        dataset_path = self.ensure_dataset_loc()
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
 
-        # TODO: check that this file actually exists?
-        data_path = pathlib.Path(self.ensure_dataset_loc(), self.get_table_name(table))
-
-        if parents_only:
-            data_path = data_path.parent
-
-        # Make the dir if it's not already extant
-        if not data_path.exists():
-            data_path.mkdir(parents=True, exist_ok=True)
-
-        return data_path
+        if len(table.files) > 1 or table.multi_file:
+            table_path = dataset_path / table.table
+            table_path.mkdir(exist_ok=True)
+        else:
+            table_path = dataset_path / (table.table + self.get_extension())
+        return table_path
 
     def get_one_table(self, table=None):
         if isinstance(table, Table):
@@ -228,7 +215,6 @@ class Dataset:
         # default to the first table
         index = 0
 
-        # TODO: name-based indexing?
         if isinstance(table, int):
             index = table
         elif isinstance(table, str):
@@ -245,7 +231,6 @@ class Dataset:
         po = csv.ParseOptions()
         co = csv.ConvertOptions()
         schema = None
-        # TODO: Should we fall-back to read_csv in case schema detection fails?
         if self.delim:
             po = csv.ParseOptions(delimiter=self.delim)
 
@@ -254,8 +239,6 @@ class Dataset:
             co.null_values = co.null_values + self.extra_nulls
 
         column_names = None
-        # TODO: Where does this go?
-        # autogen_column_names = False
         if table.schema:
             schema = util.get_arrow_schema(table.schema)
             column_names = list(table.schema.keys())
@@ -263,7 +246,7 @@ class Dataset:
         ro = csv.ReadOptions(
             column_names=column_names,
             # if column_names are provided, we cannot autogenerate, after the defer to header_line
-            autogenerate_column_names=column_names is None and not self.header_line,
+            autogenerate_column_names=column_names is None and not table.header_line,
         )
 
         dataset_read_format = pads.CsvFileFormat(
@@ -273,8 +256,6 @@ class Dataset:
         return dataset_read_format, schema
 
     def get_raw_tpc_dataset_spec(self, table):
-        # defaults
-
         column_types = tpc_info.col_dicts[self.name][table.table]
 
         # dbgen's .tbl output has a trailing delimiter
@@ -311,6 +292,7 @@ class Dataset:
         schema = table.schema
         if self.format == "parquet":
             dataset_read_format = pads.ParquetFileFormat()
+            schema = None
         if self.format == "csv":
             dataset_read_format, schema = self.get_csv_dataset_spec(table)
         if self.format == "tpc-raw":
@@ -320,42 +302,56 @@ class Dataset:
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
         )
 
+    def get_write_format(self, table):
+        write_options = None  # Default
+        if self.format == "parquet":
+            dataset_write_format = pads.ParquetFileFormat()
+            write_options = dataset_write_format.make_write_options(
+                compression=self.compression,
+                # We might want to percolate these up?
+                use_deprecated_int96_timestamps=False,
+                coerce_timestamps="us",
+                allow_truncated_timestamps=True,
+            )
+
+        if self.format == "csv":
+            dataset_write_format = pads.CsvFileFormat()
+            # IFF header_line is False, then add that to the write options
+            write_options = dataset_write_format.make_write_options(
+                include_header=False if table.header_line is False else True,
+                delimiter=self.delim,
+            )
+        return dataset_write_format, write_options
+
     def download(self):
         log.info("Downloading to cache...")
         down_start = time.perf_counter()
 
         # Ensure the dataset path is available
         # we can't hash yet, so let's call this "raw"
-        cached_dataset_path = self.ensure_dataset_loc(new_hash="raw")
+        self.ensure_dataset_loc(new_hash="raw")
 
         # For now, we always download all tables. So we need to loop through each table
-
         for table in self.tables:
             # create table dir
-            self.ensure_table_loc(table, parents_only=True)
+            table_path = self.ensure_table_loc(table)
 
             for file in table.files:
-                # the path it will be stored at
-                filename = file.get("file_path")
-                # we want to use the table_name incase the file stored has a different name than the tablename
+                download_path = table_path
                 if len(table.files) == 1:
-                    dataset_file_path = cached_dataset_path / self.get_table_name(table)
+                    url = self.url
                 else:
-                    # TODO: this isn't quite right, but _should_ work
-                    dataset_file_path = cached_dataset_path / filename
+                    # contains the suffix for the download url
+                    file_name = file.get("file_path")
+                    if file_name:
+                        # All files constituting a table must be in a dir with name table.name (created by ensure_table_loc)
+                        download_path = pathlib.Path(file_name).name
+                        url = self.url + pathlib.Path(file_name).name
 
-                # craft the URL (need to be careful since sometimes it will contain the name of the dataset)
-                full_path = self.url
-
-                # if the filename is not at the end of full_path, join
-                if not full_path.endswith(filename):
-                    full_path = full_path + filename
+                util.download_file(url, output_path=download_path)
 
                 # TODO: validate checksum, something like:
                 # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
-
-                util.download_file(full_path, output_path=dataset_file_path)
-                util.set_readonly(dataset_file_path)
 
         down_time = time.perf_counter() - down_start
         log.debug(f"download took {down_time:0.2f} s")
@@ -368,31 +364,33 @@ class Dataset:
         for table in self.tables:
             table_loc = self.ensure_table_loc(table)
             if table_loc.is_file():
+                probe_file = table_loc  # for probing parquet compression later
                 # one file table
                 table.files = [
                     {
-                        "rel_path": table_loc.relative_to(self.ensure_dataset_loc()),
+                        "file_path": table_loc.relative_to(self.ensure_dataset_loc()),
                         "file_size": table_loc.lstat().st_size,
                         "md5": util.calculate_checksum(table_loc),
                     }
                 ]
             elif table_loc.is_dir():
+                probe_file = next(table_loc.iterdir())
                 # multi file table
                 table.files = [
                     {
-                        "rel_path": subfile.relative_to(self.ensure_dataset_loc()),
+                        "file_path": subfile.relative_to(self.ensure_dataset_loc()),
                         "file_size": subfile.lstat().st_size,
                         "md5": util.calculate_checksum(subfile),
                     }
                     for subfile in table_loc.iterdir()
                     if subfile.is_file()
                 ]
-        # Find parquet compression, move to the proper subdir
+        # Find parquet compression
         if self.format == "parquet":
-            file_metadata = pq.ParquetFile(self.ensure_table_loc(0)).metadata
+            file_metadata = pq.ParquetFile(probe_file).metadata
             self.compression = file_metadata.row_group(0).column(0).compression.lower()
 
-        # TODO: auto detect csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
+        # TODO: add auto-detected csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
         # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L895-L911
 
     def write_metadata(self):
@@ -423,7 +421,6 @@ class Dataset:
 
         dict_repr = asdict(self, dict_factory=util.NoNoneDict)
 
-        # Note: we don't restore `-`s from the `_`s, we should find a way to be more systematic about that or adopt all and only `_`
         return json.dumps(dict_repr, default=str)
 
     def convert(self, new_dataset):
@@ -436,47 +433,47 @@ class Dataset:
 
         try:
             # ensure that we have a new dataset location
-            new_dataset.ensure_dataset_loc(new_hash=util.short_hash())
-
-            # grab format output
-            # TODO: should we factor this out into a function?
-            write_options = None  # Default
-            if new_dataset.format == "parquet":
-                dataset_write_format = pads.ParquetFileFormat()
-                write_options = dataset_write_format.make_write_options(
-                    compression=new_dataset.compression,
-                    # We might want to percolate these up?
-                    use_deprecated_int96_timestamps=False,
-                    coerce_timestamps="us",
-                    allow_truncated_timestamps=True,
-                )
-
-            if new_dataset.format == "csv":
-                dataset_write_format = pads.CsvFileFormat()
-                # TODO: Do we also need to not include header if there's a known schema
-                if new_dataset.header_line is None:
-                    new_dataset.header_line = self.header_line
-
-                # IFF header_line is False, then add that to the write options
-                if new_dataset.header_line is False:
-                    write_options = dataset_write_format.make_write_options(
-                        include_header=False
-                    )
+            new_dataset_path = new_dataset.ensure_dataset_loc(
+                new_hash=util.short_hash()
+            )
 
             # convert each table
-            for i_table, _ in enumerate(self.tables):
-                old_table = self.tables[i_table]
-
-                # add this table to the new dataset
-                new_table = Table(table=old_table.table)
-                new_dataset.tables.append(new_table)
+            for old_table in self.tables:
 
                 # TODO: possible schema changes here at the table level
                 table_pads = self.get_table_dataset(old_table)
-                output_file = new_dataset.ensure_table_loc(i_table)
 
-                # TODO: get nrows from the dataset (we should use the metadata if we have it to not need to poke the data)
-                nrows = table_pads.count_rows()
+                # Make a copy of the original table object. we should overwrite any
+                # properties changed by the conversion
+                new_table = dataclasses.replace(old_table)
+                # TODO: the partitioning properties should be set from what was specified on the cmdline
+                new_table.partitioning = None
+                new_table.multi_file = None
+                new_table.files = []  # will be re-populated after conversion
+                # Intuitively, you'd like to remove the schema from the metadata here
+                # when converting to parquet (because parquet already stores the schema internally).
+                # However, we don't have code to convert a pyarrow schema into JSON yet,
+                # so we should keep the schema in the metadata here,
+                # in case this dataset will be converted to csv later (otherwise the user-specified
+                # JSON schema would be lost)
+
+                if not new_table.dim:
+                    # TODO: we should check if these are still valid after conversion
+                    nrows = table_pads.count_rows()
+                    ncols = len(table_pads.schema.names)
+                    new_table.dim = [nrows, ncols]
+                else:
+                    nrows = new_table.dim[0]
+
+                new_dataset.tables.append(new_table)
+                dataset_write_format, write_options = new_dataset.get_write_format(
+                    new_table
+                )
+                output_file = new_dataset.ensure_table_loc(new_table.table)
+                if new_dataset.format == "csv" and new_dataset.compression:
+                    # Remove compression extension from filename, pads cannot compress on the fly
+                    # so we need to compress as an extra step and then we'll add the extension.
+                    output_file = output_file.parent / output_file.stem
 
                 # Find a reasonable number to set our rows per row group.
                 # and then make sure that max rows per group is less than new_nrows
@@ -529,13 +526,12 @@ class Dataset:
             log.info("Finished conversion.")
             log.debug(f"conversion took {conv_time:0.2f} s")
 
-            new_dataset.fill_metadata_from_files()
             new_dataset.write_metadata()
 
             util.set_readonly_recurse(output_file)
         except Exception:
             log.error("An error occurred during conversion.")
-            # util.clean_cache_dir(output_file)
+            util.clean_cache_dir(new_dataset_path)
             raise
 
         return new_dataset
