@@ -335,28 +335,24 @@ class Dataset:
             # we can't hash yet, so let's call this "raw"
             dataset_path = self.ensure_dataset_loc(new_hash="raw")
 
-            # If there is a toplevel url, download it directly.
-            # Otherwise, each individual file will have a url
-            if self.url:
-                util.download_file(self.url, output_path=self.ensure_table_loc())
-            else:
-                # For now, we always download all tables. So we need to loop through each table
-                for table in self.tables:
-                    # create table dir
-                    table_path = self.ensure_table_loc(table)
+            # For now, we always download all tables. So we need to loop through each table
 
-                    for file in table.files:
-                        # TODO: validate checksum, something like:
-                        # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
+            for table in self.tables:
+                # create table dir
+                table_path = self.ensure_table_loc(table)
 
-                        download_path = table_path
-                        # this may override the filename in the url
-                        file_name = file.get("file_path")
-                        if len(table.files) > 1 and file_name:
-                            # We only use file.name, because we need all files constituting
-                            # a table to be in a dir with name table.name (created by ensure_table_loc)
-                            download_path = table_path / pathlib.Path(file_name).name
-                        util.download_file(file.get("url"), output_path=download_path)
+                for file in table.files:
+                    # TODO: validate checksum, something like:
+                    # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
+
+                    download_path = table_path
+                    # this may override the filename in the url
+                    file_name = file.get("file_path")
+                    if len(table.files) > 1 and file_name:
+                        # We only use file.name, because we need all files constituting
+                        # a table to be in a dir with name table.name (created by ensure_table_loc)
+                        download_path = table_path / pathlib.Path(file_name).name
+                    util.download_file(file.get("url"), output_path=download_path)
 
             self.write_metadata()
             util.set_readonly_recurse(dataset_path)
