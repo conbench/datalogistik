@@ -40,6 +40,8 @@ def find_or_instantiate_close_dataset(dataset):
         if dataset_to_fetch:
             # we found a dataset, so we can use it
             dataset_to_fetch.download()
+            dataset_to_fetch.fill_metadata_from_files()
+            dataset_to_fetch.write_metadata()
             variants = [dataset_to_fetch]
 
     if dataset.name in tpc_info.tpc_datasets:

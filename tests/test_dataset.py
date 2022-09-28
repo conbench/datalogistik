@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import json
 import os
 import pathlib
@@ -98,10 +99,6 @@ def test_ensure_table_loc():
     )
     assert multi_file_ds.ensure_table_loc() == pathlib.Path(
         "tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013"
-    )
-
-    assert simple_csv_ds.ensure_table_loc() == pathlib.Path(
-        "tests/fixtures/test_cache/chi_traffic_sample/babb1e5/chi_traffic_sample.csv"
     )
 
 
