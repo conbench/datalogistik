@@ -332,38 +332,30 @@ class Dataset:
 
         # Ensure the dataset path is available
         # we can't hash yet, so let's call this "raw"
-        cached_dataset_path = self.ensure_dataset_loc(new_hash="raw")
+        self.ensure_dataset_loc(new_hash="raw")
 
         # For now, we always download all tables. So we need to loop through each table
-
         for table in self.tables:
             # create table dir
-            self.ensure_table_loc(table)
+            table_path = self.ensure_table_loc(table)
 
             for file in table.files:
-                # the path it will be stored at
-                filename = file.get("file_path")
-                # we want to use the table_name incase the file stored has a different name than the tablename
+                download_path = table_path
+                # this may override the filename in the url
+                file_name = file.get("file_path")
                 if len(table.files) == 1:
-                    dataset_file_path = cached_dataset_path / (
-                        table.table + self.get_extension()
-                    )
+                    url = self.url
                 else:
-                    # TODO: this isn't quite right, but _should_ work
-                    dataset_file_path = cached_dataset_path / filename
+                    if file_name:
+                        # We only use file.name, because we need all files constituting
+                        # a table to be in a dir with name table.name (created by ensure_table_loc)
+                        download_path = table_path / pathlib.Path(file_name).name
+                        url = self.url + pathlib.Path(file_name).name
 
-                # craft the URL (need to be careful since sometimes it will contain the name of the dataset)
-                full_path = self.url
-
-                # if the filename is not at the end of full_path, join
-                if not full_path.endswith(filename):
-                    full_path = full_path + filename
+                util.download_file(url, output_path=download_path)
 
                 # TODO: validate checksum, something like:
                 # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
-
-                util.download_file(full_path, output_path=dataset_file_path)
-                util.set_readonly(dataset_file_path)
 
         down_time = time.perf_counter() - down_start
         log.debug(f"download took {down_time:0.2f} s")

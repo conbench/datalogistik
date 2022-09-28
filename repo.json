@@ -75,7 +75,7 @@
                 ],
                 "files": [
                     {
-                        "file_path": "yellow_tripdata_2010-01.csv.gz"
+                        "file_path": "nyctaxi_2010-01.csv.gz"
                     }
                 ]
             }
