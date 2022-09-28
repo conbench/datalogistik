@@ -346,7 +346,7 @@ class Dataset:
                 # we want to use the table_name incase the file stored has a different name than the tablename
                 if len(table.files) == 1:
                     dataset_file_path = cached_dataset_path / (
-                        table.table + self.get_extension(table)
+                        table.table + self.get_extension()
                     )
                 else:
                     # TODO: this isn't quite right, but _should_ work
