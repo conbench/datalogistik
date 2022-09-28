@@ -16,7 +16,7 @@ import argparse
 import pathlib
 import sys
 
-from . import repo, util, config
+from . import config, repo, util
 from .dataset import Dataset
 from .log import log
 
@@ -103,7 +103,11 @@ def validate_cache(remove_failing):
                 log.info(f"Found invalid cache entry: {ds}")
                 if remove_failing:
                     log.info("Pruning...")
-                    util.prune_cache_entry(pathlib.Path(ds.cache_location).relative_to(config.get_cache_location()))
+                    util.prune_cache_entry(
+                        pathlib.Path(ds.cache_location).relative_to(
+                            config.get_cache_location()
+                        )
+                    )
     util.clean_cache()
 
 
