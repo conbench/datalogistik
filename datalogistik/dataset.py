@@ -320,10 +320,10 @@ class Dataset:
         if self.format == "csv":
             dataset_write_format = pads.CsvFileFormat()
             # IFF header_line is False, then add that to the write options
-            if table.header_line is False:
-                write_options = dataset_write_format.make_write_options(
-                    include_header=False
-                )
+            write_options = dataset_write_format.make_write_options(
+                include_header=False if table.header_line is False else True,
+                delimiter=self.delim if self.delim else ","
+            )
         return dataset_write_format, write_options
 
     def download(self):
