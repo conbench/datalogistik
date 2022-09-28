@@ -519,4 +519,4 @@ def short_hash():
 # ignore None and [] type values
 class NoNoneDict(dict):
     def __init__(self, data):
-        super().__init__(x for x in data if x[1])
+        super().__init__(x for x in data if x[1] is not None and x[1] != [])
