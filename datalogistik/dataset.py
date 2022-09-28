@@ -349,9 +349,7 @@ class Dataset:
                     # this may override the filename in the url
                     file_name = file.get("file_path")
                     if len(table.files) > 1 and file_name:
-                        # We only use file.name, because we need all files constituting
-                        # a table to be in a dir with name table.name (created by ensure_table_loc)
-                        download_path = table_path / pathlib.Path(file_name).name
+                        download_path = table_path / file_name
                     util.download_file(file.get("url"), output_path=download_path)
 
             self.write_metadata()
