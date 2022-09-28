@@ -220,7 +220,7 @@
         "format": "parquet",
         "tables": [
             {
-                "table": "2009"
+                "table": "taxi.parquet"
             }
         ]
     }
