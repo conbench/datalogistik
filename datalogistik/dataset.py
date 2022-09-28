@@ -358,7 +358,6 @@ class Dataset:
                             download_path = table_path / pathlib.Path(file_name).name
                         util.download_file(file.get("url"), output_path=download_path)
 
-            self.fill_metadata_from_files()
             self.write_metadata()
             util.set_readonly_recurse(dataset_path)
         except Exception:
@@ -541,7 +540,6 @@ class Dataset:
             log.info("Finished conversion.")
             log.debug(f"conversion took {conv_time:0.2f} s")
 
-            new_dataset.fill_metadata_from_files()
             new_dataset.write_metadata()
 
             util.set_readonly_recurse(output_file)

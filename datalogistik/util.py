@@ -418,7 +418,6 @@ def generate_dataset(dataset):
         gen_time = time.perf_counter() - gen_start
         log.info("Finished generating.")
         log.debug(f"generation took {gen_time:0.2f} s")
-        dataset.fill_metadata_from_files()
         dataset.write_metadata()
 
     except Exception:
