@@ -322,7 +322,7 @@ class Dataset:
             # IFF header_line is False, then add that to the write options
             write_options = dataset_write_format.make_write_options(
                 include_header=False if table.header_line is False else True,
-                delimiter=self.delim if self.delim else ","
+                delimiter=self.delim if self.delim else ",",
             )
         return dataset_write_format, write_options
 
