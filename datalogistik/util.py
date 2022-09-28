@@ -59,31 +59,9 @@ def set_readwrite_recurse(path):
             set_readwrite(os.path.join(dirpath, filename))
 
 
-def removesuffix(orig_path, suffix):
-    path = pathlib.Path(orig_path)
-    if path.suffix == suffix:
-        return path.parent / path.stem
-    else:
-        return orig_path
-
-
-def peek_line(fd):
-    pos = fd.tell()
-    line = fd.readline()
-    fd.seek(pos)
-    return line
-
-
 def file_visitor(written_file):
     log.debug(f"path={written_file.path}")
     log.debug(f"metadata={written_file.metadata}")
-
-
-# For each item in the itemlist, add it to metadata if it exists in dataset_info
-def add_if_present(itemlist, dataset_info, metadata):
-    for item in itemlist:
-        if item in dataset_info:
-            metadata[item] = dataset_info[item]
 
 
 def calculate_checksum(file_path):
@@ -95,29 +73,6 @@ def calculate_checksum(file_path):
             chunk = f.read(config.hashing_chunk_size)
 
     return file_hash.hexdigest()
-
-
-def file_listing_item(dataset_path, file_path):
-    rel_path = os.path.relpath(file_path, dataset_path)
-    file_size = os.path.getsize(file_path)
-    file_md5 = calculate_checksum(file_path)
-    return {"rel_path": rel_path, "file_size": file_size, "md5": file_md5}
-
-
-def add_file_listing(metadata, path):
-    with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
-        futures = []
-        for cur_path, dirs, files in os.walk(path):
-            for file_name in files:
-                futures.append(
-                    pool.submit(
-                        file_listing_item, path, os.path.join(cur_path, file_name)
-                    )
-                )
-        file_list = []
-        for f in futures:
-            file_list.append(f.result())
-    metadata["files"] = sorted(file_list, key=lambda item: item["rel_path"])
 
 
 # Returns true if the given path contains a dataset with a metadata file that contains
@@ -132,96 +87,13 @@ def contains_dataset(path):
         log.error(msg)
         raise RuntimeError(msg)
 
+    # We can't use Dataset.from_json because it would create a circular dependency
     metadata_file = pathlib.Path(path, config.metadata_filename)
     if metadata_file.exists():
         with open(metadata_file) as f:
             if json.load(f).get("tables"):
                 return True
     return False
-
-
-# Validate that the integrity of the files in the dataset at given path is ok, using the metadata file.
-# Return true if the dataset passed the integrity check.
-def validate(path):
-    path = pathlib.Path(path)
-    dataset_found = contains_dataset(path)
-    if not dataset_found:
-        msg = f"No valid dataset was found at '{path}'"
-        log.error(msg)
-        raise RuntimeError(msg)
-    metadata_file = pathlib.Path(path, config.metadata_filename)
-    with open(metadata_file) as f:
-        tables = json.load(f).get("tables")
-        if not tables:
-            log.info(
-                "No tables metadata found, could not perform validation (assuming valid)"
-            )
-            return True
-        dataset_valid = True
-        for table in tables:
-            orig_file_listing = table.get("files")
-            if not orig_file_listing:
-                log.info(
-                    f"No metadata found for table {table}, could not perform validation (assuming valid)"
-                )
-            dataset_valid = validate_files(path, orig_file_listing)
-            if not dataset_valid:
-                break
-    log.info(f"Dataset at {path} is{'' if dataset_valid else ' NOT'} valid")
-    return dataset_valid
-
-
-# Validate the files in the given path for integrity using the given file listing.
-# Return true if the files passed the integrity check.
-def validate_files(path, file_listing):
-    new_file_listing = {}
-    add_file_listing(new_file_listing, path)
-    new_file_listing = new_file_listing.get("files")
-    # we can't perform a simple equality check on the whole listing,
-    # because the orig_file_listing does not contain the metadata file.
-    # Also, it would be nice to show the user which files failed.
-    listings_are_equal = True
-    for orig_file in file_listing:
-        if not orig_file.get("md5"):
-            log.info(
-                f"No checksum found for file {orig_file}, could not perform validation (assuming valid)"
-            )
-            continue
-        found = None
-        for new_file in new_file_listing:
-            if new_file["rel_path"] == orig_file["rel_path"]:
-                found = new_file
-                break
-
-        if found is None:
-            orig_file_path = orig_file["rel_path"]
-            log.error(f"Missing file: {orig_file_path}")
-            listings_are_equal = False
-        elif orig_file != new_file:
-            log.error(
-                "File integrity compromised: (top:properties in metadata bottom:calculated properties)"
-            )
-            log.error(orig_file)
-            log.error(new_file)
-            listings_are_equal = False
-
-    log.debug(f"Dataset is{'' if listings_are_equal else ' NOT'} valid!")
-    return listings_are_equal
-
-
-# Validate all entries in the cache
-def validate_cache(remove_failing):
-    cache_root = config.get_cache_location()
-    log.info(f"Validating cache at {cache_root}")
-    for dirpath, dirnames, filenames in os.walk(cache_root):
-        if config.metadata_filename in filenames:
-            # Dataset found, validate
-            if not validate(dirpath):
-                log.info(f"Found invalid cache entry at {dirpath}")
-                if remove_failing:
-                    log.info("Pruning...")
-                    prune_cache_entry(pathlib.Path(dirpath).relative_to(cache_root))
-    clean_cache()
 
 
 # Walk up the directory tree up to the root of the cache to find a metadata file.

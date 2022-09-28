@@ -320,6 +320,87 @@ class Dataset:
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
         )
 
+    def file_listing_item(self, file_path):
+        rel_path = os.path.relpath(file_path, self.cache_location)
+        file_size = os.path.getsize(file_path)
+        file_md5 = util.calculate_checksum(file_path)
+        return {"rel_path": rel_path, "file_size": file_size, "md5": file_md5}
+
+    def add_file_listing(self, metadata):
+        """Add file listing for this dataset to the given metadata dictionary.
+        This can be used to validate the files against the file listing in the metadata file."""
+        with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
+            futures = []
+            for cur_path, dirs, files in os.walk(self.cache_location):
+                for file_name in files:
+                    futures.append(
+                        pool.submit(
+                            self.file_listing_item, os.path.join(cur_path, file_name)
+                        )
+                    )
+            file_list = []
+            for f in futures:
+                file_list.append(f.result())
+        metadata["files"] = sorted(file_list, key=lambda item: item["rel_path"])
+
+    # Validate that the integrity of the files in this dataset is ok, using the metadata.
+    # Return true if the dataset passed the integrity check.
+    def validate(self):
+        if not self.tables:
+            log.info(
+                "No tables metadata found, could not perform validation (assuming valid)"
+            )
+            return True
+        dataset_valid = True
+        for table in self.tables:
+            orig_file_listing = table.files
+            if not orig_file_listing:
+                log.info(
+                    f"No metadata found for table {table}, could not perform validation (assuming valid)"
+                )
+            dataset_valid = self.validate_listing(orig_file_listing)
+            if not dataset_valid:
+                break
+        log.info(f"Dataset is{'' if dataset_valid else ' NOT'} valid")
+        return dataset_valid
+
+    # Validate the files in the given path for integrity using the given file listing.
+    # Return true if the files passed the integrity check.
+    def validate_listing(self, file_listing):
+        new_file_listing = {}
+        self.add_file_listing(new_file_listing)
+        new_file_listing = new_file_listing.get("files")
+        # we can't perform a simple equality check on the whole listing,
+        # because the orig_file_listing does not contain the metadata file.
+        # Also, it would be nice to show the user which files failed.
+        listings_are_equal = True
+        for orig_file in file_listing:
+            if not orig_file.get("md5"):
+                log.info(
+                    f"No checksum found for file {orig_file}, could not perform validation (assuming valid)"
+                )
+                continue
+            found = None
+            for new_file in new_file_listing:
+                if new_file["rel_path"] == orig_file["rel_path"]:
+                    found = new_file
+                    break
+
+            if found is None:
+                orig_file_path = orig_file["rel_path"]
+                log.error(f"Missing file: {orig_file_path}")
+                listings_are_equal = False
+            elif orig_file != new_file:
+                log.error(
+                    "File integrity compromised: (top:properties in metadata bottom:calculated properties)"
+                )
+                log.error(orig_file)
+                log.error(new_file)
+                listings_are_equal = False
+
+        log.debug(f"Dataset is{'' if listings_are_equal else ' NOT'} valid!")
+        return listings_are_equal
+
     def download(self):
         log.info("Downloading to cache...")
         down_start = time.perf_counter()
@@ -355,7 +436,7 @@ class Dataset:
                 util.set_readonly(dataset_file_path)
 
         # Try validation in case the dataset info contained checksums
-        if not util.validate_files(self.cache_location, table.files):
+        if not self.validate_listing(table.files):
             util.clean_cache_dir(self.cache_location)
             msg = "File integrity check for newly downloaded dataset failed."
             log.error(msg)
@@ -376,8 +457,7 @@ class Dataset:
                 for file_name in files:
                     futures.append(
                         pool.submit(
-                            util.file_listing_item,
-                            path,
+                            self.file_listing_item,
                             os.path.join(cur_path, file_name),
                         )
                     )
