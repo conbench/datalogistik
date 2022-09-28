@@ -5,11 +5,11 @@
         "homepage": "https://capitalmarkets.fanniemae.com/credit-risk-transfer/single-family-credit-risk-transfer/fannie-mae-single-family-loan-performance-data",
         "delim": "|",
         "format": "csv",
+        "header_line": false,
         "compression": "gz",
         "tables": [
             {
                 "table": "2016Q4",
-                "header_line": false,
                 "files": [
                     {
                         "file_path": "2016Q4.csv.gz"
