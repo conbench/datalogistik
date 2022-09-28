@@ -9,6 +9,7 @@
         "tables": [
             {
                 "table": "2016Q4",
+                "header_line": false,
                 "files": [
                     {
                         "file_path": "2016Q4.csv.gz"
