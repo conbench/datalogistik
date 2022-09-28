@@ -84,11 +84,11 @@ def test_ensure_dataset_loc():
 
 
 def test_get_extension():
-    assert simple_parquet_ds.get_extension(simple_parquet_ds.tables[0]) == ".parquet"
+    assert simple_parquet_ds.get_extension() == ".parquet"
 
     # And we do the right thing with csv (gzipped and not), too
-    assert multi_table_ds.get_extension(multi_table_ds.tables[1]) == ".csv.gz"
-    assert simple_csv_ds.get_extension(simple_csv_ds.tables[0]) == ".csv"
+    assert multi_table_ds.get_extension() == ".csv.gz"
+    assert simple_csv_ds.get_extension() == ".csv"
 
     # Note; get_table_filename() is not used for multi-file tables
 
