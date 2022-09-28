@@ -323,39 +323,37 @@ class Dataset:
     def download(self):
         log.info("Downloading to cache...")
         down_start = time.perf_counter()
+        try:
 
-        # Ensure the dataset path is available
-        # we can't hash yet, so let's call this "raw"
-        cached_dataset_path = self.ensure_dataset_loc(new_hash="raw")
+            # Ensure the dataset path is available
+            # we can't hash yet, so let's call this "raw"
+            dataset_path = self.ensure_dataset_loc(new_hash="raw")
 
-        # For now, we always download all tables. So we need to loop through each table
+            # For now, we always download all tables. So we need to loop through each table
 
-        for table in self.tables:
-            # create table dir
-            self.ensure_table_loc(table, parents_only=True)
+            for table in self.tables:
+                # create table dir
+                table_path = self.ensure_table_loc(table)
 
-            for file in table.files:
-                # the path it will be stored at
-                filename = file.get("file_path")
-                # we want to use the table_name incase the file stored has a different name than the tablename
-                if len(table.files) == 1:
-                    dataset_file_path = cached_dataset_path / self.get_table_name(table)
-                else:
-                    # TODO: this isn't quite right, but _should_ work
-                    dataset_file_path = cached_dataset_path / filename
+                for file in table.files:
+                    # TODO: validate checksum, something like:
+                    # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
 
-                # craft the URL (need to be careful since sometimes it will contain the name of the dataset)
-                full_path = self.url
+                    download_path = table_path
+                    file_name = file.get(
+                        "file_path"
+                    )  # this may override the filename in the url
+                    if len(table.files) > 1 and file_name:
+                        download_path = table_path / file_name
+                    util.download_file(file.get("url"), output_path=download_path)
 
-                # if the filename is not at the end of full_path, join
-                if not full_path.endswith(filename):
-                    full_path = full_path + filename
-
-                # TODO: validate checksum, something like:
-                # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
-
-                util.download_file(full_path, output_path=dataset_file_path)
-                util.set_readonly(dataset_file_path)
+            self.fill_metadata_from_files()
+            self.write_metadata()
+            util.set_readonly_recurse(dataset_path)
+        except Exception:
+            log.error("An error occurred during download.")
+            util.clean_cache_dir(dataset_path)
+            raise
 
         down_time = time.perf_counter() - down_start
         log.debug(f"download took {down_time:0.2f} s")
