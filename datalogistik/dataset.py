@@ -479,10 +479,12 @@ class Dataset:
                     new_table
                 )
                 output_file = new_dataset.ensure_table_loc(new_table.table)
-                if new_dataset.format == "csv" and new_dataset.compression:
-                    # Remove compression extension from filename, pads cannot compress on the fly
-                    # so we need to compress as an extra step and then we'll add the extension.
-                    output_file = output_file.parent / output_file.stem
+                if new_dataset.format == "csv":
+                    new_dataset.delim = ","  # It seems pyarrow always writes out csv using , as delim
+                    if new_dataset.compression:
+                        # Remove compression extension from filename, pads cannot compress on the fly
+                        # so we need to compress as an extra step and then we'll add the extension.
+                        output_file = output_file.parent / output_file.stem
 
                 # Find a reasonable number to set our rows per row group.
                 # and then make sure that max rows per group is less than new_nrows
