@@ -463,6 +463,12 @@ class Dataset:
                 new_table.partitioning = None
                 new_table.multi_file = None
                 new_table.files = []  # will be re-populated after conversion
+                # Intuitively, you'd like to remove the schema from the metadata here
+                # when converting to parquet (because parquet already stores the schema internally).
+                # However, we don't have code to convert a pyarrow schema into JSON yet,
+                # so we should keep the schema in the metadata here,
+                # in case this dataset will be converted to csv later (otherwise the user-specified
+                # JSON schema would be lost)
 
                 if not new_table.dim:
                     # TODO: we should check if these are still valid after conversion
