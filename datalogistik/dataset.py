@@ -201,9 +201,6 @@ class Dataset:
         if len(table.files) > 1 or table.multi_file:
             table_path = dataset_path / table.table
             table_path.mkdir(exist_ok=True)
-        elif self.name not in tpc_info.tpc_datasets and table.files:
-            # If there is a files entry, use it
-            table_path = dataset_path / table.files[0]["file_path"]
         else:
             table_path = dataset_path / (table.table + self.get_extension())
         return table_path
@@ -341,15 +338,14 @@ class Dataset:
 
             for file in table.files:
                 download_path = table_path
-                # this may override the filename in the url
-                file_name = file.get("file_path")
                 if len(table.files) == 1:
                     url = self.url
                 else:
+                    # contains the suffix for the download url
+                    file_name = file.get("file_path")
                     if file_name:
-                        # We only use file.name, because we need all files constituting
-                        # a table to be in a dir with name table.name (created by ensure_table_loc)
-                        download_path = table_path / pathlib.Path(file_name).name
+                        # All files constituting a table must be in a dir with name table.name (created by ensure_table_loc)
+                        download_path = pathlib.Path(file_name).name
                         url = self.url + pathlib.Path(file_name).name
 
                 util.download_file(url, output_path=download_path)
