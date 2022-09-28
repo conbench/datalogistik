@@ -463,8 +463,6 @@ class Dataset:
                 new_table.partitioning = None
                 new_table.multi_file = None
                 new_table.files = []  # will be re-populated after conversion
-                if new_dataset.format == "parquet":
-                    new_table.schema = None   # Parquet already stores schema
 
                 if not new_table.dim:
                     # TODO: we should check if these are still valid after conversion
