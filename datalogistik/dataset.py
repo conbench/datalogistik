@@ -328,6 +328,9 @@ class Dataset:
                 file_list.append(f.result())
         return sorted(file_list, key=lambda item: item["rel_path"])
 
+    def get_file_listing_tuple(self, table):
+        return table.table, self.create_file_listing(table)
+
     # Validate that the integrity of the files in this dataset is ok, using the metadata.
     # Return true if the dataset passed the integrity check.
     def validate(self):
@@ -336,11 +339,19 @@ class Dataset:
                 "No tables metadata found, could not perform validation (assuming valid)"
             )
             return True
-        dataset_valid = True
-        for table in self.tables:
-            dataset_valid = self.validate_table_files(table)
-            if not dataset_valid:
-                break
+        if len(self.tables) <= 1:
+            dataset_valid = self.validate_table_files(self.tables[0])
+        else:
+            with concurrent.futures.ProcessPoolExecutor(
+                config.get_thread_count()
+            ) as pool:
+                futures = []
+                for table in self.tables:
+                    futures.append(pool.submit(self.validate_table_files, table))
+                validation_results = []
+                for f in futures:
+                    validation_results.append(f.result())
+            dataset_valid = False not in validation_results
         log.info(f"Dataset is{'' if dataset_valid else ' NOT'} valid")
         return dataset_valid
 
@@ -382,7 +393,9 @@ class Dataset:
                 log.error(new_file)
                 listings_are_equal = False
 
-        log.debug(f"Dataset is{'' if listings_are_equal else ' NOT'} valid!")
+        log.debug(
+            f"Table {table.table} is{'' if listings_are_equal else ' NOT'} valid!"
+        )
         return listings_are_equal
 
     def get_write_format(self, table):
@@ -448,8 +461,20 @@ class Dataset:
     def fill_metadata_from_files(self):
         # TODO: Should we attempt to find format? That should never mismatch...
 
-        for table in self.tables:
-            table.files = self.create_file_listing(table)
+        if len(self.tables) == 1:
+            self.tables[0].files = self.create_file_listing(self.tables[0])
+        else:
+            # for table in self.tables:
+            #     self.set_file_listing(table)
+            with concurrent.futures.ProcessPoolExecutor(
+                config.get_thread_count()
+            ) as pool:
+                futures = []
+                for table in self.tables:
+                    futures.append(pool.submit(self.get_file_listing_tuple, table))
+                for f in futures:
+                    table, listing = f.result()
+                    self.get_one_table(table).files = listing
 
         # Find parquet compression
         if self.format == "parquet":

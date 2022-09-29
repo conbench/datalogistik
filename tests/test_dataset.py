@@ -162,7 +162,7 @@ def test_write_metadata():
     penguins = Dataset(
         name="penguins",
         format="parquet",
-        tables=[Table(table="penguins", files=[{"file_path": "penguins.parquet"}])],
+        tables=[Table(table="penguins", files=[{"rel_path": "penguins.parquet"}])],
     )
     # We would use ensure_dataset in download, so use it here too
     penguins.ensure_dataset_loc("raw")
