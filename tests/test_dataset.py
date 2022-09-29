@@ -329,6 +329,11 @@ def test_find_close_dataset_sf_mismatch(monkeypatch):
 
     assert output is good_return
 
+    with pytest.raises(ValueError) as e:
+        ds_nonexisting = Dataset(name="doesntexist")
+        dataset_search.find_or_instantiate_close_dataset(ds_nonexisting)
+        assert e.type == ValueError
+
 
 def test_get_csv_dataset_spec():
     ds = Dataset(
