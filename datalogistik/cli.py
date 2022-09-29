@@ -96,7 +96,6 @@ def parse_args():
 def validate_cache(remove_failing):
     for dir in config.get_cache_location().iterdir():
         ds = Dataset(name=dir.name)
-        print(ds)
         for entry in ds.list_variants():
             log.info(f"Validating cached dataset: {entry}")
             if not entry.validate():
