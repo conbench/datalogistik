@@ -309,12 +309,14 @@ class Dataset:
         file_md5 = util.calculate_checksum(file_path)
         return {"rel_path": rel_path, "file_size": file_size, "md5": file_md5}
 
-    def add_file_listing(self, metadata):
-        """Add file listing for this dataset to the given metadata dictionary.
-        This can be used to validate the files against the file listing in the metadata file."""
+    def create_file_listing(self, table):
+        """Create a file listing for this dataset with relative paths, file sizes and md5 checksums."""
+        path = self.ensure_table_loc(table)
+        if path.is_file():
+            return [self.file_listing_item(path)]
         with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
             futures = []
-            for cur_path, dirs, files in os.walk(self.cache_location):
+            for cur_path, dirs, files in os.walk(path):
                 for file_name in files:
                     futures.append(
                         pool.submit(
@@ -324,7 +326,7 @@ class Dataset:
             file_list = []
             for f in futures:
                 file_list.append(f.result())
-        metadata["files"] = sorted(file_list, key=lambda item: item["rel_path"])
+        return sorted(file_list, key=lambda item: item["rel_path"])
 
     # Validate that the integrity of the files in this dataset is ok, using the metadata.
     # Return true if the dataset passed the integrity check.
@@ -336,12 +338,7 @@ class Dataset:
             return True
         dataset_valid = True
         for table in self.tables:
-            orig_file_listing = table.files
-            if not orig_file_listing:
-                log.info(
-                    f"No metadata found for table {table}, could not perform validation (assuming valid)"
-                )
-            dataset_valid = self.validate_listing(orig_file_listing)
+            dataset_valid = self.validate_table_files(table)
             if not dataset_valid:
                 break
         log.info(f"Dataset is{'' if dataset_valid else ' NOT'} valid")
@@ -349,15 +346,19 @@ class Dataset:
 
     # Validate the files in the given path for integrity using the given file listing.
     # Return true if the files passed the integrity check.
-    def validate_listing(self, file_listing):
-        new_file_listing = {}
-        self.add_file_listing(new_file_listing)
-        new_file_listing = new_file_listing.get("files")
+    def validate_table_files(self, table):
+        if not table.files:
+            log.info(
+                f"No metadata found for table {table}, could not perform validation (assuming valid)"
+            )
+            return True
+
+        new_file_listing = self.create_file_listing(table)
         # we can't perform a simple equality check on the whole listing,
         # because the orig_file_listing does not contain the metadata file.
         # Also, it would be nice to show the user which files failed.
         listings_are_equal = True
-        for orig_file in file_listing:
+        for orig_file in table.files:
             if not orig_file.get("md5"):
                 log.info(
                     f"No checksum found for file {orig_file}, could not perform validation (assuming valid)"
@@ -433,12 +434,12 @@ class Dataset:
                 util.download_file(url, output_path=download_path)
                 util.set_readonly(download_path)
 
-        # Try validation in case the dataset info contained checksums
-        if not self.validate_listing(table.files):
-            util.clean_cache_dir(self.cache_location)
-            msg = "File integrity check for newly downloaded dataset failed."
-            log.error(msg)
-            raise RuntimeError(msg)
+            # Try validation in case the dataset info contained checksums
+            if not self.validate_table_files(table):
+                util.clean_cache_dir(self.cache_location)
+                msg = "File integrity check for newly downloaded dataset failed."
+                log.error(msg)
+                raise RuntimeError(msg)
 
         down_time = time.perf_counter() - down_start
         log.debug(f"download took {down_time:0.2f} s")
@@ -447,40 +448,13 @@ class Dataset:
     def fill_metadata_from_files(self):
         # TODO: Should we attempt to find format? That should never mismatch...
 
-        path = self.ensure_dataset_loc()
-        # Calculate checksums in parallel because this can be slow for large files
-        with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
-            futures = []
-            for cur_path, dirs, files in os.walk(path):
-                for file_name in files:
-                    futures.append(
-                        pool.submit(
-                            self.file_listing_item,
-                            os.path.join(cur_path, file_name),
-                        )
-                    )
-            file_list = {}
-            for f in futures:
-                file_list[f.result()["rel_path"]] = f.result()
-
-        # Find files for tables
         for table in self.tables:
-            table_loc = self.ensure_table_loc(table)
-            if table_loc.is_file():
-                # one file table
-                probe_file = table_loc  # for probing parquet compression later
-                table.files = [file_list[str(table_loc.relative_to(path))]]
-            elif table_loc.is_dir():
-                # multi file table
-                probe_file = next(table_loc.iterdir())
-                table.files = [
-                    file_list[str(subfile.relative_to(path))]
-                    for subfile in table_loc.iterdir()
-                    if subfile.is_file()
-                ]
+            table.files = self.create_file_listing(table)
+
         # Find parquet compression
         if self.format == "parquet":
-            file_metadata = pq.ParquetFile(probe_file).metadata
+            first_file = self.cache_location / self.tables[0].files[0]["rel_path"]
+            file_metadata = pq.ParquetFile(first_file).metadata
             self.compression = file_metadata.row_group(0).column(0).compression.lower()
 
         # TODO: add auto-detected csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
