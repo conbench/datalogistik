@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import json
 import os
 import pathlib
@@ -27,6 +26,9 @@ from datalogistik.table import Table
 
 simple_parquet_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
+)
+simple_csv_ds = Dataset.from_json(
+    metadata="./tests/fixtures/test_cache/chi_traffic_sample/babb1e5/datalogistik_metadata.ini"
 )
 multi_file_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
@@ -80,23 +82,14 @@ def test_ensure_dataset_loc():
     # TODO: assert the dir is made?
 
 
-def test_get_table_name():
-    assert (
-        simple_parquet_ds.get_table_name(simple_parquet_ds.tables[0])
-        == "chi_traffic_sample.parquet"
-    )
+def test_get_extension():
+    assert simple_parquet_ds.get_extension() == ".parquet"
 
-    # now fake a multi-file name:
-    new_ds = copy.deepcopy(simple_parquet_ds)
-    new_ds.tables[0].multi_file = True
-    assert new_ds.get_table_name(new_ds.tables[0]) == "chi_traffic_sample"
+    # And we do the right thing with csv (gzipped and not), too
+    assert multi_table_ds.get_extension() == ".csv.gz"
+    assert simple_csv_ds.get_extension() == ".csv"
 
-    # And we do the right thing with gzip, too
-    # we use the second table here because it is a single file table (where this matters)
-    assert (
-        multi_table_ds.get_table_name(multi_table_ds.tables[1])
-        == "chi_traffic_sample.csv.gz"
-    )
+    # Note; get_table_filename() is not used for multi-file tables
 
 
 def test_ensure_table_loc():
@@ -169,7 +162,7 @@ def test_write_metadata():
     penguins = Dataset(
         name="penguins",
         format="parquet",
-        tables=[Table(table="penguins", files=["penguins.parquet"])],
+        tables=[Table(table="penguins", files=[{"file_path": "penguins.parquet"}])],
     )
     # We would use ensure_dataset in download, so use it here too
     penguins.ensure_dataset_loc("raw")
@@ -258,7 +251,7 @@ def test_output_result():
             "name": "chi_taxi",
             "format": "csv",
             "tables": {
-                # This table is a multi file dataset, so just the folder is passed
+                # This table is multi-file, so just the folder is passed
                 "taxi_2013": {
                     "path": str(
                         pathlib.Path(
@@ -272,7 +265,7 @@ def test_output_result():
                     ),
                     "dim": [],
                 },
-                # This table is a single file dataset, so we have the extension
+                # This table is a single file, so we have the extension
                 "chi_traffic_sample": {
                     "path": str(
                         pathlib.Path(

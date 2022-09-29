@@ -303,7 +303,6 @@ def generate_dataset(dataset):
         gen_time = time.perf_counter() - gen_start
         log.info("Finished generating.")
         log.debug(f"generation took {gen_time:0.2f} s")
-        dataset.fill_metadata_from_files()
         dataset.write_metadata()
 
     except Exception:
@@ -321,7 +320,7 @@ def compress(uncompressed_file_path, output_dir, compression):
         or compression == "uncompressed"
     ):
         return
-    if compression == "gz":
+    if compression == "gzip":
         log.debug(
             f"Compressing GZip dataset {uncompressed_file_path} into " f"{output_dir}"
         )
@@ -353,7 +352,7 @@ def decompress(compressed_file_path, output_dir, compression):
         or compression == "uncompressed"
     ):
         return
-    if compression == "gz":
+    if compression == "gzip":
         log.debug(
             f"Decompressing GZip dataset {compressed_file_path} into " f"{output_dir}"
         )
@@ -404,4 +403,4 @@ def short_hash():
 # ignore None and [] type values
 class NoNoneDict(dict):
     def __init__(self, data):
-        super().__init__(x for x in data if x[1])
+        super().__init__(x for x in data if x[1] is not None and x[1] != [])
