@@ -309,7 +309,7 @@ class Dataset:
         return {"rel_path": rel_path, "file_size": file_size, "md5": file_md5}
 
     def create_file_listing(self, table):
-        """Create a file listing for this dataset with relative paths, file sizes and md5 checksums."""
+        """Create a file listing for the given table with relative paths, file sizes and md5 checksums."""
         path = self.ensure_table_loc(table)
         if path.is_file():
             return [self.file_listing_item(path)]
@@ -328,35 +328,14 @@ class Dataset:
         return sorted(file_list, key=lambda item: item["rel_path"])
 
     def get_file_listing_tuple(self, table):
+        """Helper function for parallel creation of listings;
+        returns both the file listing and the table it belongs to."""
         return table.table, self.create_file_listing(table)
 
-    # Validate that the integrity of the files in this dataset is ok, using the metadata.
-    # Return true if the dataset passed the integrity check.
-    def validate(self):
-        if not self.tables:
-            log.info(
-                "No tables metadata found, could not perform validation (assuming valid)"
-            )
-            return True
-        if len(self.tables) <= 1:
-            dataset_valid = self.validate_table_files(self.tables[0])
-        else:
-            with concurrent.futures.ProcessPoolExecutor(
-                config.get_thread_count()
-            ) as pool:
-                futures = []
-                for table in self.tables:
-                    futures.append(pool.submit(self.validate_table_files, table))
-                validation_results = []
-                for f in futures:
-                    validation_results.append(f.result())
-            dataset_valid = False not in validation_results
-        log.info(f"Dataset is{'' if dataset_valid else ' NOT'} valid")
-        return dataset_valid
-
-    # Validate the files in the given path for integrity using the given file listing.
-    # Return true if the files passed the integrity check.
     def validate_table_files(self, table):
+        """Validate the files of the given table in this dataset using the file metadata attached to it.
+        Returns true if the files passed the integrity check or if there are no checksums attached.
+        If files or checksums are missing in the metadata, they are assumed to be ok."""
         if not table.files:
             log.info(
                 f"No metadata found for table {table}, could not perform validation (assuming valid)"
@@ -396,6 +375,33 @@ class Dataset:
             f"Table {table.table} is{'' if listings_are_equal else ' NOT'} valid!"
         )
         return listings_are_equal
+
+    def validate(self):
+        """Validate that the integrity of the files in this dataset is ok, using the metadata.
+        Returns true if the dataset passed the integrity check or if there are no checksums attached.
+        If tables or checksums of files are missing in the metadata, they are assumed to be ok.
+        However, if there is a checksum for a file in the metadata but that file does not exist,
+        this function will return False (invalid)"""
+        if not self.tables:
+            log.info(
+                "No tables metadata found, could not perform validation (assuming valid)"
+            )
+            return True
+        if len(self.tables) <= 1:
+            dataset_valid = self.validate_table_files(self.tables[0])
+        else:
+            with concurrent.futures.ProcessPoolExecutor(
+                config.get_thread_count()
+            ) as pool:
+                futures = []
+                for table in self.tables:
+                    futures.append(pool.submit(self.validate_table_files, table))
+                validation_results = []
+                for f in futures:
+                    validation_results.append(f.result())
+            dataset_valid = False not in validation_results
+        log.info(f"Dataset is{'' if dataset_valid else ' NOT'} valid")
+        return dataset_valid
 
     def get_write_format(self, table):
         write_options = None  # Default
@@ -463,8 +469,6 @@ class Dataset:
         if len(self.tables) == 1:
             self.tables[0].files = self.create_file_listing(self.tables[0])
         else:
-            # for table in self.tables:
-            #     self.set_file_listing(table)
             with concurrent.futures.ProcessPoolExecutor(
                 config.get_thread_count()
             ) as pool:
