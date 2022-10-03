@@ -27,12 +27,80 @@ from datalogistik.table import Table
 simple_parquet_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
 )
+# N. B. This entry differs from the contents of the metadata file. Those are wrong, to test validation failure.
+simple_parquet_listing = {
+    "rel_path": "chi_traffic_sample.parquet",
+    "file_size": 116984,
+    "md5": "c5024f1a2542623f5deb4a3bf4951de9",
+}
 simple_csv_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/babb1e5/datalogistik_metadata.ini"
 )
 multi_file_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
 )
+multi_file_listing = [
+    {
+        "file_size": 5653,
+        "md5": "f8b8101ce1314d58dd33c79c92d53ec0",
+        "rel_path": "taxi_2013/taxi_2013_1.csv.gz",
+    },
+    {
+        "file_size": 5317,
+        "md5": "1f31a9592ef7c01ab7798bf99ec40cbf",
+        "rel_path": "taxi_2013/taxi_2013_10.csv.gz",
+    },
+    {
+        "file_size": 4418,
+        "md5": "2944d4805b03490cf835f5df10ecf818",
+        "rel_path": "taxi_2013/taxi_2013_11.csv.gz",
+    },
+    {
+        "file_size": 4506,
+        "md5": "46cf71e81adf8ba04f3a49d4c89e11b6",
+        "rel_path": "taxi_2013/taxi_2013_12.csv.gz",
+    },
+    {
+        "file_size": 5017,
+        "md5": "8a543d62f9095cb1380322484efa75af",
+        "rel_path": "taxi_2013/taxi_2013_2.csv.gz",
+    },
+    {
+        "file_size": 5265,
+        "md5": "3fc980b571f685c2cd696d6ce2ecf26c",
+        "rel_path": "taxi_2013/taxi_2013_3.csv.gz",
+    },
+    {
+        "file_size": 5875,
+        "md5": "f8049f0d6ac73116e867a327a51898e9",
+        "rel_path": "taxi_2013/taxi_2013_4.csv.gz",
+    },
+    {
+        "file_size": 4508,
+        "md5": "9d91300d1fd30e0ba48e0603da5a1128",
+        "rel_path": "taxi_2013/taxi_2013_5.csv.gz",
+    },
+    {
+        "file_size": 4054,
+        "md5": "e10ab9eb7aef2475ae929901a4c80295",
+        "rel_path": "taxi_2013/taxi_2013_6.csv.gz",
+    },
+    {
+        "file_size": 4647,
+        "md5": "a05d59851464f30c738eb13c2fcad472",
+        "rel_path": "taxi_2013/taxi_2013_7.csv.gz",
+    },
+    {
+        "file_size": 3732,
+        "md5": "6d07d420b3df851d38b84d59a9ffcb41",
+        "rel_path": "taxi_2013/taxi_2013_8.csv.gz",
+    },
+    {
+        "file_size": 4603,
+        "md5": "e691c1fc5ba3aeb13da86cf54d91db2d",
+        "rel_path": "taxi_2013/taxi_2013_9.csv.gz",
+    },
+]
 multi_table_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_taxi/dabb1e5/datalogistik_metadata.ini"
 )
@@ -121,6 +189,60 @@ def test_get_one_table():
 def test_get_table_dataset(test_dataset):
     arrow_ds = test_dataset.get_table_dataset(0)
     assert isinstance(arrow_ds, pyarrowdataset.Dataset)
+
+
+def test_file_listing_item():
+    # Single table
+    path = (
+        config.get_cache_location()
+        / "chi_traffic_sample"
+        / "a1fa1fa"
+        / "chi_traffic_sample.parquet"
+    )
+    assert simple_parquet_ds.file_listing_item(path) == simple_parquet_listing
+
+    # Multi table
+    path2 = (
+        config.get_cache_location()
+        / "taxi_2013"
+        / "face7ed"
+        / "taxi_2013"
+        / "taxi_2013_1.csv.gz"
+    )
+    assert multi_file_ds.file_listing_item(path2) == multi_file_listing[0]
+
+
+def test_create_file_listing():
+    assert simple_parquet_ds.create_file_listing(simple_parquet_ds.get_one_table()) == [
+        simple_parquet_listing
+    ]
+
+    assert (
+        multi_file_ds.create_file_listing(multi_file_ds.get_one_table())
+        == multi_file_listing
+    )
+
+
+def test_get_file_listing_tuple():
+    assert simple_parquet_ds.get_file_listing_tuple(
+        simple_parquet_ds.get_one_table()
+    ) == (simple_parquet_ds.get_one_table().table, [simple_parquet_listing])
+
+
+def test_validate_table_files():
+    assert (
+        simple_parquet_ds.validate_table_files(simple_parquet_ds.get_one_table())
+        is False
+    )
+    assert multi_file_ds.validate_table_files(multi_file_ds.get_one_table()) is True
+
+
+def test_validate():
+    assert simple_parquet_ds.validate() is False
+    assert multi_file_ds.validate() is True
+    # Now change an md5sum in the metadata and check if the validation fails:
+    multi_file_ds.tables[0].files[0]["md5"] = "00000000000000000000000000000000"
+    assert multi_file_ds.validate() is False
 
 
 def test_download_dataset(monkeypatch):
