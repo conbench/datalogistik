@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import concurrent
-import dataclasses
 import datetime
 import json
 import os
@@ -21,7 +20,7 @@ import pathlib
 import time
 import warnings
 from collections import OrderedDict
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, field, fields, replace
 from typing import List, Optional
 
 import pyarrow as pa
@@ -537,7 +536,7 @@ class Dataset:
 
                 # Make a copy of the original table object. we should overwrite any
                 # properties changed by the conversion
-                new_table = dataclasses.replace(old_table)
+                new_table = replace(old_table)
                 # TODO: the partitioning properties should be set from what was specified on the cmdline
                 new_table.partitioning = None
                 new_table.multi_file = None
