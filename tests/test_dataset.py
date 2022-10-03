@@ -82,17 +82,12 @@ def test_ensure_dataset_loc():
     # TODO: assert the dir is made?
 
 
-def test_get_table_name():
-    assert (
-        simple_parquet_ds.get_table_name(simple_parquet_ds.tables[0])
-        == "chi_traffic_sample.parquet"
-    )
+def test_get_extension():
+    assert simple_parquet_ds.get_extension() == ".parquet"
 
-    # And we do the right thing with gzip, too
-    assert (
-        multi_table_ds.get_table_name(multi_table_ds.tables[1])
-        == "chi_traffic_sample.csv.gz"
-    )
+    # And we do the right thing with csv (gzipped and not), too
+    assert multi_table_ds.get_extension() == ".csv.gz"
+    assert simple_csv_ds.get_extension() == ".csv"
 
 
 def test_ensure_table_loc():
@@ -169,7 +164,7 @@ def test_write_metadata():
     penguins = Dataset(
         name="penguins",
         format="parquet",
-        tables=[Table(table="penguins", files=["penguins.parquet"])],
+        tables=[Table(table="penguins", files=[{"file_path": "penguins.parquet"}])],
     )
     # We would use ensure_dataset in download, so use it here too
     penguins.ensure_dataset_loc("raw")
@@ -258,7 +253,7 @@ def test_output_result():
             "name": "chi_taxi",
             "format": "csv",
             "tables": {
-                # This table is a multi file dataset, so just the folder is passed
+                # This table is multi-file, so just the folder is passed
                 "taxi_2013": {
                     "path": str(
                         pathlib.Path(
@@ -272,7 +267,7 @@ def test_output_result():
                     ),
                     "dim": [],
                 },
-                # This table is a single file dataset, so we have the extension
+                # This table is a single file, so we have the extension
                 "chi_traffic_sample": {
                     "path": str(
                         pathlib.Path(
