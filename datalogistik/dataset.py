@@ -303,10 +303,10 @@ class Dataset:
         )
 
     def file_listing_item(self, file_path):
-        rel_path = os.path.relpath(file_path, self.cache_location)
+        rel_path = file_path.relative_to(self.ensure_dataset_loc())
         file_size = os.path.getsize(file_path)
         file_md5 = util.calculate_checksum(file_path)
-        return {"rel_path": rel_path, "file_size": file_size, "md5": file_md5}
+        return {"rel_path": str(rel_path), "file_size": file_size, "md5": file_md5}
 
     def create_file_listing(self, table):
         """Create a file listing for the given table with relative paths, file sizes and md5 checksums."""
@@ -319,7 +319,7 @@ class Dataset:
                 for file_name in files:
                     futures.append(
                         pool.submit(
-                            self.file_listing_item, os.path.join(cur_path, file_name)
+                            self.file_listing_item, pathlib.Path(cur_path, file_name)
                         )
                     )
             file_list = []
