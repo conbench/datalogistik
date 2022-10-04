@@ -306,7 +306,11 @@ class Dataset:
         rel_path = file_path.relative_to(self.ensure_dataset_loc())
         file_size = os.path.getsize(file_path)
         file_md5 = util.calculate_checksum(file_path)
-        return {"rel_path": str(rel_path), "file_size": file_size, "md5": file_md5}
+        return {
+            "rel_path": rel_path.as_posix(),
+            "file_size": file_size,
+            "md5": file_md5,
+        }
 
     def create_file_listing(self, table):
         """Create a file listing for the given table with relative paths, file sizes and md5 checksums."""
