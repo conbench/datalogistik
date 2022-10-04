@@ -192,7 +192,6 @@ def test_get_table_dataset(test_dataset):
 
 
 def test_file_listing_item():
-    # Single table
     path = (
         config.get_cache_location()
         / "chi_traffic_sample"
@@ -201,7 +200,6 @@ def test_file_listing_item():
     )
     assert simple_parquet_ds.file_listing_item(path) == simple_parquet_listing
 
-    # Multi table
     path2 = (
         config.get_cache_location()
         / "taxi_2013"
@@ -216,7 +214,6 @@ def test_create_file_listing():
     assert simple_parquet_ds.create_file_listing(simple_parquet_ds.get_one_table()) == [
         simple_parquet_listing
     ]
-
     assert (
         multi_file_ds.create_file_listing(multi_file_ds.get_one_table())
         == multi_file_listing

@@ -251,15 +251,6 @@ def get_arrow_schema(input_schema):
     return output_schema
 
 
-# Convert between max rows per partition and number of partitions
-def convert_maxrows_parts(tpc_name, scale_factor, parts_or_rows):
-    # nr of rows in the largest table at sf=1
-    tpch_rows_per_sf = {"tpc-h": 6000000, "tpc-ds": 1440000}
-    if parts_or_rows <= 0:
-        return 0
-    return int((tpch_rows_per_sf[tpc_name] * float(scale_factor)) / parts_or_rows)
-
-
 # Generate a dataset by calling one of the supported external generators
 # TODO: Generator output cannot be used as dataset output directly, because of the
 # trailing columns.

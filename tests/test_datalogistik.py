@@ -37,50 +37,6 @@ def test_version():
     assert __version__ == "0.1.0"
 
 
-def clean(path):
-    util.prune_cache_entry(path)
-
-
-test_dataset_info = {
-    "name": "hypothetical_dataset",
-    "format": "csv",
-    "delim": "|",
-    "scale_factor": 1,  # N.B. This should NOT be in the metadata because name != tpc-h
-    "partitioning-nrows": 0,
-}
-expected_metadata = {
-    "name": test_dataset_info["name"],
-    "format": test_dataset_info["format"],
-    "delim": "|",
-    "partitioning-nrows": test_dataset_info["partitioning-nrows"],
-    "local-creation-date": datetime.datetime.now()
-    .astimezone()
-    .strftime("%Y-%m-%dT%H:%M:%S%z"),
-    "files": [
-        {
-            "rel_path": "testfile",
-            "file_size": 18,
-            "md5": "891bcd3700619af5151bf95b836ff9b1",
-        },
-        {
-            "rel_path": os.path.join("tmp2", "testfile2"),
-            "file_size": 20,
-            "md5": "0ccc9b1a435e7d40a91ac7dd04c67fe8",
-        },
-    ],
-}
-
-
-def create_test_dataset(path):
-    with open(os.path.join(path, "testfile"), "w") as testfile:
-        testfile.write("test file contents")
-        path2 = os.path.join(path, "tmp2")
-        os.mkdir(path2)
-        with open(os.path.join(path2, "testfile2"), "w") as testfile2:
-            testfile2.write("test file 2 contents")
-    util.write_metadata(test_dataset_info, path)
-
-
 arrow_types_noarguments = {
     pa.null,
     pa.bool_,
