@@ -15,7 +15,9 @@
 import json
 import os
 import pathlib
+import shutil
 import sys
+import tempfile
 
 import pytest
 from pyarrow import dataset as pyarrowdataset
@@ -238,8 +240,10 @@ def test_validate():
     assert simple_parquet_ds.validate() is False
     assert multi_file_ds.validate() is True
     # Now change an md5sum in the metadata and check if the validation fails:
+    orig_md5 = multi_file_ds.tables[0].files[0]["md5"]
     multi_file_ds.tables[0].files[0]["md5"] = "00000000000000000000000000000000"
     assert multi_file_ds.validate() is False
+    multi_file_ds.tables[0].files[0]["md5"] = orig_md5  # restore for following tests
 
 
 def test_download_dataset(monkeypatch):
@@ -252,11 +256,45 @@ def test_download_dataset(monkeypatch):
             "tests/fixtures/test_cache/chi_traffic_2020_Q1/raw/chi_traffic_2020_Q1.parquet"
         )
 
+    def _noop(url, output_path):
+        pass
+
     monkeypatch.setattr("datalogistik.util.download_file", _fake_download)
     ds_variant_not_available = Dataset(
         name="chi_traffic_2020_Q1", format="csv", compression="gzip"
     )
     ds_variant_not_available.download()
+
+    # download a dataset with wrong checksums, verify that validation fails
+    monkeypatch.setattr("datalogistik.util.download_file", _noop)
+    with tempfile.TemporaryDirectory() as tmpcachepath:
+        shutil.copytree(
+            simple_parquet_ds.ensure_dataset_loc(),
+            tmpcachepath + "/" + simple_parquet_ds.name,
+        )
+        tmp_simple_parquet_ds = Dataset.from_json(
+            metadata=f"{tmpcachepath}/{simple_parquet_ds.name}/datalogistik_metadata.ini"
+        )
+        with pytest.raises(
+            RuntimeError,
+            match="Refusing to clean a directory outside of the local cache",
+        ):
+            tmp_simple_parquet_ds.download()
+            # Note that if we were not working in a tmp dir, the dir should have been deleted
+            # and the exception message would be: "File integrity check for newly downloaded dataset failed."
+
+    # multi-file download
+    def _fake_multi_download(url, output_path):
+        file_numbers = [1, 10, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9]
+        file_number = file_numbers[_fake_multi_download.file_index]
+        assert url == f"hhttp://www.example.com/taxi_2013_{file_number}.csv.gz"
+        assert output_path == pathlib.Path(
+            f"tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013/taxi_2013_{file_number}.csv.gz"
+        )
+        _fake_multi_download.file_index += 1
+
+    _fake_multi_download.file_index = 0
+    multi_file_ds.download()
 
 
 def test_to_json():
