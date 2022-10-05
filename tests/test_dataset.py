@@ -293,7 +293,7 @@ def test_download_dataset(monkeypatch):
         )
         _fake_multi_download.file_index += 1
 
-    _fake_multi_download.file_index = 0
+    _fake_multi_download.file_index = 0  # init "static variable"
     multi_file_ds.download()
 
 
