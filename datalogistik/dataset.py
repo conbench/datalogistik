@@ -316,6 +316,7 @@ class Dataset:
         """Create a file listing for the given table with relative paths, file sizes and md5 checksums."""
         path = self.ensure_table_loc(table)
         if path.is_file():
+            # Single-file dataset, no parallelism needed
             return [self.file_listing_item(path)]
         with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
             futures = []
