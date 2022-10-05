@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import dataclasses
+import concurrent
 import datetime
 import json
 import os
@@ -20,7 +20,7 @@ import pathlib
 import time
 import warnings
 from collections import OrderedDict
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, field, fields, replace
 from typing import List, Optional
 
 import pyarrow as pa
@@ -302,6 +302,112 @@ class Dataset:
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
         )
 
+    def file_listing_item(self, file_path):
+        rel_path = file_path.relative_to(self.ensure_dataset_loc())
+        file_size = os.path.getsize(file_path)
+        file_md5 = util.calculate_checksum(file_path)
+        return {
+            "rel_path": rel_path.as_posix(),
+            "file_size": file_size,
+            "md5": file_md5,
+        }
+
+    def create_file_listing(self, table):
+        """Create a file listing for the given table with relative paths, file sizes and md5 checksums."""
+        path = self.ensure_table_loc(table)
+        if path.is_file():
+            # Single-file dataset, no parallelism needed
+            return [self.file_listing_item(path)]
+        with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
+            futures = []
+            for cur_path, dirs, files in os.walk(path):
+                for file_name in files:
+                    futures.append(
+                        pool.submit(
+                            self.file_listing_item, pathlib.Path(cur_path, file_name)
+                        )
+                    )
+            file_list = []
+            for f in futures:
+                file_list.append(f.result())
+        return sorted(file_list, key=lambda item: item["rel_path"])
+
+    def get_file_listing_tuple(self, table):
+        """Helper function for parallel creation of listings;
+        returns both the file listing and the table it belongs to."""
+        return table.table, self.create_file_listing(table)
+
+    def validate_table_files(self, table):
+        """Validate the files of the given table in this dataset using the file metadata attached to it.
+        Returns true if the files passed the integrity check or if there are no checksums attached.
+        If files or checksums are missing in the metadata, they are assumed to be ok."""
+        if not table.files:
+            log.info(
+                f"No metadata found for table {table}, could not perform validation (assuming valid)"
+            )
+            return True
+
+        new_file_listing = self.create_file_listing(table)
+        # we can't perform a simple equality check on the whole listing,
+        # because the orig_file_listing does not contain the metadata file.
+        # Also, it would be nice to show the user which files failed.
+        listings_are_equal = True
+        for orig_file in table.files:
+            if not orig_file.get("md5"):
+                log.info(
+                    f"No checksum found for file {orig_file}, could not perform validation (assuming valid)"
+                )
+                continue
+            found = None
+            for new_file in new_file_listing:
+                if new_file["rel_path"] == orig_file["rel_path"]:
+                    found = new_file
+                    break
+
+            if found is None:
+                orig_file_path = orig_file["rel_path"]
+                log.error(f"Missing file: {orig_file_path}")
+                listings_are_equal = False
+            elif orig_file != new_file:
+                log.error(
+                    "File integrity compromised: (top:properties in metadata bottom:calculated properties)"
+                )
+                log.error(orig_file)
+                log.error(new_file)
+                listings_are_equal = False
+
+        log.debug(
+            f"Table {table.table} is{'' if listings_are_equal else ' NOT'} valid!"
+        )
+        return listings_are_equal
+
+    def validate(self):
+        """Validate that the integrity of the files in this dataset is ok, using the metadata.
+        Returns true if the dataset passed the integrity check or if there are no checksums attached.
+        If tables or checksums of files are missing in the metadata, they are assumed to be ok.
+        However, if there is a checksum for a file in the metadata but that file does not exist,
+        this function will return False (invalid)"""
+        if not self.tables:
+            log.info(
+                "No tables metadata found, could not perform validation (assuming valid)"
+            )
+            return True
+        if len(self.tables) <= 1:
+            dataset_valid = self.validate_table_files(self.tables[0])
+        else:
+            with concurrent.futures.ProcessPoolExecutor(
+                config.get_thread_count()
+            ) as pool:
+                futures = []
+                for table in self.tables:
+                    futures.append(pool.submit(self.validate_table_files, table))
+                validation_results = []
+                for f in futures:
+                    validation_results.append(f.result())
+            dataset_valid = False not in validation_results
+        log.info(f"Dataset is{'' if dataset_valid else ' NOT'} valid")
+        return dataset_valid
+
     def get_write_format(self, table):
         write_options = None  # Default
         if self.format == "parquet":
@@ -342,16 +448,21 @@ class Dataset:
                     url = self.url
                 else:
                     # contains the suffix for the download url
-                    file_name = file.get("file_path")
+                    file_name = file.get("rel_path")
                     if file_name:
                         # All files constituting a table must be in a dir with name table.name (created by ensure_table_loc)
-                        download_path = pathlib.Path(file_name).name
-                        url = self.url + pathlib.Path(file_name).name
+                        download_path = table_path / pathlib.Path(file_name).name
+                        url = self.url + "/" + pathlib.Path(file_name).name
 
                 util.download_file(url, output_path=download_path)
+                util.set_readonly(download_path)
 
-                # TODO: validate checksum, something like:
-                # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L913-L919
+            # Try validation in case the dataset info contained checksums
+            if not self.validate_table_files(table):
+                util.clean_cache_dir(self.cache_location)
+                msg = "File integrity check for newly downloaded dataset failed."
+                log.error(msg)
+                raise RuntimeError(msg)
 
         down_time = time.perf_counter() - down_start
         log.debug(f"download took {down_time:0.2f} s")
@@ -360,34 +471,23 @@ class Dataset:
     def fill_metadata_from_files(self):
         # TODO: Should we attempt to find format? That should never mismatch...
 
-        # Find files for tables
-        for table in self.tables:
-            table_loc = self.ensure_table_loc(table)
-            if table_loc.is_file():
-                probe_file = table_loc  # for probing parquet compression later
-                # one file table
-                table.files = [
-                    {
-                        "file_path": table_loc.relative_to(self.ensure_dataset_loc()),
-                        "file_size": table_loc.lstat().st_size,
-                        "md5": util.calculate_checksum(table_loc),
-                    }
-                ]
-            elif table_loc.is_dir():
-                probe_file = next(table_loc.iterdir())
-                # multi file table
-                table.files = [
-                    {
-                        "file_path": subfile.relative_to(self.ensure_dataset_loc()),
-                        "file_size": subfile.lstat().st_size,
-                        "md5": util.calculate_checksum(subfile),
-                    }
-                    for subfile in table_loc.iterdir()
-                    if subfile.is_file()
-                ]
+        if len(self.tables) == 1:
+            self.tables[0].files = self.create_file_listing(self.tables[0])
+        else:
+            with concurrent.futures.ProcessPoolExecutor(
+                config.get_thread_count()
+            ) as pool:
+                futures = []
+                for table in self.tables:
+                    futures.append(pool.submit(self.get_file_listing_tuple, table))
+                for f in futures:
+                    table, listing = f.result()
+                    self.get_one_table(table).files = listing
+
         # Find parquet compression
         if self.format == "parquet":
-            file_metadata = pq.ParquetFile(probe_file).metadata
+            first_file = self.cache_location / self.tables[0].files[0]["rel_path"]
+            file_metadata = pq.ParquetFile(first_file).metadata
             self.compression = file_metadata.row_group(0).column(0).compression.lower()
 
         # TODO: add auto-detected csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
@@ -445,7 +545,7 @@ class Dataset:
 
                 # Make a copy of the original table object. we should overwrite any
                 # properties changed by the conversion
-                new_table = dataclasses.replace(old_table)
+                new_table = replace(old_table)
                 # TODO: the partitioning properties should be set from what was specified on the cmdline
                 new_table.partitioning = None
                 new_table.multi_file = None

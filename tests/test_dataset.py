@@ -15,7 +15,9 @@
 import json
 import os
 import pathlib
+import shutil
 import sys
+import tempfile
 
 import pytest
 from pyarrow import dataset as pyarrowdataset
@@ -27,12 +29,80 @@ from datalogistik.table import Table
 simple_parquet_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
 )
+# N. B. This entry differs from the contents of the metadata file. Those are wrong, to test validation failure.
+simple_parquet_listing = {
+    "rel_path": "chi_traffic_sample.parquet",
+    "file_size": 116984,
+    "md5": "c5024f1a2542623f5deb4a3bf4951de9",
+}
 simple_csv_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/babb1e5/datalogistik_metadata.ini"
 )
 multi_file_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
 )
+multi_file_listing = [
+    {
+        "file_size": 5653,
+        "md5": "f8b8101ce1314d58dd33c79c92d53ec0",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_1.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 5317,
+        "md5": "1f31a9592ef7c01ab7798bf99ec40cbf",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_10.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 4418,
+        "md5": "2944d4805b03490cf835f5df10ecf818",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_11.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 4506,
+        "md5": "46cf71e81adf8ba04f3a49d4c89e11b6",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_12.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 5017,
+        "md5": "8a543d62f9095cb1380322484efa75af",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_2.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 5265,
+        "md5": "3fc980b571f685c2cd696d6ce2ecf26c",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_3.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 5875,
+        "md5": "f8049f0d6ac73116e867a327a51898e9",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_4.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 4508,
+        "md5": "9d91300d1fd30e0ba48e0603da5a1128",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_5.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 4054,
+        "md5": "e10ab9eb7aef2475ae929901a4c80295",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_6.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 4647,
+        "md5": "a05d59851464f30c738eb13c2fcad472",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_7.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 3732,
+        "md5": "6d07d420b3df851d38b84d59a9ffcb41",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_8.csv.gz").as_posix(),
+    },
+    {
+        "file_size": 4603,
+        "md5": "e691c1fc5ba3aeb13da86cf54d91db2d",
+        "rel_path": pathlib.Path("taxi_2013/taxi_2013_9.csv.gz").as_posix(),
+    },
+]
 multi_table_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_taxi/dabb1e5/datalogistik_metadata.ini"
 )
@@ -123,6 +193,59 @@ def test_get_table_dataset(test_dataset):
     assert isinstance(arrow_ds, pyarrowdataset.Dataset)
 
 
+def test_file_listing_item():
+    path = (
+        config.get_cache_location()
+        / "chi_traffic_sample"
+        / "a1fa1fa"
+        / "chi_traffic_sample.parquet"
+    )
+    assert simple_parquet_ds.file_listing_item(path) == simple_parquet_listing
+
+    path2 = (
+        config.get_cache_location()
+        / "taxi_2013"
+        / "face7ed"
+        / "taxi_2013"
+        / "taxi_2013_1.csv.gz"
+    )
+    assert multi_file_ds.file_listing_item(path2) == multi_file_listing[0]
+
+
+def test_create_file_listing():
+    assert simple_parquet_ds.create_file_listing(simple_parquet_ds.get_one_table()) == [
+        simple_parquet_listing
+    ]
+    assert (
+        multi_file_ds.create_file_listing(multi_file_ds.get_one_table())
+        == multi_file_listing
+    )
+
+
+def test_get_file_listing_tuple():
+    assert simple_parquet_ds.get_file_listing_tuple(
+        simple_parquet_ds.get_one_table()
+    ) == (simple_parquet_ds.get_one_table().table, [simple_parquet_listing])
+
+
+def test_validate_table_files():
+    assert (
+        simple_parquet_ds.validate_table_files(simple_parquet_ds.get_one_table())
+        is False
+    )
+    assert multi_file_ds.validate_table_files(multi_file_ds.get_one_table()) is True
+
+
+def test_validate():
+    assert simple_parquet_ds.validate() is False
+    assert multi_file_ds.validate() is True
+    # Now change an md5sum in the metadata and check if the validation fails:
+    orig_md5 = multi_file_ds.tables[0].files[0]["md5"]
+    multi_file_ds.tables[0].files[0]["md5"] = "00000000000000000000000000000000"
+    assert multi_file_ds.validate() is False
+    multi_file_ds.tables[0].files[0]["md5"] = orig_md5  # restore for following tests
+
+
 def test_download_dataset(monkeypatch):
     def _fake_download(url, output_path):
         assert (
@@ -133,11 +256,45 @@ def test_download_dataset(monkeypatch):
             "tests/fixtures/test_cache/chi_traffic_2020_Q1/raw/chi_traffic_2020_Q1.parquet"
         )
 
+    def _noop(url, output_path):
+        pass
+
     monkeypatch.setattr("datalogistik.util.download_file", _fake_download)
     ds_variant_not_available = Dataset(
         name="chi_traffic_2020_Q1", format="csv", compression="gzip"
     )
-    ds_variant_not_available.download
+    ds_variant_not_available.download()
+
+    # download a dataset with wrong checksums, verify that validation fails
+    monkeypatch.setattr("datalogistik.util.download_file", _noop)
+    with tempfile.TemporaryDirectory() as tmpcachepath:
+        shutil.copytree(
+            simple_parquet_ds.ensure_dataset_loc(),
+            tmpcachepath + "/" + simple_parquet_ds.name,
+        )
+        tmp_simple_parquet_ds = Dataset.from_json(
+            metadata=f"{tmpcachepath}/{simple_parquet_ds.name}/datalogistik_metadata.ini"
+        )
+        with pytest.raises(
+            RuntimeError,
+            match="Refusing to clean a directory outside of the local cache",
+        ):
+            tmp_simple_parquet_ds.download()
+            # Note that if we were not working in a tmp dir, the dir should have been deleted
+            # and the exception message would be: "File integrity check for newly downloaded dataset failed."
+
+    # multi-file download
+    def _fake_multi_download(url, output_path):
+        file_numbers = [1, 10, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9]
+        file_number = file_numbers[_fake_multi_download.file_index]
+        assert url == f"hhttp://www.example.com/taxi_2013_{file_number}.csv.gz"
+        assert output_path == pathlib.Path(
+            f"tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013/taxi_2013_{file_number}.csv.gz"
+        )
+        _fake_multi_download.file_index += 1
+
+    _fake_multi_download.file_index = 0  # init "static variable"
+    multi_file_ds.download()
 
 
 def test_to_json():
@@ -162,7 +319,7 @@ def test_write_metadata():
     penguins = Dataset(
         name="penguins",
         format="parquet",
-        tables=[Table(table="penguins", files=[{"file_path": "penguins.parquet"}])],
+        tables=[Table(table="penguins", files=[{"rel_path": "penguins.parquet"}])],
     )
     # We would use ensure_dataset in download, so use it here too
     penguins.ensure_dataset_loc("raw")
@@ -328,6 +485,11 @@ def test_find_close_dataset_sf_mismatch(monkeypatch):
     output = dataset_search.find_or_instantiate_close_dataset(ds_diff_scale_factor)
 
     assert output is good_return
+
+    with pytest.raises(ValueError) as e:
+        ds_nonexisting = Dataset(name="doesntexist")
+        dataset_search.find_or_instantiate_close_dataset(ds_nonexisting)
+        assert e.type == ValueError
 
 
 def test_get_csv_dataset_spec():
