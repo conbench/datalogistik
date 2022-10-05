@@ -256,7 +256,7 @@ def test_download_dataset(monkeypatch):
     ds_variant_not_available = Dataset(
         name="chi_traffic_2020_Q1", format="csv", compression="gzip"
     )
-    ds_variant_not_available.download
+    ds_variant_not_available.download()
 
 
 def test_to_json():
