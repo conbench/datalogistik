@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import argparse
+import pathlib
 import sys
 
-from . import repo, util
+from . import config, repo, util
 from .dataset import Dataset
 from .log import log
 
@@ -30,12 +31,6 @@ def parse_args():
     gen_parser = sub_parsers.add_parser("get")
 
     cache_group = cache_parser.add_mutually_exclusive_group()
-    cache_group.add_argument(
-        "--prune-entry",
-        type=str,
-        default=None,
-        help="Remove entry or entries, specified by their relative path, from the cache",
-    )
     cache_group.add_argument(
         "--prune-invalid",
         type=str,
@@ -97,15 +92,31 @@ def parse_args():
     return parser.parse_args()
 
 
+# Validate all entries in the cache
+def validate_cache(remove_failing):
+    for dir in config.get_cache_location().iterdir():
+        ds = Dataset(name=dir.name)
+        for entry in ds.list_variants():
+            log.info(f"Validating cached dataset: {entry}")
+            if not entry.validate():
+                log.info(f"Found invalid cache entry: {ds}")
+                if remove_failing:
+                    log.info("Pruning...")
+                    util.prune_cache_entry(
+                        pathlib.Path(ds.cache_location).relative_to(
+                            config.get_cache_location()
+                        )
+                    )
+    util.clean_cache()
+
+
 def handle_cache_command(cache_opts):
-    if cache_opts.prune_entry:
-        util.prune_cache_entry(cache_opts.prune_entry)
-    elif cache_opts.clean:
+    if cache_opts.clean:
         util.clean_cache()
     elif cache_opts.validate:
-        util.validate_cache(False)
+        validate_cache(False)
     elif cache_opts.prune_invalid:
-        util.validate_cache(True)
+        validate_cache(True)
     else:
         msg = "Please specify a cache-specific option"
         log.error(msg)
