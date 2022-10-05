@@ -451,8 +451,8 @@ class Dataset:
                     file_name = file.get("rel_path")
                     if file_name:
                         # All files constituting a table must be in a dir with name table.name (created by ensure_table_loc)
-                        download_path = pathlib.Path(file_name).name
-                        url = self.url + pathlib.Path(file_name).name
+                        download_path = table_path / pathlib.Path(file_name).name
+                        url = self.url + "/" + pathlib.Path(file_name).name
 
                 util.download_file(url, output_path=download_path)
                 util.set_readonly(download_path)
