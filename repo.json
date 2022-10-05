@@ -231,10 +231,5 @@
                 ]
             }
         ]
-    },
-    {
-        "name": "ursa-taxi-data",
-        "url": "s3://ursa-labs-taxi-data",
-        "format": "parquet"
     }
 ]
