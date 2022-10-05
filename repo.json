@@ -12,7 +12,9 @@
                 "header_line": false,
                 "files": [
                     {
-                        "rel_path": "2016Q4.csv.gz"
+                        "rel_path": "2016Q4.csv.gz",
+                        "file_size": 262125134, 
+                        "md5": "6e8ff7ae76033c452a9b72350461a4e6"
                     }
                 ],
                 "dim": [
@@ -75,7 +77,9 @@
                 ],
                 "files": [
                     {
-                        "rel_path": "nyctaxi_2010-01.csv.gz"
+                        "rel_path": "nyctaxi_2010-01.csv.gz",
+                        "file_size": 591876633,
+                        "md5": "22bd86bf54da91faf26fa8a243644a9f"
                     }
                 ]
             }
@@ -94,7 +98,9 @@
                 ],
                 "files": [
                     {
-                        "rel_path": "chi_traffic_2020_Q1.parquet"
+                        "rel_path": "chi_traffic_2020_Q1.parquet",
+                        "file_size": 182895135, 
+                        "md5": "b53ea738eda7ee051bcf33b3056b83f6"
                     }
                 ]
             }
@@ -113,7 +119,9 @@
                 ],
                 "files": [
                     {
-                        "rel_path": "type_strings.parquet"
+                        "rel_path": "type_strings.parquet",
+                        "file_size": 87174822, 
+                        "md5": "927c0cf481fb3c4870806b096b525d90"
                     }
                 ]
             }
@@ -132,7 +140,9 @@
                 ],
                 "files": [
                     {
-                        "rel_path": "type_dict.parquet"
+                        "rel_path": "type_dict.parquet",
+                        "file_size": 2890770, 
+                        "md5": "4186ad2f3072db6558aba3c535da1b97"
                     }
                 ]
             }
@@ -151,7 +161,9 @@
                 ],
                 "files": [
                     {
-                        "rel_path": "type_integers.parquet"
+                        "rel_path": "type_integers.parquet",
+                        "file_size": 15882666, 
+                        "md5": "7d44caa83025c9c7ef2ded67081d6d68"
                     }
                 ]
             }
@@ -170,7 +182,9 @@
                 ],
                 "files": [
                     {
-                        "rel_path": "type_floats.parquet"
+                        "rel_path": "type_floats.parquet",
+                        "file_size": 23851672, 
+                        "md5": "d083e46ddeff5cc5a3be3ea5c2f7f9d7"
                     }
                 ]
             }
@@ -189,7 +203,9 @@
                 ],
                 "files": [
                     {
-                        "rel_path": "type_nested.parquet"
+                        "rel_path": "type_nested.parquet",
+                        "file_size": 130538033, 
+                        "md5": "4bcf6735b00b32fccb6da338262def23"
                     }
                 ]
             }
@@ -208,7 +224,9 @@
                 ],
                 "files": [
                     {
-                        "rel_path": "type_simple_features.parquet"
+                        "rel_path": "type_simple_features.parquet",
+                        "file_size": 28637722, 
+                        "md5": "7776bea2a08e0466f77058676e2bb567"
                     }
                 ]
             }
