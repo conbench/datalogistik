@@ -205,6 +205,16 @@ class Dataset:
             table_path = dataset_path / (table.table + self.get_extension())
         return table_path
 
+    def get_table_dir(self, table=None):
+        dataset_path = self.ensure_dataset_loc()
+        # Defaults to the 0th table, which for single-table datasets is exactly what we want
+        table = self.get_one_table(table)
+
+        if len(table.files) > 1 or table.multi_file:
+            return dataset_path / table.table
+        else:
+            return dataset_path
+
     def get_one_table(self, table=None):
         if isinstance(table, Table):
             return table
@@ -302,8 +312,8 @@ class Dataset:
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
         )
 
-    def file_listing_item(self, file_path):
-        rel_path = file_path.relative_to(self.ensure_dataset_loc())
+    def file_listing_item(self, file_path, table=None):
+        rel_path = file_path.relative_to(self.get_table_dir(table))
         file_size = os.path.getsize(file_path)
         file_md5 = util.calculate_checksum(file_path)
         return {
@@ -317,14 +327,16 @@ class Dataset:
         path = self.ensure_table_loc(table)
         if path.is_file():
             # Single-file dataset, no parallelism needed
-            return [self.file_listing_item(path)]
+            return [self.file_listing_item(path, table)]
         with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
             futures = []
             for cur_path, dirs, files in os.walk(path):
                 for file_name in files:
                     futures.append(
                         pool.submit(
-                            self.file_listing_item, pathlib.Path(cur_path, file_name)
+                            self.file_listing_item,
+                            pathlib.Path(cur_path, file_name),
+                            table,
                         )
                     )
             file_list = []
