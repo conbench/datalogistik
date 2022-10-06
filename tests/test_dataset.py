@@ -289,13 +289,14 @@ def test_download_dataset(monkeypatch):
     def _fake_multi_download(url, output_path):
         file_numbers = [1, 10, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9]
         file_number = file_numbers[_fake_multi_download.file_index]
-        assert url == f"hhttp://www.example.com/taxi_2013_{file_number}.csv.gz"
+        assert url == f"http://www.example.com/taxi_2013_{file_number}.csv.gz"
         assert output_path == pathlib.Path(
             f"tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013/taxi_2013_{file_number}.csv.gz"
         )
         _fake_multi_download.file_index += 1
 
     _fake_multi_download.file_index = 0  # init "static variable"
+    monkeypatch.setattr("datalogistik.util.download_file", _fake_multi_download)
     multi_file_ds.download()
 
 
