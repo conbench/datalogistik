@@ -63,7 +63,6 @@ class Dataset:
     scale_factor: Optional[float] = None
     delim: Optional[str] = None
     metadata_file: Optional[pathlib.Path] = None
-    url: Optional[str] = None
     homepage: Optional[str] = None
     # a list of strings that can be added when csv parsing to treat as if they were nulls
     extra_nulls: Optional[List] = field(default_factory=list)
@@ -460,79 +459,73 @@ class Dataset:
         log.info("Downloading to cache...")
         down_start = time.perf_counter()
 
+        if not self.tables:
+            msg = (
+                "No table entries were found. "
+                "To download a dataset, at least 1 table entry must exist "
+                "that has a 'url' or 'base_url' property."
+            )
+            log.error(msg)
+            raise ValueError(msg)
+
         try:
             # Ensure the dataset path is available
             # we can't hash yet, so let's call this "raw"
             dataset_path = self.ensure_dataset_loc(new_hash="raw")
 
-            # There are 3 possible types downloads:
-            # 1 - No tables specified, url is a top-level property, just download it.
-            # 2 - The table entry has a url property. Either this table is a single-file, or it is a single
-            # download that will produce multiple files.
-            # 3 - multi file (either single or multi table). The table entry has a base_url property,
-            # and each file has a rel_path property. This is appended to the base_url to form
-            # the download link. The files will be placed in the table directory (generated from the table name).
+            # For now, we always download all tables. So we need to loop through each table
+            for table in self.tables:
 
-            # Type 1 (note that it is also fine for a single-table, single-file dataset to have the url in the table entry instead of top-level)
-            if not self.tables:
-                if not self.url:
-                    msg = "To download this dataset, either add a 'url' or a 'tables' property."
-                    log.error(msg)
-                    raise RuntimeError(msg)
-                file_name = self.url.split("/")[-1]
-                # this does not allow . in a tablename
-                table_name = file_name.split(".")[0]
-                self.tables = [Table(table=table_name)]
-                table_path = dataset_path / file_name
-                util.download_file(self.url, output_path=table_path)
-                util.set_readonly(table_path)
-                self.detect_format_compression(file_name)
-            else:
-                # For now, we always download all tables. So we need to loop through each table
-                for table in self.tables:
-                    # create table dir
-                    table_path = self.ensure_table_loc(table)
+                # There are 2 possible types downloads:
+                # 1 - The table entry has a url property. Either this table is a single-file, or it is a single
+                # download that will produce multiple files.
+                # 2 - multi file (either single or multi table). The table entry has a base_url property,
+                # and each file has a rel_path property. This is appended to the base_url to form
+                # the download link. The files will be placed in the table directory (generated from the table name).
 
-                    # Type 2
-                    if table.url:
-                        # Note that table_path will be a file if this is a single-file table,
-                        # and a dir if it is a multi-file table (download_file will produce multiple files)
-                        util.download_file(table.url, output_path=table_path)
-                        util.set_readonly(table_path)
+                # create table dir
+                table_path = self.ensure_table_loc(table)
 
-                    # Type 3
-                    elif table.base_url:
-                        if len(table.files) <= 1:
-                            msg = f"Single-file table '{table.table}' has 'base_url' property set. It should only have a 'url'."
+                # Type 1
+                if table.url:
+                    # Note that table_path will be a file if this is a single-file table,
+                    # and a dir if it is a multi-file table (download_file will produce multiple files)
+                    util.download_file(table.url, output_path=table_path)
+                    util.set_readonly(table_path)
+
+                # Type 2
+                elif table.base_url:
+                    if len(table.files) <= 1:
+                        msg = f"Single-file table '{table.table}' has 'base_url' property set. It should only have a 'url'."
+                        log.error(msg)
+                        raise ValueError(msg)
+                    for file in table.files:
+                        # contains the suffix for the download url
+                        rel_path = file.get("rel_path")
+                        if not rel_path:
+                            msg = f"Missing rel_path property for multi-file table '{table.table}'."
                             log.error(msg)
                             raise ValueError(msg)
-                        for file in table.files:
-                            # contains the suffix for the download url
-                            rel_path = file.get("rel_path")
-                            if not rel_path:
-                                msg = f"Missing rel_path property for multi-file table '{table.table}'."
-                                log.error(msg)
-                                raise ValueError(msg)
 
-                            # All files constituting a table must be in a dir with name table.name (created by ensure_table_loc)
-                            # note that the resulting dir structure is not necessarily flat,
-                            # because the table can have multiple levels of partitioning.
-                            download_path = table_path / rel_path
-                            url = table.base_url + "/" + rel_path
+                        # All files constituting a table must be in a dir with name table.name (created by ensure_table_loc)
+                        # note that the resulting dir structure is not necessarily flat,
+                        # because the table can have multiple levels of partitioning.
+                        download_path = table_path / rel_path
+                        url = table.base_url + "/" + rel_path
 
-                            util.download_file(url, output_path=download_path)
-                            util.set_readonly(download_path)
+                        util.download_file(url, output_path=download_path)
+                        util.set_readonly(download_path)
 
-                    else:
-                        msg = f"Could not find a url or base_url property for Table '{table.table}'."
-                        log.error(msg)
-                        raise RuntimeError(msg)
+                else:
+                    msg = f"Could not find a url or base_url property for Table '{table.table}'."
+                    log.error(msg)
+                    raise RuntimeError(msg)
 
-                    # Try validation in case the dataset info contained checksums
-                    if not self.validate_table_files(table):
-                        msg = "File integrity check for newly downloaded table failed."
-                        log.error(msg)
-                        raise RuntimeError(msg)
+                # Try validation in case the dataset info contained checksums
+                if not self.validate_table_files(table):
+                    msg = "File integrity check for newly downloaded table failed."
+                    log.error(msg)
+                    raise RuntimeError(msg)
 
             self.write_metadata()
         except Exception:

@@ -263,9 +263,8 @@ def test_download_dataset(monkeypatch):
         name="chi_traffic_2020_Q1",
         format="csv",
         compression="gzip",
-        url="https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
     )
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ValueError):
         ds_variant_not_available.download()
 
     # download a dataset with wrong checksums, verify that validation fails
