@@ -14,7 +14,7 @@
 
 import copy
 
-from . import repo, tpc_info, util
+from . import Dataset, config, repo, tpc_info, util
 from .log import log
 
 
@@ -41,7 +41,13 @@ def find_or_instantiate_close_dataset(dataset):
         if dataset_to_fetch:
             # we found a dataset, so we can use it
             dataset_to_fetch.download()
-            variants = [dataset_to_fetch]
+            # Read in the JSON after downloading, because it could contain more metadata
+            # that was detected from the file(s), like format and compression
+            variants = [
+                Dataset.from_json(
+                    dataset_to_fetch.ensure_dataset_loc() / config.metadata_filename
+                )
+            ]
 
     if dataset.name in tpc_info.tpc_datasets:
         # filter variants to the same scale factor (and all tpc datasets require scale factor...)
