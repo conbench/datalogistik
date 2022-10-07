@@ -231,5 +231,9 @@
                 ]
             }
         ]
+    },
+    {
+        "name": "sample",
+        "url": "https://ursa-qa.s3.amazonaws.com/fanniemae_loanperf/2016Q4_sample.csv.gz"
     }
 ]

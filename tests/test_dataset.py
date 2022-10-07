@@ -263,9 +263,13 @@ def test_download_dataset(monkeypatch):
 
     monkeypatch.setattr("datalogistik.util.download_file", _fake_download)
     ds_variant_not_available = Dataset(
-        name="chi_traffic_2020_Q1", format="csv", compression="gzip"
+        name="chi_traffic_2020_Q1",
+        format="csv",
+        compression="gzip",
+        url="https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
     )
-    ds_variant_not_available.download()
+    with pytest.raises(FileNotFoundError):
+        ds_variant_not_available.download()
 
     # download a dataset with wrong checksums, verify that validation fails
     monkeypatch.setattr("datalogistik.util.download_file", _noop)

@@ -451,23 +451,29 @@ class Dataset:
             dataset_path = self.ensure_dataset_loc(new_hash="raw")
 
             # There are 3 possible types downloads:
-            # 1 - single table, single file. url can be a top-level property, just download it.
+            # 1 - No tables specified, url is a top-level property, just download it.
             # 2 - multi table, single file. The table entry has a url property.
             # 3 - multi file (either single or multi table). The table entry has a base_url property,
             # and each file has a rel_path property. This is appended to the base_url to form
             # the download link. The files will be placed in the table directory (generated from the table name).
 
             # Type 1 (note that it is also fine for a single-table, single-file dataset to have the url in the table entry instead of top-level)
-            if len(self.tables) == 1 and self.url:
-                # create table dir
-                table_path = self.ensure_table_loc(self.tables[0])
-                util.download_file(self.url, output_path=table_path)
-                util.set_readonly(table_path)
-                # Try validation in case the dataset info contained checksums
-                if not self.validate_table_files(self.tables[0]):
-                    msg = "File integrity check for newly downloaded table failed."
+            if not self.tables:
+                if not self.url:
+                    msg = "To download this dataset, either add a 'url' or a 'tables' property."
                     log.error(msg)
                     raise RuntimeError(msg)
+                file_name = self.url.split("/")[-1]
+                table_name = file_name.split(".")[0]
+                self.tables = [Table(table=table_name)]
+                if not self.format:
+                    if "csv" in file_name:
+                        self.format = "csv"
+                    elif "parquet" in file_name:
+                        self.format = "parquet"
+                table_path = dataset_path / file_name
+                util.download_file(self.url, output_path=table_path)
+                util.set_readonly(table_path)
             else:
                 # For now, we always download all tables. So we need to loop through each table
                 for table in self.tables:
