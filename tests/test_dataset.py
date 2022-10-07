@@ -22,7 +22,7 @@ import tempfile
 import pytest
 from pyarrow import dataset as pyarrowdataset
 
-from datalogistik import config, dataset_search
+from datalogistik import config, dataset_search, util
 from datalogistik.dataset import Dataset
 from datalogistik.table import Table
 
@@ -258,9 +258,6 @@ def test_download_dataset(monkeypatch):
             "tests/fixtures/test_cache/chi_traffic_2020_Q1/raw/chi_traffic_2020_Q1.parquet"
         )
 
-    def _noop(url, output_path):
-        pass
-
     monkeypatch.setattr("datalogistik.util.download_file", _fake_download)
     ds_variant_not_available = Dataset(
         name="chi_traffic_2020_Q1",
@@ -272,22 +269,60 @@ def test_download_dataset(monkeypatch):
         ds_variant_not_available.download()
 
     # download a dataset with wrong checksums, verify that validation fails
-    monkeypatch.setattr("datalogistik.util.download_file", _noop)
-    with tempfile.TemporaryDirectory() as tmpcachepath:
-        shutil.copytree(
-            simple_parquet_ds.ensure_dataset_loc(),
-            tmpcachepath + "/" + simple_parquet_ds.name,
+    with tempfile.TemporaryDirectory() as tmpcachedir:
+        tmpcachepath = pathlib.Path(tmpcachedir)
+
+        def _simulate_download_by_copying(url, output_path):
+            shutil.copyfile(simple_parquet_ds.ensure_table_loc(), output_path)
+
+        monkeypatch.setattr(
+            "datalogistik.util.download_file", _simulate_download_by_copying
+        )
+        tmp_ds_dir = tmpcachepath / simple_parquet_ds.name
+        tmp_ds_dir.mkdir()
+        shutil.copyfile(
+            simple_parquet_ds.metadata_file,
+            tmp_ds_dir / config.metadata_filename,
         )
         tmp_simple_parquet_ds = Dataset.from_json(
-            metadata=f"{tmpcachepath}/{simple_parquet_ds.name}/datalogistik_metadata.ini"
+            metadata=tmp_ds_dir / config.metadata_filename
         )
         with pytest.raises(
             RuntimeError,
             match="Refusing to clean a directory outside of the local cache",
         ):
             tmp_simple_parquet_ds.download()
+            assert util.calculate_checksum(
+                tmp_simple_parquet_ds.ensure_table_loc()
+            ) == util.calculate_checksum(simple_parquet_ds.ensure_table_loc())
             # Note that if we were not working in a tmp dir, the dir should have been deleted
             # and the exception message would be: "File integrity check for newly downloaded dataset failed."
+
+    # Test a succeeding download
+    with tempfile.TemporaryDirectory() as tmpcachedir:
+        tmpcachepath = pathlib.Path(tmpcachedir)
+        dataset = Dataset.from_json(
+            metadata="./tests/fixtures/test_cache/fanniemae_sample/a77e575/datalogistik_metadata.ini"
+        )
+
+        def _simulate_download_by_copying(url, output_path):
+            shutil.copyfile(dataset.ensure_table_loc(), output_path)
+
+        monkeypatch.setattr(
+            "datalogistik.util.download_file", _simulate_download_by_copying
+        )
+
+        tmp_ds_dir = tmpcachepath / dataset.name
+        tmp_ds_dir.mkdir()
+        shutil.copyfile(
+            dataset.ensure_dataset_loc() / config.metadata_filename,
+            tmp_ds_dir / config.metadata_filename,
+        )
+        tmp_ds = Dataset.from_json(metadata=tmp_ds_dir / config.metadata_filename)
+        tmp_ds.download()
+        assert util.calculate_checksum(
+            tmp_ds.ensure_table_loc()
+        ) == util.calculate_checksum(dataset.ensure_table_loc())
 
     # multi-file download
     def _fake_multi_download(url, output_path):
