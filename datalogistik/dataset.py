@@ -452,7 +452,8 @@ class Dataset:
 
             # There are 3 possible types downloads:
             # 1 - No tables specified, url is a top-level property, just download it.
-            # 2 - multi table, single file. The table entry has a url property.
+            # 2 - The table entry has a url property. Either this table is a single-file, or it is a single
+            # download that will produce multiple files.
             # 3 - multi file (either single or multi table). The table entry has a base_url property,
             # and each file has a rel_path property. This is appended to the base_url to form
             # the download link. The files will be placed in the table directory (generated from the table name).
@@ -482,10 +483,8 @@ class Dataset:
 
                     # Type 2
                     if table.url:
-                        if len(table.files) > 1:
-                            msg = f"Multi-file table '{table.table}' has 'url' property set. It should only have a 'base_url'."
-                            log.error(msg)
-                            raise ValueError(msg)
+                        # Note that table_path will be a file if this is a single-file table,
+                        # and a dir if it is a multi-file table (download_file will produce multiple files)
                         util.download_file(table.url, output_path=table_path)
                         util.set_readonly(table_path)
 
