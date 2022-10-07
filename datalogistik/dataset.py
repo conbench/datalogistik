@@ -440,21 +440,6 @@ class Dataset:
             )
         return dataset_write_format, write_options
 
-    def detect_format_compression(self, file_name):
-        file_name = str(file_name)
-        if not self.format:
-            # -7 to add 3 positions for a possible compression suffix
-            if ".csv" in file_name[-7:]:
-                self.format = "csv"
-            # Parquet never has a compression suffix
-            elif ".parquet" in file_name[-8:]:
-                self.format = "parquet"
-        if not self.compression:
-            # Only needed for csv, internal parquet compression is detected in fill_metadata_from_files
-            if self.format == "csv":
-                if ".gz" in file_name[-3:]:
-                    self.compression = "gzip"
-
     def download(self):
         log.info("Downloading to cache...")
         down_start = time.perf_counter()
