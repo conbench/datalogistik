@@ -441,6 +441,21 @@ class Dataset:
             )
         return dataset_write_format, write_options
 
+    def detect_format_compression(self, file_name):
+        file_name = str(file_name)
+        if not self.format:
+            # -7 to add 3 positions for a possible compression suffix
+            if ".csv" in file_name[-7:]:
+                self.format = "csv"
+            # Parquet never has a compression suffix
+            elif ".parquet" in file_name[-8:]:
+                self.format = "parquet"
+        if not self.compression:
+            # Only needed for csv, internal parquet compression is detected in fill_metadata_from_files
+            if self.format == "csv":
+                if ".gz" in file_name[-3:]:
+                    self.compression = "gzip"
+
     def download(self):
         log.info("Downloading to cache...")
         down_start = time.perf_counter()
@@ -465,16 +480,13 @@ class Dataset:
                     log.error(msg)
                     raise RuntimeError(msg)
                 file_name = self.url.split("/")[-1]
+                # this does not allow . in a tablename
                 table_name = file_name.split(".")[0]
                 self.tables = [Table(table=table_name)]
-                if not self.format:
-                    if "csv" in file_name:
-                        self.format = "csv"
-                    elif "parquet" in file_name:
-                        self.format = "parquet"
                 table_path = dataset_path / file_name
                 util.download_file(self.url, output_path=table_path)
                 util.set_readonly(table_path)
+                self.detect_format_compression(file_name)
             else:
                 # For now, we always download all tables. So we need to loop through each table
                 for table in self.tables:
@@ -534,6 +546,7 @@ class Dataset:
 
     def fill_metadata_from_files(self):
         # TODO: Should we attempt to find format? That should never mismatch...
+        # TODO: check whether compression and format are the same for all files
 
         if len(self.tables) == 1:
             self.tables[0].files = self.create_file_listing(self.tables[0])
