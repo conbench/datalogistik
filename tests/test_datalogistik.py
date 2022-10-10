@@ -26,6 +26,7 @@ import tempfile
 import numpy as np
 import pyarrow as pa
 import pyarrow.csv as csv
+import pyarrow.feather as feather
 import pyarrow.parquet as pq
 import pytest
 
@@ -369,66 +370,41 @@ def test_compress(comp_string):
     assert util.decompress("uncompressed_file_path", "output_dir", comp_string) is None
 
 
-@pytest.mark.parametrize("dest_format", ["parquet", "feather"])
-def test_convert_csv(monkeypatch, dest_format):
+@pytest.mark.parametrize("source_format", ["csv", "parquet", "feather"])
+@pytest.mark.parametrize("dest_format", ["csv", "parquet", "feather"])
+def test_convert_parquet(monkeypatch, source_format, dest_format):
+    if source_format == dest_format:
+        pytest.skip()
     name = "data_to_be_converted"
-    data = generate_complete_schema_data(100, "common")
-    orig_table = pa.table(data, schema=common_schema)
-    with tempfile.TemporaryDirectory() as tmpdspath:
-        monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/test_cache")
-        wo = csv.WriteOptions(include_header=False)
-        complete_dataset_info = {
-            "name": name,
-            "format": "csv",
-            "tables": [
-                {
-                    "table": "complete_data",
-                    "schema": json.loads(common_schema_json_input),
-                }
-            ],
-        }
-        rawdir = pathlib.Path(tmpdspath, "csv_generated", "raw")
-        rawdir.mkdir(parents=True)
-        meta_file_path = rawdir / config.metadata_filename
-        with open(meta_file_path, "w") as metafile:
-            json.dump(complete_dataset_info, metafile)
-        csv.write_csv(orig_table, rawdir / "complete_data.csv", write_options=wo)
-        dataset = Dataset.from_json(meta_file_path)
-        print(dataset)
-        written_table = dataset.get_table_dataset().to_table()
-        assert written_table == orig_table
-        target_dataset = Dataset(name=name, format=dest_format)
-        converted_dataset = dataset.convert(target_dataset)
-        converted_table = converted_dataset.get_table_dataset().to_table()
-        assert converted_table == orig_table
-
-
-@pytest.mark.parametrize("dest_format", ["csv", "feather"])
-def test_convert_parquet(monkeypatch, dest_format):
-    name = "data_to_be_converted"
+    file_name = name + "." + source_format
     data = generate_complete_schema_data(100, "common")
     orig_table = pa.table(data, schema=common_schema)
     with tempfile.TemporaryDirectory() as tmpdspath:
         monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/test_cache")
         complete_dataset_info = {
             "name": name,
-            "format": "parquet",
+            "format": source_format,
             "tables": [
                 {
-                    "table": "complete_data",
+                    "table": name,
                     "header_line": False,
                     "schema": json.loads(common_schema_json_input),
                 }
             ],
         }
-        rawdir = pathlib.Path(tmpdspath, "parquet_generated", "raw")
+        rawdir = pathlib.Path(tmpdspath, name, "raw")
         rawdir.mkdir(parents=True)
         meta_file_path = rawdir / config.metadata_filename
         with open(meta_file_path, "w") as metafile:
             json.dump(complete_dataset_info, metafile)
-        pq.write_table(orig_table, rawdir / "complete_data.parquet")
+        if source_format == "csv":
+            wo = csv.WriteOptions(include_header=False)
+            csv.write_csv(orig_table, rawdir / file_name, write_options=wo)
+        elif source_format == "parquet":
+            pq.write_table(orig_table, rawdir / file_name)
+        elif source_format == "feather":
+            feather.write_feather(orig_table, rawdir / file_name)
         dataset = Dataset.from_json(meta_file_path)
-        print(dataset)
         written_table = dataset.get_table_dataset().to_table()
         assert written_table == orig_table
         target_dataset = Dataset(name=name, format=dest_format)
