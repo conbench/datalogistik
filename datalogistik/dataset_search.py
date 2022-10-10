@@ -66,8 +66,9 @@ def find_or_instantiate_close_dataset(dataset):
     # when we support .arrow, those likely should be first, then parquet, et c.
     # TODO: sort by compression too?
     format_preference = {
-        "parquet": 0,
-        "csv": 1,
+        "feather": 0,
+        "parquet": 1,
+        "csv": 2,
         "tpc-raw": 3,
     }
     variants.sort(key=lambda c: format_preference[c.format])

@@ -27,7 +27,7 @@ if platform.system() == "Windows":
 else:  # Unix (Linux or Mac)
     default_cache_location = os.path.join(os.getenv("HOME"), ".datalogistik_cache")
 metadata_filename = "datalogistik_metadata.ini"
-supported_formats = ["parquet", "csv", "tpc-raw"]
+supported_formats = ["parquet", "csv", "feather", "tpc-raw"]
 hashing_chunk_size = 16384
 
 

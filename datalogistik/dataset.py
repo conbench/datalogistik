@@ -288,11 +288,11 @@ class Dataset:
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
 
-        # Defaults
-        schema = table.schema
+        schema = None
         if self.format == "parquet":
             dataset_read_format = pads.ParquetFileFormat()
-            schema = None
+        if self.format == "feather":
+            dataset_read_format = pads.IpcFileFormat()
         if self.format == "csv":
             dataset_read_format, schema = self.get_csv_dataset_spec(table)
         if self.format == "tpc-raw":
@@ -420,6 +420,11 @@ class Dataset:
                 allow_truncated_timestamps=True,
             )
 
+        if self.format == "feather":
+            dataset_write_format = pads.IpcFileFormat()
+            # Using pyarrow.datasets, compression is not supported
+            write_options = dataset_write_format.make_write_options()
+
         if self.format == "csv":
             dataset_write_format = pads.CsvFileFormat()
             # IFF header_line is False, then add that to the write options
@@ -488,7 +493,17 @@ class Dataset:
         if self.format == "parquet":
             first_file = self.cache_location / self.tables[0].files[0]["rel_path"]
             file_metadata = pq.ParquetFile(first_file).metadata
-            self.compression = file_metadata.row_group(0).column(0).compression.lower()
+            detected_compression = (
+                file_metadata.row_group(0).column(0).compression.lower()
+            )
+            if self.compression != detected_compression:
+                log.info(
+                    f"Detected compression ({detected_compression}) differs from "
+                    f"metadata ({self.compression}, updating..."
+                )
+                self.compression = detected_compression
+        # There is no API for detecting feather's internal compression,
+        # so we need to rely on what the user specified in the repo file
 
         # TODO: add auto-detected csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
         # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L895-L911
@@ -529,6 +544,11 @@ class Dataset:
             f"compression {self.compression} to {new_dataset.format}, "
             f"compression {new_dataset.compression}..."
         )
+        if new_dataset.format == "feather" and new_dataset.compression:
+            msg = "Compression not supported when converting to Feather format."
+            log.error(msg)
+            raise ValueError(msg)
+
         conv_start = time.perf_counter()
 
         try:

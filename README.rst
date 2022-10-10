@@ -32,7 +32,7 @@ Usage::
 ``FORMAT``
     File format to instantiate the dataset in. If the original dataset specified in the
     repository has a different format, it will be converted. Supported formats:
-    ``parquet``, ``csv``.
+    ``parquet``, ``csv``, ``feather``.
 
 ``SCALE_FACTOR``
     Scale factor for generating TPC data. Default 1.
