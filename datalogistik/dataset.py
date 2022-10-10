@@ -558,6 +558,7 @@ class Dataset:
             )
 
             # convert each table
+            new_dataset.tables = []  # ensure this is empty before we start appending
             for old_table in self.tables:
 
                 # TODO: possible schema changes here at the table level
@@ -647,8 +648,7 @@ class Dataset:
             log.debug(f"conversion took {conv_time:0.2f} s")
 
             new_dataset.write_metadata()
-
-            util.set_readonly_recurse(output_file)
+            util.set_readonly_recurse(new_dataset_path)
         except Exception:
             log.error("An error occurred during conversion.")
             util.clean_cache_dir(new_dataset_path)
