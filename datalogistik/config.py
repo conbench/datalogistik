@@ -19,7 +19,9 @@ import platform
 
 debug = True
 
-default_repo_file = str(pathlib.Path(__file__).parent.parent / "repo.json")
+default_repo_file = (
+    "https://raw.githubusercontent.com/conbench/datalogistik/main/repo.json"
+)
 if platform.system() == "Windows":
     default_cache_location = os.path.join(
         os.getenv("LOCALAPPDATA"), "datalogistik_cache"
