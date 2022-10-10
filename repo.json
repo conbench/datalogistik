@@ -235,10 +235,22 @@
     {
         "name": "ursa-taxi-data-2009",
         "format": "parquet",
-        "url": "s3://ursa-labs-taxi-data",
         "tables": [
             {
-                "table": "2009"
+                "table": "2009",
+                "url": "s3://ursa-labs-taxi-data"
+            }
+        ]
+    },
+    {
+        "name": "ursa-taxi-remote",
+        "remote": true,
+        "format": "parquet",
+        "compression": "snappy",
+        "tables": [
+            {
+                "table": "2009.parquet",
+                "url": "s3://ursa-labs-taxi-data"
             }
         ]
     }

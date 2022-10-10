@@ -62,6 +62,7 @@ class Dataset:
     local_creation_date: Optional[str] = None
     scale_factor: Optional[float] = None
     delim: Optional[str] = None
+    remote: Optional[bool] = None
     metadata_file: Optional[pathlib.Path] = None
     homepage: Optional[str] = None
     # a list of strings that can be added when csv parsing to treat as if they were nulls
@@ -81,6 +82,8 @@ class Dataset:
             raise RuntimeError(msg)
         if self.scale_factor is None and self.name in tpc_info.tpc_datasets:
             self.scale_factor = 1.0
+        if self.remote is None:
+            self.remote = False
 
         # Use None as the true default for uncompressed
         # the first comparison is a bit redundant, but None.lower() fails
@@ -452,6 +455,10 @@ class Dataset:
             )
             log.error(msg)
             raise ValueError(msg)
+        if self.remote:
+            msg = "Cannot download a remote dataset"
+            log.error(msg)
+            raise RuntimeError(msg)
 
         try:
             # Ensure the dataset path is available
@@ -579,6 +586,10 @@ class Dataset:
         return json.dumps(dict_repr, default=str)
 
     def convert(self, new_dataset):
+        if self.remote:
+            msg = "Cannot convert a remote dataset."
+            log.error(msg)
+            raise RuntimeError(msg)
         log.info(
             f"Converting and caching dataset from {self.format}, "
             f"compression {self.compression} to {new_dataset.format}, "
@@ -697,7 +708,7 @@ class Dataset:
         tables = {}
         for table in self.tables:
             tables[table.table] = {
-                "path": str(self.ensure_table_loc(table)),
+                "path": table.url if self.remote else str(self.ensure_table_loc(table)),
                 "dim": table.dim,
             }
         output["tables"] = tables

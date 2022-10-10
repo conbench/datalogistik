@@ -40,14 +40,17 @@ def find_or_instantiate_close_dataset(dataset):
         dataset_to_fetch = repo.search_repo(dataset.name, repo.get_repo())
         if dataset_to_fetch:
             # we found a dataset, so we can use it
-            dataset_to_fetch.download()
-            # Read in the JSON after downloading, because it could contain more metadata
-            # that was detected from the file(s), like format and compression
-            variants = [
-                Dataset.from_json(
-                    dataset_to_fetch.ensure_dataset_loc() / config.metadata_filename
-                )
-            ]
+            if dataset_to_fetch.remote:
+                variants = [dataset_to_fetch]
+            else:
+                dataset_to_fetch.download()
+                # Read in the JSON after downloading, because it could contain more metadata
+                # that was detected from the file(s), like format and compression
+                variants = [
+                    Dataset.from_json(
+                        dataset_to_fetch.ensure_dataset_loc() / config.metadata_filename
+                    )
+                ]
 
     if dataset.name in tpc_info.tpc_datasets:
         # filter variants to the same scale factor (and all tpc datasets require scale factor...)
