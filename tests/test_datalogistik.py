@@ -454,5 +454,5 @@ def test_main_with_convert(capsys):
     finally:
         # cleanup all files that weren't there to start with
         for file in set(os.listdir(test_dir_path)) - set(start_files):
-            util.set_readwrite(file)
+            util.set_readwrite_recurse(file)
             shutil.rmtree(pathlib.Path(test_dir_path, file))
