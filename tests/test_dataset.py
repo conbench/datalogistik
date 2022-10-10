@@ -482,6 +482,25 @@ def test_output_result():
     )
     assert multi_table_ds.output_result() == expected
 
+    expected = json.dumps(
+        {
+            "name": "remote",
+            "format": "parquet",
+            "tables": {
+                "remote_table": {
+                    "path": "s3://remote_table/",
+                    "dim": [],
+                },
+            },
+        }
+    )
+    assert Dataset(
+        remote=True,
+        name="remote",
+        format="parquet",
+        tables=[Table(table="remote_table", url="s3://remote_table/")],
+    )
+
 
 # dataset_search tests
 
