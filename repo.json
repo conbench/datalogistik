@@ -1,7 +1,6 @@
 [
     {
         "name": "fanniemae_2016Q4",
-        "url": "https://ursa-qa.s3.amazonaws.com/fanniemae_loanperf/2016Q4.csv.gz",
         "homepage": "https://capitalmarkets.fanniemae.com/credit-risk-transfer/single-family-credit-risk-transfer/fannie-mae-single-family-loan-performance-data",
         "delim": "|",
         "format": "csv",
@@ -9,6 +8,7 @@
         "tables": [
             {
                 "table": "2016Q4",
+                "url": "https://ursa-qa.s3.amazonaws.com/fanniemae_loanperf/2016Q4.csv.gz",
                 "header_line": false,
                 "files": [
                     {
@@ -59,7 +59,6 @@
     },
     {
         "name": "nyctaxi_2010-01",
-        "url": "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
         "homepage": "https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
         "delim": ",",
         "format": "csv",
@@ -70,6 +69,7 @@
         "tables": [
             {
                 "table": "nyctaxi_2010-01",
+                "url": "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
                 "header_line": true,
                 "dim": [
                     14863778,
@@ -87,11 +87,11 @@
     },
     {
         "name": "chi_traffic_2020_Q1",
-        "url": "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
         "format": "parquet",
         "tables": [
             {
                 "table": "chi_traffic_2020_Q1",
+                "url": "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
                 "dim": [
                     13038291,
                     23
@@ -108,11 +108,11 @@
     },
     {
         "name": "type_strings",
-        "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_strings.parquet",
         "format": "parquet",
         "tables": [
             {
                 "table": "type_strings",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_strings.parquet",
                 "dim": [
                     1000000,
                     5
@@ -129,11 +129,11 @@
     },
     {
         "name": "type_dict",
-        "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_dict.parquet",
         "format": "parquet",
         "tables": [
             {
                 "table": "type_dict",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_dict.parquet",
                 "dim": [
                     1000000,
                     5
@@ -150,11 +150,11 @@
     },
     {
         "name": "type_integers",
-        "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_integers.parquet",
         "format": "parquet",
         "tables": [
             {
                 "table": "type_integers",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_integers.parquet",
                 "dim": [
                     1000000,
                     5
@@ -171,11 +171,11 @@
     },
     {
         "name": "type_floats",
-        "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_floats.parquet",
         "format": "parquet",
         "tables": [
             {
                 "table": "type_floats",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_floats.parquet",
                 "dim": [
                     1000000,
                     5
@@ -192,11 +192,11 @@
     },
     {
         "name": "type_nested",
-        "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_nested.parquet",
         "format": "parquet",
         "tables": [
             {
                 "table": "type_nested",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_nested.parquet",
                 "dim": [
                     1000000,
                     4
@@ -213,11 +213,11 @@
     },
     {
         "name": "type_simple_features",
-        "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_simple_features.parquet",
         "format": "parquet",
         "tables": [
             {
                 "table": "type_simple_features",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_simple_features.parquet",
                 "dim": [
                     1000000,
                     5

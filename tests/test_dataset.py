@@ -22,7 +22,7 @@ import tempfile
 import pytest
 from pyarrow import dataset as pyarrowdataset
 
-from datalogistik import config, dataset_search
+from datalogistik import config, dataset_search, util
 from datalogistik.dataset import Dataset
 from datalogistik.table import Table
 
@@ -45,62 +45,62 @@ multi_file_listing = [
     {
         "file_size": 5653,
         "md5": "f8b8101ce1314d58dd33c79c92d53ec0",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_1.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_1.csv.gz",
     },
     {
         "file_size": 5317,
         "md5": "1f31a9592ef7c01ab7798bf99ec40cbf",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_10.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_10.csv.gz",
     },
     {
         "file_size": 4418,
         "md5": "2944d4805b03490cf835f5df10ecf818",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_11.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_11.csv.gz",
     },
     {
         "file_size": 4506,
         "md5": "46cf71e81adf8ba04f3a49d4c89e11b6",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_12.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_12.csv.gz",
     },
     {
         "file_size": 5017,
         "md5": "8a543d62f9095cb1380322484efa75af",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_2.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_2.csv.gz",
     },
     {
         "file_size": 5265,
         "md5": "3fc980b571f685c2cd696d6ce2ecf26c",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_3.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_3.csv.gz",
     },
     {
         "file_size": 5875,
         "md5": "f8049f0d6ac73116e867a327a51898e9",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_4.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_4.csv.gz",
     },
     {
         "file_size": 4508,
         "md5": "9d91300d1fd30e0ba48e0603da5a1128",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_5.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_5.csv.gz",
     },
     {
         "file_size": 4054,
         "md5": "e10ab9eb7aef2475ae929901a4c80295",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_6.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_6.csv.gz",
     },
     {
         "file_size": 4647,
         "md5": "a05d59851464f30c738eb13c2fcad472",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_7.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_7.csv.gz",
     },
     {
         "file_size": 3732,
         "md5": "6d07d420b3df851d38b84d59a9ffcb41",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_8.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_8.csv.gz",
     },
     {
         "file_size": 4603,
         "md5": "e691c1fc5ba3aeb13da86cf54d91db2d",
-        "rel_path": pathlib.Path("taxi_2013/taxi_2013_9.csv.gz").as_posix(),
+        "rel_path": "taxi_2013_9.csv.gz",
     },
 ]
 multi_table_ds = Dataset.from_json(
@@ -159,8 +159,6 @@ def test_get_extension():
     assert multi_table_ds.get_extension() == ".csv.gz"
     assert simple_csv_ds.get_extension() == ".csv"
 
-    # Note; get_table_filename() is not used for multi-file tables
-
 
 def test_ensure_table_loc():
     assert simple_parquet_ds.ensure_table_loc() == pathlib.Path(
@@ -168,6 +166,10 @@ def test_ensure_table_loc():
     )
     assert multi_file_ds.ensure_table_loc() == pathlib.Path(
         "tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013"
+    )
+
+    assert simple_csv_ds.ensure_table_loc() == pathlib.Path(
+        "tests/fixtures/test_cache/chi_traffic_sample/babb1e5/chi_traffic_sample.csv"
     )
 
 
@@ -256,44 +258,83 @@ def test_download_dataset(monkeypatch):
             "tests/fixtures/test_cache/chi_traffic_2020_Q1/raw/chi_traffic_2020_Q1.parquet"
         )
 
-    def _noop(url, output_path):
-        pass
-
     monkeypatch.setattr("datalogistik.util.download_file", _fake_download)
     ds_variant_not_available = Dataset(
-        name="chi_traffic_2020_Q1", format="csv", compression="gzip"
+        name="chi_traffic_2020_Q1",
+        format="csv",
+        compression="gzip",
     )
-    ds_variant_not_available.download()
+    with pytest.raises(ValueError):
+        ds_variant_not_available.download()
 
     # download a dataset with wrong checksums, verify that validation fails
-    monkeypatch.setattr("datalogistik.util.download_file", _noop)
-    with tempfile.TemporaryDirectory() as tmpcachepath:
-        shutil.copytree(
-            simple_parquet_ds.ensure_dataset_loc(),
-            tmpcachepath + "/" + simple_parquet_ds.name,
+    with tempfile.TemporaryDirectory() as tmpcachedir:
+        tmpcachepath = pathlib.Path(tmpcachedir)
+
+        def _simulate_download_by_copying(url, output_path):
+            shutil.copyfile(simple_parquet_ds.ensure_table_loc(), output_path)
+
+        monkeypatch.setattr(
+            "datalogistik.util.download_file", _simulate_download_by_copying
+        )
+        tmp_ds_dir = tmpcachepath / simple_parquet_ds.name
+        tmp_ds_dir.mkdir()
+        shutil.copyfile(
+            simple_parquet_ds.metadata_file,
+            tmp_ds_dir / config.metadata_filename,
         )
         tmp_simple_parquet_ds = Dataset.from_json(
-            metadata=f"{tmpcachepath}/{simple_parquet_ds.name}/datalogistik_metadata.ini"
+            metadata=tmp_ds_dir / config.metadata_filename
         )
         with pytest.raises(
             RuntimeError,
             match="Refusing to clean a directory outside of the local cache",
         ):
             tmp_simple_parquet_ds.download()
+            assert util.calculate_checksum(
+                tmp_simple_parquet_ds.ensure_table_loc()
+            ) == util.calculate_checksum(simple_parquet_ds.ensure_table_loc())
             # Note that if we were not working in a tmp dir, the dir should have been deleted
             # and the exception message would be: "File integrity check for newly downloaded dataset failed."
+
+    # Test a succeeding download
+    with tempfile.TemporaryDirectory() as tmpcachedir:
+        tmpcachepath = pathlib.Path(tmpcachedir)
+        dataset = Dataset.from_json(
+            metadata="./tests/fixtures/test_cache/fanniemae_sample/a77e575/datalogistik_metadata.ini"
+        )
+
+        def _simulate_download_by_copying(url, output_path):
+            shutil.copyfile(dataset.ensure_table_loc(), output_path)
+
+        monkeypatch.setattr(
+            "datalogistik.util.download_file", _simulate_download_by_copying
+        )
+
+        tmp_ds_dir = tmpcachepath / dataset.name
+        tmp_ds_dir.mkdir()
+        shutil.copyfile(
+            dataset.ensure_dataset_loc() / config.metadata_filename,
+            tmp_ds_dir / config.metadata_filename,
+        )
+        tmp_ds = Dataset.from_json(metadata=tmp_ds_dir / config.metadata_filename)
+        tmp_ds.download()
+        assert util.calculate_checksum(
+            tmp_ds.ensure_table_loc()
+        ) == util.calculate_checksum(dataset.ensure_table_loc())
 
     # multi-file download
     def _fake_multi_download(url, output_path):
         file_numbers = [1, 10, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9]
         file_number = file_numbers[_fake_multi_download.file_index]
-        assert url == f"hhttp://www.example.com/taxi_2013_{file_number}.csv.gz"
+        assert url == f"http://www.example.com/taxi_2013_{file_number}.csv.gz"
         assert output_path == pathlib.Path(
             f"tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013/taxi_2013_{file_number}.csv.gz"
         )
         _fake_multi_download.file_index += 1
 
     _fake_multi_download.file_index = 0  # init "static variable"
+    monkeypatch.setattr("datalogistik.util.download_file", _fake_multi_download)
     multi_file_ds.download()
 
 
