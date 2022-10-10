@@ -39,6 +39,10 @@ def get_repo_file_path():
     return os.getenv("DATALOGISTIK_REPO", default_repo_file)
 
 
+def get_gen_location():
+    return os.getenv("DATALOGISTIK_GEN", None)
+
+
 def get_max_cpu_count():
     return int(os.getenv("DATALOGISTIK_MAX_THREADS", 0))
 

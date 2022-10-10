@@ -37,12 +37,6 @@ Usage::
 ``SCALE_FACTOR``
     Scale factor for generating TPC data. Default 1.
 
-``GENERATOR_PATH``
-    Path to the location of the external generator (e.g. TPC-H's ``dbgen``). If not
-    given, ``datalogistik`` will attempt to make it by cloning a repo (requires ``git``
-    on your PATH) and building the tool (requires ``make`` for UNIX or ``msbuild`` for
-    Windows on your PATH).
-
 ``COMPRESSION``
     Compression to be used for the dataset. For Parquet dataset, this value will be
     passed to the parquet writer.
@@ -129,6 +123,13 @@ Run the checks that will be run in CI::
     pytest
     # Run integration test
     datalogistik -d tpc-h -f parquet
+
+TPC Generators
+--------------
+The location of dbgen (the generator for TPC-H data) and dsdgen (the generator for TPC-DS data)
+can be specified by setting the environment variable ``DATALOGISTIK_GEN``.
+If it is not set, ``datalogistik`` will clone them from a publicly available repo on Github
+and build from source.
 
 Caching
 -------
