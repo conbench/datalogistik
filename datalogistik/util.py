@@ -51,6 +51,8 @@ def set_readonly_recurse(path):
 
 # Recursively set file permissions of given path to readonly
 def set_readwrite_recurse(path):
+    if os.path.isfile(path):
+        set_readwrite(path)
     for dirpath, dirnames, filenames in os.walk(path):
         os.chmod(dirpath, 0o777)
         for filename in filenames:
