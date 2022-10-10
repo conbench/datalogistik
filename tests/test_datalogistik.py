@@ -26,6 +26,7 @@ import tempfile
 import numpy as np
 import pyarrow as pa
 import pyarrow.csv as csv
+import pyarrow.parquet as pq
 import pytest
 
 from datalogistik import __version__, config, datalogistik, util
@@ -378,7 +379,6 @@ def test_convert_csv(monkeypatch, dest_format):
         wo = csv.WriteOptions(include_header=False)
         complete_dataset_info = {
             "name": name,
-            "url": "http://example.com/complete_data.csv",
             "format": "csv",
             "tables": [
                 {
@@ -393,6 +393,40 @@ def test_convert_csv(monkeypatch, dest_format):
         with open(meta_file_path, "w") as metafile:
             json.dump(complete_dataset_info, metafile)
         csv.write_csv(orig_table, rawdir / "complete_data.csv", write_options=wo)
+        dataset = Dataset.from_json(meta_file_path)
+        print(dataset)
+        written_table = dataset.get_table_dataset().to_table()
+        assert written_table == orig_table
+        target_dataset = Dataset(name=name, format=dest_format)
+        converted_dataset = dataset.convert(target_dataset)
+        converted_table = converted_dataset.get_table_dataset().to_table()
+        assert converted_table == orig_table
+
+
+@pytest.mark.parametrize("dest_format", ["csv", "feather"])
+def test_convert_parquet(monkeypatch, dest_format):
+    name = "data_to_be_converted"
+    data = generate_complete_schema_data(100, "common")
+    orig_table = pa.table(data, schema=common_schema)
+    with tempfile.TemporaryDirectory() as tmpdspath:
+        monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/test_cache")
+        complete_dataset_info = {
+            "name": name,
+            "format": "parquet",
+            "tables": [
+                {
+                    "table": "complete_data",
+                    "header_line": False,
+                    "schema": json.loads(common_schema_json_input),
+                }
+            ],
+        }
+        rawdir = pathlib.Path(tmpdspath, "parquet_generated", "raw")
+        rawdir.mkdir(parents=True)
+        meta_file_path = rawdir / config.metadata_filename
+        with open(meta_file_path, "w") as metafile:
+            json.dump(complete_dataset_info, metafile)
+        pq.write_table(orig_table, rawdir / "complete_data.parquet")
         dataset = Dataset.from_json(meta_file_path)
         print(dataset)
         written_table = dataset.get_table_dataset().to_table()
