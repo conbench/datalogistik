@@ -21,11 +21,15 @@ import random
 import shutil
 import string
 import sys
+import tempfile
 
+import numpy as np
 import pyarrow as pa
+import pyarrow.csv as csv
 import pytest
 
-from datalogistik import __version__, datalogistik, dataset, util
+from datalogistik import __version__, config, datalogistik, util
+from datalogistik.dataset import Dataset
 
 
 @pytest.fixture(autouse=True)
@@ -98,14 +102,14 @@ complete_csv_schema_json_input = """{
     "u": "large_string",
     "v": {"type_name": "time32", "arguments": "ms"},
     "w": {"type_name": "time64", "arguments": "us"},
-    "x": {"type_name": "timestamp", "arguments": {"unit": "ms"}}
+    "x": {"type_name": "timestamp", "arguments": {"unit": "us"}}
     }"""
 complete_csv_schema_json_output = (
     "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', "
     "'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'l': 'float', 'm': "
     "'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'q': 'string', 'r': 'string', "
     "'t': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', "
-    "'x': 'timestamp[ms]'}"
+    "'x': 'timestamp[us]'}"
 )
 complete_csv_schema = pa.schema(
     [
@@ -133,13 +137,47 @@ complete_csv_schema = pa.schema(
         # types with arguments
         pa.field("v", pa.time32("ms")),
         pa.field("w", pa.time64("us")),
-        pa.field("x", pa.timestamp("ms")),
+        pa.field("x", pa.timestamp("us")),
         # pa.field("y", pa.duration("ns")), # not supported by parquet and csv
         # pa.field("z", pa.binary(10)), # not supported by csv
         # pa.field("argh", pa.decimal128(7, 3)),
     ]
 )
-complete_parquet_schema = pa.schema(
+# complete_parquet_schema = pa.schema(
+#     [
+#         pa.field("a", pa.null()),
+#         pa.field("b", pa.bool_()),
+#         pa.field("c", pa.int8()),
+#         pa.field("d", pa.int16()),
+#         pa.field("e", pa.int32()),
+#         pa.field("f", pa.int64()),
+#         pa.field("g", pa.uint8()),
+#         pa.field("h", pa.uint16()),
+#         # pa.field("i", pa.uint32()), # not supported by parquet
+#         pa.field("j", pa.uint64()),
+#         # pa.field("k", pa.float16()), # not supported by parquet and csv
+#         pa.field("l", pa.float32()),
+#         pa.field("m", pa.float64()),
+#         pa.field("n", pa.date32()),
+#         # pa.field("o", pa.date64()), # not supported by parquet
+#         # pa.field("p", pa.month_day_nano_interval()), # not supported by parquet and csv
+#         pa.field("q", pa.string()),
+#         pa.field("r", pa.utf8()),
+#         pa.field("s", pa.large_binary()),
+#         pa.field("t", pa.large_string()),
+#         pa.field("u", pa.large_utf8()),
+#         # types with arguments
+#         pa.field("v", pa.time32("ms")),
+#         pa.field("w", pa.time64("us")),
+#         pa.field("x", pa.timestamp("us")),
+#         # pa.field("y", pa.duration("s")), # not supported by parquet and csv
+#         pa.field("z", pa.binary(10)),
+#         pa.field("argh", pa.decimal128(7, 3)),
+#     ]
+# )
+
+# This schema should be supported by all formats
+common_schema = pa.schema(
     [
         pa.field("a", pa.null()),
         pa.field("b", pa.bool_()),
@@ -159,7 +197,7 @@ complete_parquet_schema = pa.schema(
         # pa.field("p", pa.month_day_nano_interval()), # not supported by parquet and csv
         pa.field("q", pa.string()),
         pa.field("r", pa.utf8()),
-        pa.field("s", pa.large_binary()),
+        # pa.field("s", pa.large_binary()),  # not supported by csv
         pa.field("t", pa.large_string()),
         pa.field("u", pa.large_utf8()),
         # types with arguments
@@ -167,10 +205,31 @@ complete_parquet_schema = pa.schema(
         pa.field("w", pa.time64("us")),
         pa.field("x", pa.timestamp("us")),
         # pa.field("y", pa.duration("s")), # not supported by parquet and csv
-        pa.field("z", pa.binary(10)),
-        pa.field("argh", pa.decimal128(7, 3)),
+        # pa.field("z", pa.binary(10)),  # not supported by csv
+        # pa.field("argh", pa.decimal128(7, 3)),  # not supported by csv
     ]
 )
+common_schema_json_input = """{
+    "a": "null",
+    "b": "bool",
+    "c": "int8",
+    "d": "int16",
+    "e": "int32",
+    "f": "int64",
+    "g": "uint8",
+    "h": "uint16",
+    "j": "uint64",
+    "l": "float",
+    "m": "double",
+    "n": "date32",
+    "q": "string",
+    "r": "string",
+    "t": "large_string",
+    "u": "large_string",
+    "v": {"type_name": "time32", "arguments": "ms"},
+    "w": {"type_name": "time64", "arguments": "us"},
+    "x": {"type_name": "timestamp", "arguments": {"unit": "us"}}
+    }"""
 
 
 def generate_random_string(length):
@@ -180,6 +239,10 @@ def generate_random_string(length):
     return random_string
 
 
+# Generate random data according to the complete schemas above.
+# Not all datatypes are supported by all formats.
+# Note that if format is not set to one of the 3 supported formats
+# (parquet, csv, feather), the resulting data is supported by all 3.
 def generate_complete_schema_data(num_rows, format):
     k = num_rows
     data = {
@@ -192,7 +255,6 @@ def generate_complete_schema_data(num_rows, format):
         "g": [random.randint(0, 2**8 - 1) for _ in range(k)],
         "h": [random.randint(0, 2**16 - 1) for _ in range(k)],
         "j": [random.randint(0, 2**64 - 1) for _ in range(k)],
-        # "k": [np.float16(random.random()) for _ in range(k)],
         "l": [random.random() for _ in range(k)],
         "m": [random.random() for _ in range(k)],
         "n": [
@@ -207,7 +269,6 @@ def generate_complete_schema_data(num_rows, format):
             // datetime.timedelta(days=1)
             for _ in range(k)
         ],
-        # "p": [pa.MonthDayNano([random.randint(1,12),random.randint(1,28),random.randint(1,999) * 1000]) for _ in range(k)],
         "q": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
         "r": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
         "t": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
@@ -237,12 +298,11 @@ def generate_complete_schema_data(num_rows, format):
                 minutes=random.randint(0, 59),
                 seconds=random.randint(0, 59),
             )
-            // datetime.timedelta(milliseconds=1)
+            // datetime.timedelta(microseconds=1)
             for _ in range(k)
         ],
-        # "y": [random.randint(0, 10e6) for _ in range(k)],
     }
-    if format == "csv":
+    if format == "csv" or format == "feather":
         data["i"] = [random.randint(0, 2**32 - 1) for _ in range(k)]
         data["o"] = [
             datetime.datetime(
@@ -254,15 +314,27 @@ def generate_complete_schema_data(num_rows, format):
             * 1000
             for _ in range(k)
         ]
-    elif format == "parquet":
+    if format == "parquet" or format == "feather":
         data["s"] = [random.randbytes(random.randint(1, 64)) for _ in range(k)]
         data["z"] = [random.randbytes(10) for _ in range(k)]
         data["argh"] = [
             decimal.Decimal(f"{random.randint(0, 9999)}.{random.randint(0,999)}")
             for _ in range(k)
         ]
-    else:
-        raise (f"unsupport format {format}")
+    if format == "feather":
+        data["k"] = [np.float16(random.random()) for _ in range(k)]
+        data["p"] = [
+            pa.MonthDayNano(
+                [
+                    random.randint(1, 12),
+                    random.randint(1, 28),
+                    random.randint(1, 999) * 1000,
+                ]
+            )
+            for _ in range(k)
+        ]
+        data["y"] = [random.randint(0, 10e6) for _ in range(k)]
+
     return data
 
 
@@ -296,10 +368,45 @@ def test_compress(comp_string):
     assert util.decompress("uncompressed_file_path", "output_dir", comp_string) is None
 
 
+@pytest.mark.parametrize("dest_format", ["parquet", "feather"])
+def test_convert_csv(monkeypatch, dest_format):
+    name = "data_to_be_converted"
+    data = generate_complete_schema_data(100, "common")
+    orig_table = pa.table(data, schema=common_schema)
+    with tempfile.TemporaryDirectory() as tmpdspath:
+        monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/test_cache")
+        wo = csv.WriteOptions(include_header=False)
+        complete_dataset_info = {
+            "name": name,
+            "url": "http://example.com/complete_data.csv",
+            "format": "csv",
+            "tables": [
+                {
+                    "table": "complete_data",
+                    "schema": json.loads(common_schema_json_input),
+                }
+            ],
+        }
+        rawdir = pathlib.Path(tmpdspath, "csv_generated", "raw")
+        rawdir.mkdir(parents=True)
+        meta_file_path = rawdir / config.metadata_filename
+        with open(meta_file_path, "w") as metafile:
+            json.dump(complete_dataset_info, metafile)
+        csv.write_csv(orig_table, rawdir / "complete_data.csv", write_options=wo)
+        dataset = Dataset.from_json(meta_file_path)
+        print(dataset)
+        written_table = dataset.get_table_dataset().to_table()
+        assert written_table == orig_table
+        target_dataset = Dataset(name=name, format=dest_format)
+        converted_dataset = dataset.convert(target_dataset)
+        converted_table = converted_dataset.get_table_dataset().to_table()
+        assert converted_table == orig_table
+
+
 # Integration-style tests
 def test_main(capsys):
     # This should be in the cache already, so no conversion needed
-    exact_dataset = dataset.Dataset(name="fanniemae_sample", format="csv", delim="|")
+    exact_dataset = Dataset(name="fanniemae_sample", format="csv", delim="|")
 
     with pytest.raises(SystemExit) as e:
         datalogistik.main(exact_dataset)
@@ -322,7 +429,7 @@ def test_main_with_convert(capsys):
     try:
 
         # This should be in the cache, but needs to be converted
-        close_dataset = dataset.Dataset(name="fanniemae_sample", format="parquet")
+        close_dataset = Dataset(name="fanniemae_sample", format="parquet")
 
         with pytest.raises(SystemExit) as e:
             datalogistik.main(close_dataset)
@@ -337,4 +444,5 @@ def test_main_with_convert(capsys):
     finally:
         # cleanup all files that weren't there to start with
         for file in set(os.listdir(test_dir_path)) - set(start_files):
+            util.set_readwrite(file)
             shutil.rmtree(pathlib.Path(test_dir_path, file))
