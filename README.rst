@@ -173,7 +173,7 @@ properties:
     A string to identify the dataset.
 
 ``url``
-    Location where this dataset can be downloaded (for now, http(s). Support for S3 and
+    Location where this dataset can be downloaded (for now, http(s). Support for
     GCS may follow later).
 
 ``format``
@@ -250,7 +250,6 @@ datalogistik_metadata.ini
 
 ``local_creation_date``
     Date and time when this dataset was downloaded or generated to the cache.
-
 
 ``url``
     The location where this dataset was downloaded.
