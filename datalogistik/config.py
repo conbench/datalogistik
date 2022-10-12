@@ -19,9 +19,11 @@ import platform
 
 debug = True
 
-default_repo_file = (
+default_remote_repo_file = (
     "https://raw.githubusercontent.com/conbench/datalogistik/main/repo.json"
 )
+default_local_repo_file = str(pathlib.Path(__file__).parent.parent / "repo.json")
+
 if platform.system() == "Windows":
     default_cache_location = os.path.join(
         os.getenv("LOCALAPPDATA"), "datalogistik_cache"
@@ -38,7 +40,9 @@ def get_cache_location():
 
 
 def get_repo_file_path():
-    return os.getenv("DATALOGISTIK_REPO", default_repo_file)
+    if os.getenv("DATALOGISTIK_REPO") == "LOCAL":
+        return default_local_repo_file
+    return os.getenv("DATALOGISTIK_REPO", default_remote_repo_file)
 
 
 def get_max_cpu_count():
