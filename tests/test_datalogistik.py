@@ -26,7 +26,7 @@ import tempfile
 import numpy as np
 import pyarrow as pa
 import pyarrow.csv as csv
-import pyarrow.feather as feather
+import pyarrow.feather as feather  # arrow format
 import pyarrow.parquet as pq
 import pytest
 
@@ -244,7 +244,7 @@ def generate_random_string(length):
 # Generate random data according to the complete schemas above.
 # Not all datatypes are supported by all formats.
 # Note that if format is not set to one of the 3 supported formats
-# (parquet, csv, feather), the resulting data is supported by all 3.
+# (parquet, csv, arrow), the resulting data is supported by all 3.
 def generate_complete_schema_data(num_rows, format):
     k = num_rows
     data = {
@@ -304,7 +304,7 @@ def generate_complete_schema_data(num_rows, format):
             for _ in range(k)
         ],
     }
-    if format == "csv" or format == "feather":
+    if format == "csv" or format == "arrow":
         data["i"] = [random.randint(0, 2**32 - 1) for _ in range(k)]
         data["o"] = [
             datetime.datetime(
@@ -316,14 +316,14 @@ def generate_complete_schema_data(num_rows, format):
             * 1000
             for _ in range(k)
         ]
-    if format == "parquet" or format == "feather":
+    if format == "parquet" or format == "arrow":
         data["s"] = [random.randbytes(random.randint(1, 64)) for _ in range(k)]
         data["z"] = [random.randbytes(10) for _ in range(k)]
         data["argh"] = [
             decimal.Decimal(f"{random.randint(0, 9999)}.{random.randint(0,999)}")
             for _ in range(k)
         ]
-    if format == "feather":
+    if format == "arrow":
         data["k"] = [np.float16(random.random()) for _ in range(k)]
         data["p"] = [
             pa.MonthDayNano(
@@ -370,8 +370,8 @@ def test_compress(comp_string):
     assert util.decompress("uncompressed_file_path", "output_dir", comp_string) is None
 
 
-@pytest.mark.parametrize("source_format", ["csv", "parquet", "feather"])
-@pytest.mark.parametrize("dest_format", ["csv", "parquet", "feather"])
+@pytest.mark.parametrize("source_format", ["csv", "parquet", "arrow"])
+@pytest.mark.parametrize("dest_format", ["csv", "parquet", "arrow"])
 def test_convert_parquet(monkeypatch, source_format, dest_format):
     if source_format == dest_format:
         pytest.skip()
@@ -402,7 +402,7 @@ def test_convert_parquet(monkeypatch, source_format, dest_format):
             csv.write_csv(orig_table, rawdir / file_name, write_options=wo)
         elif source_format == "parquet":
             pq.write_table(orig_table, rawdir / file_name)
-        elif source_format == "feather":
+        elif source_format == "arrow":
             feather.write_feather(orig_table, rawdir / file_name)
         dataset = Dataset.from_json(meta_file_path)
         written_table = dataset.get_table_dataset().to_table()
