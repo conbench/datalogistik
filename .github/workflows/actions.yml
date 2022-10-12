@@ -60,6 +60,8 @@ jobs:
           - windows-latest
           - macos-latest
     runs-on: ${{ matrix.os }}
+    env:
+      DATALOGISTIK_REPO: LOCAL
     steps:
       - name: Add msbuild to PATH
         if: matrix.os == 'windows-latest'
@@ -107,6 +109,8 @@ jobs:
           - git+https://github.com/conbench/datalogistik.git@${{ github.sha }}
     needs: build-wheel
     runs-on: ${{ matrix.os }}
+    env:
+      DATALOGISTIK_REPO: LOCAL
     steps:
       - name: Set up Python
         uses: actions/setup-python@v2
