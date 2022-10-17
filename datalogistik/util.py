@@ -267,7 +267,7 @@ def generate_dataset(dataset):
     try:
         generator_class = generators[dataset.name]
         # TODO: support executable_path as env var?
-        generator = generator_class(executable_path=None)
+        generator = generator_class(executable_path=config.get_gen_location())
 
         dataset_path.mkdir(parents=True, exist_ok=True)
         generator.create_dataset(
