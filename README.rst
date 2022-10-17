@@ -262,18 +262,24 @@ datalogistik_metadata.ini
     ``schema``
         Schema of the table.
 
-``files``
-    A list of files in this dataset, excluding the metadata file itself. Each entry in
-    the list has the following properties:
+    ``url``
+        Download url in case this is a single-file table.
 
-    ``file_path``
-        Path to the file, relative to the base directory of the dataset.
+    ``base_url``
+        Base download url in case this is a multi-file table. Each file will append
+        their `rel_path` to this to form the full download url.
 
-    ``file_size``
-        Size of the file.
+    ``files``
+        A list of files in this table. Each entry in the list has the following properties:
 
-    ``md5``
-        MD5 checksum of the file.
+        ``rel_path``
+            Path to the file, relative to the directory of this table.
+
+        ``file_size``
+            Size of the file.
+
+        ``md5``
+            MD5 checksum of the file.
 
 License info
 ------------

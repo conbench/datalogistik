@@ -63,7 +63,6 @@ class Dataset:
     scale_factor: Optional[float] = None
     delim: Optional[str] = None
     metadata_file: Optional[pathlib.Path] = None
-    url: Optional[str] = None
     homepage: Optional[str] = None
     # a list of strings that can be added when csv parsing to treat as if they were nulls
     extra_nulls: Optional[List] = field(default_factory=list)
@@ -205,6 +204,16 @@ class Dataset:
             table_path = dataset_path / (table.table + self.get_extension())
         return table_path
 
+    def get_table_dir(self, table=None):
+        dataset_path = self.ensure_dataset_loc()
+        # Defaults to the 0th table, which for single-table datasets is exactly what we want
+        table = self.get_one_table(table)
+
+        if len(table.files) > 1 or table.multi_file:
+            return dataset_path / table.table
+        else:
+            return dataset_path
+
     def get_one_table(self, table=None):
         if isinstance(table, Table):
             return table
@@ -302,8 +311,8 @@ class Dataset:
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
         )
 
-    def file_listing_item(self, file_path):
-        rel_path = file_path.relative_to(self.ensure_dataset_loc())
+    def file_listing_item(self, file_path, table=None):
+        rel_path = file_path.relative_to(self.get_table_dir(table))
         file_size = os.path.getsize(file_path)
         file_md5 = util.calculate_checksum(file_path)
         return {
@@ -317,14 +326,16 @@ class Dataset:
         path = self.ensure_table_loc(table)
         if path.is_file():
             # Single-file dataset, no parallelism needed
-            return [self.file_listing_item(path)]
+            return [self.file_listing_item(path, table)]
         with concurrent.futures.ProcessPoolExecutor(config.get_thread_count()) as pool:
             futures = []
             for cur_path, dirs, files in os.walk(path):
                 for file_name in files:
                     futures.append(
                         pool.submit(
-                            self.file_listing_item, pathlib.Path(cur_path, file_name)
+                            self.file_listing_item,
+                            pathlib.Path(cur_path, file_name),
+                            table,
                         )
                     )
             file_list = []
@@ -433,36 +444,79 @@ class Dataset:
         log.info("Downloading to cache...")
         down_start = time.perf_counter()
 
-        # Ensure the dataset path is available
-        # we can't hash yet, so let's call this "raw"
-        self.ensure_dataset_loc(new_hash="raw")
+        if not self.tables:
+            msg = (
+                "No table entries were found. "
+                "To download a dataset, at least 1 table entry must exist "
+                "that has a 'url' or 'base_url' property."
+            )
+            log.error(msg)
+            raise ValueError(msg)
 
-        # For now, we always download all tables. So we need to loop through each table
-        for table in self.tables:
-            # create table dir
-            table_path = self.ensure_table_loc(table)
+        try:
+            # Ensure the dataset path is available
+            # we can't hash yet, so let's call this "raw"
+            dataset_path = self.ensure_dataset_loc(new_hash="raw")
 
-            for file in table.files:
-                download_path = table_path
-                if len(table.files) == 1:
-                    url = self.url
-                else:
-                    # contains the suffix for the download url
-                    file_name = file.get("rel_path")
-                    if file_name:
+            # For now, we always download all tables. So we need to loop through each table
+            for table in self.tables:
+
+                # There are 2 possible types downloads:
+                # 1 - The table entry has a url property. Either this table is a single-file, or it is a single
+                # download that will produce multiple files.
+                # 2 - multi file (either single or multi table). The table entry has a base_url property,
+                # and each file has a rel_path property. This is appended to the base_url to form
+                # the download link. The files will be placed in the table directory (generated from the table name).
+
+                # create table dir
+                table_path = self.ensure_table_loc(table)
+
+                # Type 1
+                if table.url:
+                    # Note that table_path will be a file if this is a single-file table,
+                    # and a dir if it is a multi-file table (download_file will produce multiple files)
+                    util.download_file(table.url, output_path=table_path)
+                    util.set_readonly(table_path)
+
+                # Type 2
+                elif table.base_url:
+                    if len(table.files) <= 1:
+                        msg = f"Single-file table '{table.table}' has 'base_url' property set. It should only have a 'url'."
+                        log.error(msg)
+                        raise ValueError(msg)
+                    for file in table.files:
+                        # contains the suffix for the download url
+                        rel_path = file.get("rel_path")
+                        if not rel_path:
+                            msg = f"Missing rel_path property for multi-file table '{table.table}'."
+                            log.error(msg)
+                            raise ValueError(msg)
+
                         # All files constituting a table must be in a dir with name table.name (created by ensure_table_loc)
-                        download_path = table_path / pathlib.Path(file_name).name
-                        url = self.url + "/" + pathlib.Path(file_name).name
+                        # note that the resulting dir structure is not necessarily flat,
+                        # because the table can have multiple levels of partitioning.
+                        download_path = table_path / rel_path
+                        url = table.base_url + "/" + rel_path
 
-                util.download_file(url, output_path=download_path)
-                util.set_readonly(download_path)
+                        util.download_file(url, output_path=download_path)
+                        util.set_readonly(download_path)
 
-            # Try validation in case the dataset info contained checksums
-            if not self.validate_table_files(table):
-                util.clean_cache_dir(self.cache_location)
-                msg = "File integrity check for newly downloaded dataset failed."
-                log.error(msg)
-                raise RuntimeError(msg)
+                else:
+                    msg = f"Could not find a url or base_url property for Table '{table.table}'."
+                    log.error(msg)
+                    raise RuntimeError(msg)
+
+                # Try validation in case the dataset info contained checksums
+                if not self.validate_table_files(table):
+                    msg = "File integrity check for newly downloaded table failed."
+                    log.error(msg)
+                    raise RuntimeError(msg)
+
+            self.write_metadata()
+        except Exception:
+            log.error("An error occurred during download.")
+            util.clean_cache_dir(dataset_path)
+            raise
 
         down_time = time.perf_counter() - down_start
         log.debug(f"download took {down_time:0.2f} s")
@@ -470,6 +524,7 @@ class Dataset:
 
     def fill_metadata_from_files(self):
         # TODO: Should we attempt to find format? That should never mismatch...
+        # TODO: check whether compression and format are the same for all files
 
         if len(self.tables) == 1:
             self.tables[0].files = self.create_file_listing(self.tables[0])

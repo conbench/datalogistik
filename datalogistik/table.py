@@ -32,3 +32,5 @@ class Table:
     multi_file: Optional[bool] = None
     header_line: Optional[bool] = None
     dim: Optional[List] = field(default_factory=list)
+    url: Optional[str] = None
+    base_url: Optional[str] = None
