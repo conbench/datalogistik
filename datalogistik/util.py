@@ -267,7 +267,7 @@ def generate_dataset(dataset):
     try:
         generator_class = generators[dataset.name]
         # TODO: support executable_path as env var?
-        generator = generator_class(executable_path=None)
+        generator = generator_class(executable_path=config.get_gen_location())
 
         dataset_path.mkdir(parents=True, exist_ok=True)
         generator.create_dataset(
@@ -370,8 +370,8 @@ def download_file(url, output_path):
     # It doesn't have a metadata file (otherwise, the cache would have hit),
     # so something could have gone wrong while downloading/converting previously
     if output_path.exists():
-        log.debug(f"Removing existing file '{output_path}'")
-        output_path.unlink()
+        log.debug(f"Removing existing path '{output_path}'")
+        shutil.rmtree(output_path, ignore_errors=True)
 
     try:
         http = urllib3.PoolManager()
