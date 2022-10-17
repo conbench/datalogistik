@@ -77,17 +77,6 @@ def parse_args():
         default=None,
         help="Scale factor for TPC datasets",
     )
-    # TODO: should this be an env var instead of an argument?
-    gen_parser.add_argument(
-        "-g",
-        "--generator-path",
-        type=str,
-        default=None,
-        help="Path to the location of the external generator (e.g. TPC-H's dbgen). If "
-        "not given, datalogistik will attempt to make it by cloning a repo (requires "
-        "git on your PATH) and building the tool (requires make for UNIX or msbuild "
-        "for Windows on your PATH).",
-    )
 
     return parser.parse_args()
 
