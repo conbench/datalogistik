@@ -160,10 +160,8 @@ Repositories
 
 ``datalogistik`` uses a metadata repository file for finding downloadable datasets. By
 default, it downloads the repo file from the datalogistik github repository, but you can
-override this by setting the ``DATALOGISTIK_REPO`` environment variable.
-You can point it to a JSON file (via http or on your local filesystem),
-or set it to ``LOCAL`` which will cause the repo file that came with the install.
-This last option is used for testing, so that changes to the repo file are tested by CI.
+override this by setting the ``DATALOGISTIK_REPO`` environment variable. You can also
+point it to a JSON file on your local filesystem.
 
 The default ``repo.json`` file included is based on sources taken from `the arrowbench
 repo <https://github.com/ursacomputing/arrowbench/blob/main/R/known-sources.R>`_.
