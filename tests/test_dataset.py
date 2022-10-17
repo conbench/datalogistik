@@ -494,11 +494,14 @@ def test_output_result():
             },
         }
     )
-    assert Dataset(
-        remote=True,
-        name="remote",
-        format="parquet",
-        tables=[Table(table="remote_table", url="s3://remote_table/")],
+    assert (
+        Dataset(
+            remote=True,
+            name="remote",
+            format="parquet",
+            tables=[Table(table="remote_table", url="s3://remote_table/")],
+        ).output_result()
+        == expected
     )
 
 
