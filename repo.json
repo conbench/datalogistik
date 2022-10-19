@@ -1,236 +1,235 @@
 [
-    [
-        {
-            "name": "fanniemae_2016Q4",
-            "homepage": "https://capitalmarkets.fanniemae.com/credit-risk-transfer/single-family-credit-risk-transfer/fannie-mae-single-family-loan-performance-data",
-            "delim": "|",
-            "format": "csv",
-            "compression": "gz",
-            "tables": [
-                {
-                    "table": "2016Q4",
-                    "url": "https://ursa-qa.s3.amazonaws.com/fanniemae_loanperf/2016Q4.csv.gz",
-                    "header_line": false,
-                    "files": [
-                        {
-                            "rel_path": "2016Q4.csv.gz",
-                            "file_size": 262125134,
-                            "md5": "6e8ff7ae76033c452a9b72350461a4e6"
-                        }
-                    ],
-                    "dim": [
-                        22180168,
-                        31
-                    ],
-                    "schema": {
-                        "LOAN_ID": "string",
-                        "ACT_PERIOD": "string",
-                        "SERVICER": "string",
-                        "ORIG_RATE": "float64",
-                        "CURRENT_UPB": "float64",
-                        "LOAN_AGE": "int32",
-                        "REM_MONTHS": "int32",
-                        "ADJ_REM_MONTHS": "int32",
-                        "MATR_DT": "string",
-                        "MSA": "string",
-                        "DLQ_STATUS": "string",
-                        "RELOCATION_MORTGAGE_INDICATOR": "string",
-                        "Zero_Bal_Code": "string",
-                        "ZB_DTE": "string",
-                        "LAST_PAID_INSTALLMENT_DATE": "string",
-                        "FORECLOSURE_DATE": "string",
-                        "DISPOSITION_DATE": "string",
-                        "FORECLOSURE_COSTS": "float64",
-                        "PROPERTY_PRESERVATION_AND_REPAIR_COSTS": "float64",
-                        "ASSET_RECOVERY_COSTS": "float64",
-                        "MISCELLANEOUS_HOLDING_EXPENSES_AND_CREDITS": "float64",
-                        "ASSOCIATED_TAXES_FOR_HOLDING_PROPERTY": "float64",
-                        "NET_SALES_PROCEEDS": "float64",
-                        "CREDIT_ENHANCEMENT_PROCEEDS": "float64",
-                        "REPURCHASES_MAKE_WHOLE_PROCEEDS": "float64",
-                        "OTHER_FORECLOSURE_PROCEEDS": "float64",
-                        "NON_INTEREST_BEARING_UPB": "float64",
-                        "MI_CANCEL_FLAG": "string",
-                        "RE_PROCS_FLAG": "string",
-                        "LOAN_HOLDBACK_INDICATOR": "string",
-                        "SERV_IND": "string"
+    {
+        "name": "fanniemae_2016Q4",
+        "homepage": "https://capitalmarkets.fanniemae.com/credit-risk-transfer/single-family-credit-risk-transfer/fannie-mae-single-family-loan-performance-data",
+        "delim": "|",
+        "format": "csv",
+        "compression": "gz",
+        "tables": [
+            {
+                "table": "2016Q4",
+                "url": "https://ursa-qa.s3.amazonaws.com/fanniemae_loanperf/2016Q4.csv.gz",
+                "header_line": false,
+                "files": [
+                    {
+                        "rel_path": "2016Q4.csv.gz",
+                        "file_size": 262125134,
+                        "md5": "6e8ff7ae76033c452a9b72350461a4e6"
                     }
+                ],
+                "dim": [
+                    22180168,
+                    31
+                ],
+                "schema": {
+                    "LOAN_ID": "string",
+                    "ACT_PERIOD": "string",
+                    "SERVICER": "string",
+                    "ORIG_RATE": "float64",
+                    "CURRENT_UPB": "float64",
+                    "LOAN_AGE": "int32",
+                    "REM_MONTHS": "int32",
+                    "ADJ_REM_MONTHS": "int32",
+                    "MATR_DT": "string",
+                    "MSA": "string",
+                    "DLQ_STATUS": "string",
+                    "RELOCATION_MORTGAGE_INDICATOR": "string",
+                    "Zero_Bal_Code": "string",
+                    "ZB_DTE": "string",
+                    "LAST_PAID_INSTALLMENT_DATE": "string",
+                    "FORECLOSURE_DATE": "string",
+                    "DISPOSITION_DATE": "string",
+                    "FORECLOSURE_COSTS": "float64",
+                    "PROPERTY_PRESERVATION_AND_REPAIR_COSTS": "float64",
+                    "ASSET_RECOVERY_COSTS": "float64",
+                    "MISCELLANEOUS_HOLDING_EXPENSES_AND_CREDITS": "float64",
+                    "ASSOCIATED_TAXES_FOR_HOLDING_PROPERTY": "float64",
+                    "NET_SALES_PROCEEDS": "float64",
+                    "CREDIT_ENHANCEMENT_PROCEEDS": "float64",
+                    "REPURCHASES_MAKE_WHOLE_PROCEEDS": "float64",
+                    "OTHER_FORECLOSURE_PROCEEDS": "float64",
+                    "NON_INTEREST_BEARING_UPB": "float64",
+                    "MI_CANCEL_FLAG": "string",
+                    "RE_PROCS_FLAG": "string",
+                    "LOAN_HOLDBACK_INDICATOR": "string",
+                    "SERV_IND": "string"
                 }
-            ]
-        },
-        {
-            "name": "nyctaxi_2010-01",
-            "homepage": "https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
-            "delim": ",",
-            "format": "csv",
-            "compression": "gz",
-            "extra_nulls": [
-                "*"
-            ],
-            "tables": [
-                {
-                    "table": "nyctaxi_2010-01",
-                    "url": "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
-                    "header_line": true,
-                    "dim": [
-                        14863778,
-                        18
-                    ],
-                    "files": [
-                        {
-                            "rel_path": "nyctaxi_2010-01.csv.gz",
-                            "file_size": 591876633,
-                            "md5": "22bd86bf54da91faf26fa8a243644a9f"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "chi_traffic_2020_Q1",
-            "format": "parquet",
-            "tables": [
-                {
-                    "table": "chi_traffic_2020_Q1",
-                    "url": "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
-                    "dim": [
-                        13038291,
-                        23
-                    ],
-                    "files": [
-                        {
-                            "rel_path": "chi_traffic_2020_Q1.parquet",
-                            "file_size": 182895135,
-                            "md5": "b53ea738eda7ee051bcf33b3056b83f6"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "type_strings",
-            "format": "parquet",
-            "tables": [
-                {
-                    "table": "type_strings",
-                    "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_strings.parquet",
-                    "dim": [
-                        1000000,
-                        5
-                    ],
-                    "files": [
-                        {
-                            "rel_path": "type_strings.parquet",
-                            "file_size": 87174822,
-                            "md5": "927c0cf481fb3c4870806b096b525d90"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "type_dict",
-            "format": "parquet",
-            "tables": [
-                {
-                    "table": "type_dict",
-                    "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_dict.parquet",
-                    "dim": [
-                        1000000,
-                        5
-                    ],
-                    "files": [
-                        {
-                            "rel_path": "type_dict.parquet",
-                            "file_size": 2890770,
-                            "md5": "4186ad2f3072db6558aba3c535da1b97"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "type_integers",
-            "format": "parquet",
-            "tables": [
-                {
-                    "table": "type_integers",
-                    "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_integers.parquet",
-                    "dim": [
-                        1000000,
-                        5
-                    ],
-                    "files": [
-                        {
-                            "rel_path": "type_integers.parquet",
-                            "file_size": 15882666,
-                            "md5": "7d44caa83025c9c7ef2ded67081d6d68"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "type_floats",
-            "format": "parquet",
-            "tables": [
-                {
-                    "table": "type_floats",
-                    "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_floats.parquet",
-                    "dim": [
-                        1000000,
-                        5
-                    ],
-                    "files": [
-                        {
-                            "rel_path": "type_floats.parquet",
-                            "file_size": 23851672,
-                            "md5": "d083e46ddeff5cc5a3be3ea5c2f7f9d7"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "type_nested",
-            "format": "parquet",
-            "tables": [
-                {
-                    "table": "type_nested",
-                    "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_nested.parquet",
-                    "dim": [
-                        1000000,
-                        4
-                    ],
-                    "files": [
-                        {
-                            "rel_path": "type_nested.parquet",
-                            "file_size": 130538033,
-                            "md5": "4bcf6735b00b32fccb6da338262def23"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "type_simple_features",
-            "format": "parquet",
-            "tables": [
-                {
-                    "table": "type_simple_features",
-                    "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_simple_features.parquet",
-                    "dim": [
-                        1000000,
-                        5
-                    ],
-                    "files": [
-                        {
-                            "rel_path": "type_simple_features.parquet",
-                            "file_size": 28637722,
-                            "md5": "7776bea2a08e0466f77058676e2bb567"
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
+            }
+        ]
+    },
+    {
+        "name": "nyctaxi_2010-01",
+        "homepage": "https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
+        "delim": ",",
+        "format": "csv",
+        "compression": "gz",
+        "extra_nulls": [
+            "*"
+        ],
+        "tables": [
+            {
+                "table": "nyctaxi_2010-01",
+                "url": "https://ursa-qa.s3.amazonaws.com/nyctaxi/yellow_tripdata_2010-01.csv.gz",
+                "header_line": true,
+                "dim": [
+                    14863778,
+                    18
+                ],
+                "files": [
+                    {
+                        "rel_path": "nyctaxi_2010-01.csv.gz",
+                        "file_size": 591876633,
+                        "md5": "22bd86bf54da91faf26fa8a243644a9f"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "chi_traffic_2020_Q1",
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "chi_traffic_2020_Q1",
+                "url": "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
+                "dim": [
+                    13038291,
+                    23
+                ],
+                "files": [
+                    {
+                        "rel_path": "chi_traffic_2020_Q1.parquet",
+                        "file_size": 182895135,
+                        "md5": "b53ea738eda7ee051bcf33b3056b83f6"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "type_strings",
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_strings",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_strings.parquet",
+                "dim": [
+                    1000000,
+                    5
+                ],
+                "files": [
+                    {
+                        "rel_path": "type_strings.parquet",
+                        "file_size": 87174822,
+                        "md5": "927c0cf481fb3c4870806b096b525d90"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "type_dict",
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_dict",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_dict.parquet",
+                "dim": [
+                    1000000,
+                    5
+                ],
+                "files": [
+                    {
+                        "rel_path": "type_dict.parquet",
+                        "file_size": 2890770,
+                        "md5": "4186ad2f3072db6558aba3c535da1b97"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "type_integers",
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_integers",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_integers.parquet",
+                "dim": [
+                    1000000,
+                    5
+                ],
+                "files": [
+                    {
+                        "rel_path": "type_integers.parquet",
+                        "file_size": 15882666,
+                        "md5": "7d44caa83025c9c7ef2ded67081d6d68"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "type_floats",
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_floats",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_floats.parquet",
+                "dim": [
+                    1000000,
+                    5
+                ],
+                "files": [
+                    {
+                        "rel_path": "type_floats.parquet",
+                        "file_size": 23851672,
+                        "md5": "d083e46ddeff5cc5a3be3ea5c2f7f9d7"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "type_nested",
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_nested",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_nested.parquet",
+                "dim": [
+                    1000000,
+                    4
+                ],
+                "files": [
+                    {
+                        "rel_path": "type_nested.parquet",
+                        "file_size": 130538033,
+                        "md5": "4bcf6735b00b32fccb6da338262def23"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "type_simple_features",
+        "format": "parquet",
+        "tables": [
+            {
+                "table": "type_simple_features",
+                "url": "https://ursa-qa.s3.amazonaws.com/single_types/type_simple_features.parquet",
+                "dim": [
+                    1000000,
+                    5
+                ],
+                "files": [
+                    {
+                        "rel_path": "type_simple_features.parquet",
+                        "file_size": 28637722,
+                        "md5": "7776bea2a08e0466f77058676e2bb567"
+                    }
+                ]
+            }
+        ]
+    }
+]
