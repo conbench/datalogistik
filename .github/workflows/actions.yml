@@ -107,6 +107,8 @@ jobs:
           - git+https://github.com/conbench/datalogistik.git@${{ github.sha }}
     needs: build-wheel
     runs-on: ${{ matrix.os }}
+    env:
+        DATALOGISTIK_REPO: https://raw.githubusercontent.com/conbench/datalogistik/${{ env.GITHUB_REF_NAME }}/repo.json
     steps:
       - name: Set up Python
         uses: actions/setup-python@v2
