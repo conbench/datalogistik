@@ -36,21 +36,17 @@ def find_or_instantiate_close_dataset(dataset):
 
     # If no variants are available, ensure that one is
     if variants == []:
-        # N. B. this will raise an error for unrecognized datasets
         dataset_to_fetch = repo.search_repo(dataset.name, repo.get_repo())
         if dataset_to_fetch:
             # we found a dataset, so we can use it
-            if dataset_to_fetch.remote:
-                variants = [dataset_to_fetch]
-            else:
-                dataset_to_fetch.download()
-                # Read in the JSON after downloading, because it could contain more metadata
-                # that was detected from the file(s), like format and compression
-                variants = [
-                    Dataset.from_json(
-                        dataset_to_fetch.ensure_dataset_loc() / config.metadata_filename
-                    )
-                ]
+            dataset_to_fetch.download()
+            # Read in the JSON after downloading, because it could contain more metadata
+            # that was detected from the file(s), like format and compression
+            variants = [
+                Dataset.from_json(
+                    dataset_to_fetch.ensure_dataset_loc() / config.metadata_filename
+                )
+            ]
 
     if dataset.name in tpc_info.tpc_datasets:
         # filter variants to the same scale factor (and all tpc datasets require scale factor...)
@@ -69,14 +65,15 @@ def find_or_instantiate_close_dataset(dataset):
         log.error(msg)
         raise ValueError(msg)
 
-    # order parquet first (since they should be fast(er) to convert from)
-    # when we support .arrow, those likely should be first, then parquet, et c.
-    # TODO: sort by compression too?
-    format_preference = {
-        "parquet": 0,
-        "csv": 1,
-        "tpc-raw": 3,
-    }
-    variants.sort(key=lambda c: format_preference[c.format])
+    else:
+        # order parquet first (since they should be fast(er) to convert from)
+        # when we support .arrow, those likely should be first, then parquet, et c.
+        # TODO: sort by compression too?
+        format_preference = {
+            "parquet": 0,
+            "csv": 1,
+            "tpc-raw": 3,
+        }
+        variants.sort(key=lambda c: format_preference[c.format])
 
-    return variants[0]
+        return variants[0]

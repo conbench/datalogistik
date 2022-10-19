@@ -147,6 +147,8 @@ class Dataset:
         if tables is not None:
             tables = [Table(**table) for table in tables]
             metadata["tables"] = tables
+        if metadata.get("format") == "parquet" and not metadata.get("compression"):
+            metadata["compression"] = "snappy"
 
         return cls(**metadata)
 
