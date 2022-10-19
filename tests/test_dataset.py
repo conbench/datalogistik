@@ -577,7 +577,7 @@ def test_fill_in_defaults():
     assert ds.format == "csv"
     assert ds.delim == "|"
 
-    # but we don't over-write if an attribute is given, and we never over-write compression (cause that turns into some weird circumstances)
+    # but we don't over-write if an attribute is given
     ds = Dataset(name="fanniemae_sample", format="parquet")
     dataset_from_repo = Dataset(
         name="fanniemae_sample", format="csv", delim="|", compression="gz"
@@ -585,7 +585,6 @@ def test_fill_in_defaults():
 
     ds.fill_in_defaults(dataset_from_repo)
     assert ds.format == "parquet"  # NB: not csv
-    assert ds.compression is None
 
 
 def test_get_dataset_with_schema():

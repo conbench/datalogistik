@@ -84,6 +84,8 @@ class Dataset:
             self.scale_factor = 1.0
         if self.remote is None:
             self.remote = False
+        if self.format == "parquet" and not self.compression:
+            self.compression = "snappy"
 
         # Use None as the true default for uncompressed
         # the first comparison is a bit redundant, but None.lower() fails
@@ -147,8 +149,6 @@ class Dataset:
         if tables is not None:
             tables = [Table(**table) for table in tables]
             metadata["tables"] = tables
-        if metadata.get("format") == "parquet" and not metadata.get("compression"):
-            metadata["compression"] = "snappy"
 
         return cls(**metadata)
 
