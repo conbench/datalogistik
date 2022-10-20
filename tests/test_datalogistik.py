@@ -299,7 +299,10 @@ def test_compress(comp_string):
 # Integration-style tests
 def test_main(capsys):
     # This should be in the cache already, so no conversion needed
-    exact_dataset = dataset.Dataset(name="fanniemae_sample", format="csv", delim="|")
+    # import pdb; pdb.set_trace()
+    exact_dataset = dataset.Dataset(
+        name="fanniemae_sample", format="csv", delim="|", compression="gzip"
+    )
 
     with pytest.raises(SystemExit) as e:
         datalogistik.main(exact_dataset)
@@ -310,6 +313,11 @@ def test_main(capsys):
     assert captured["name"] == "fanniemae_sample"
     assert captured["format"] == "csv"
     assert isinstance(captured["tables"], dict)
+    # this is the path from the fixtures, if this doesn't match, we've actualy converted and not just found the extant one
+    assert (
+        captured["tables"]["fanniemae_sample"]["path"]
+        == "tests/fixtures/test_cache/fanniemae_sample/a77e575/fanniemae_sample.csv.gz"
+    )
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="windows errors on the cleanup")
