@@ -26,6 +26,12 @@ from datalogistik import config, dataset_search, util
 from datalogistik.dataset import Dataset
 from datalogistik.table import Table
 
+
+@pytest.fixture(autouse=True)
+def mock_settings_env_vars(monkeypatch):
+    monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/test_cache")
+
+
 simple_parquet_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
 )
@@ -106,11 +112,6 @@ multi_file_listing = [
 multi_table_ds = Dataset.from_json(
     metadata="./tests/fixtures/test_cache/chi_taxi/dabb1e5/datalogistik_metadata.ini"
 )
-
-
-@pytest.fixture(autouse=True)
-def mock_settings_env_vars(monkeypatch):
-    monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/test_cache")
 
 
 def test_create_Dataset_from_name():

@@ -160,9 +160,9 @@ Repositories
 ------------
 
 ``datalogistik`` uses a metadata repository file for finding downloadable datasets. By
-default, it searches for a file ``./repo.json`` in the working directory, but you can
+default, it downloads the repo file from the datalogistik github repository, but you can
 override this by setting the ``DATALOGISTIK_REPO`` environment variable. You can also
-point it to a JSON file accessible online via http.
+point it to a JSON file on your local filesystem.
 
 The default ``repo.json`` file included is based on sources taken from `the arrowbench
 repo <https://github.com/ursacomputing/arrowbench/blob/main/R/known-sources.R>`_.

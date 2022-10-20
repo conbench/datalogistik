@@ -17,7 +17,6 @@ name = "datalogistik"
 version = "0.1.0"
 description = ""
 authors = ["Joost Hoozemans <joost@voltrondata.com>", "Austin Dickey <austin@voltrondata.com>"]
-include = ["repo.json"]
 
 [tool.poetry.dependencies]
 python = "^3.8"

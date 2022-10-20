@@ -21,6 +21,8 @@ from datalogistik.repo import get_repo, search_repo
 @pytest.fixture(autouse=True)
 def mock_settings_env_vars(monkeypatch):
     monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/datalogistik_cache")
+    # Use local repo file in case we are making changes to it
+    monkeypatch.setenv("DATALOGISTIK_REPO", "./repo.json")
 
 
 def test_get_repo():
@@ -34,4 +36,4 @@ def test_search_repo():
     fannie = search_repo("fanniemae_2016Q4", repo_data)
     assert isinstance(fannie, Dataset)
 
-    # TODO: assert error?
+    assert search_repo("nonexistingdataset", repo_data) is None
