@@ -388,30 +388,7 @@ platformdirs = []
 pluggy = []
 pre-commit = []
 py = []
-pyarrow = [
-    {file = "pyarrow-10.0.0.dev497-cp310-cp310-macosx_10_14_universal2.whl", hash = "md5:cae33e115881bd2f7fcefd048e599a78"},
-    {file = "pyarrow-10.0.0.dev497-cp310-cp310-macosx_10_14_x86_64.whl", hash = "md5:84b7d62a5d482a42dd3e305cfb66cb31"},
-    {file = "pyarrow-10.0.0.dev497-cp310-cp310-macosx_11_0_arm64.whl", hash = "md5:1f23d4e8a8b131a7a56a880fcb0d8b83"},
-    {file = "pyarrow-10.0.0.dev497-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "md5:099aeaf8665bd7abc46b06952c1690c1"},
-    {file = "pyarrow-10.0.0.dev497-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "md5:2e2ec08c676ebc741bc759b5f6c4609b"},
-    {file = "pyarrow-10.0.0.dev497-cp310-cp310-win_amd64.whl", hash = "md5:a8cdcad7deca021e1814f9e969aa8307"},
-    {file = "pyarrow-10.0.0.dev497-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "md5:e55f06a5b862fa1b67a0692f01761cfd"},
-    {file = "pyarrow-10.0.0.dev497-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "md5:6ba5ad635b06101d80ebb74c960732ae"},
-    {file = "pyarrow-10.0.0.dev497-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "md5:de87389195b6fa31f351b26878f139b3"},
-    {file = "pyarrow-10.0.0.dev497-cp37-cp37m-win_amd64.whl", hash = "md5:7e27f3231fa398e4194d39eddcf4ec6c"},
-    {file = "pyarrow-10.0.0.dev497-cp38-cp38-macosx_10_14_x86_64.whl", hash = "md5:fed97bc1ba7a204b6a9e40bfae2b43db"},
-    {file = "pyarrow-10.0.0.dev497-cp38-cp38-macosx_11_0_arm64.whl", hash = "md5:cd1920bdbd4131743d5f242a86f3d2ef"},
-    {file = "pyarrow-10.0.0.dev497-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "md5:0807927237a7801466a73767eaecc885"},
-    {file = "pyarrow-10.0.0.dev497-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "md5:578a7a17fb6a7731c12d23add5026bac"},
-    {file = "pyarrow-10.0.0.dev497-cp38-cp38-win_amd64.whl", hash = "md5:b99515e6b6f8068ee3fda9dca30fe496"},
-    {file = "pyarrow-10.0.0.dev497-cp39-cp39-macosx_10_14_universal2.whl", hash = "md5:9b1f2d097bbc6f810f564cda46b42d76"},
-    {file = "pyarrow-10.0.0.dev497-cp39-cp39-macosx_10_14_x86_64.whl", hash = "md5:bf782b8e2445d5e4bc2d66b8830df72e"},
-    {file = "pyarrow-10.0.0.dev497-cp39-cp39-macosx_11_0_arm64.whl", hash = "md5:14b2a019d9d65400a64eedb8d6cf62b1"},
-    {file = "pyarrow-10.0.0.dev497-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "md5:58a2a80560b15dcb703371f73b850bf1"},
-    {file = "pyarrow-10.0.0.dev497-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "md5:ec5377398482963dc39a9be332d80e6c"},
-    {file = "pyarrow-10.0.0.dev497-cp39-cp39-win_amd64.whl", hash = "md5:4b5304c0cf24721db4d232425016a945"},
-    {file = "pyarrow-10.0.0.dev497.tar.gz", hash = "md5:aa13923881ea17a15f027f53272407a8"},
-]
+pyarrow = []
 pycodestyle = []
 pyflakes = []
 pyparsing = []
