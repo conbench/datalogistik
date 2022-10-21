@@ -433,8 +433,9 @@ class Dataset:
 
         if self.format == "feather":
             dataset_write_format = pads.IpcFileFormat()
-            # Using pyarrow.datasets, compression is not supported
-            write_options = dataset_write_format.make_write_options()
+            write_options = dataset_write_format.make_write_options(
+                compression=self.compression
+            )
 
         if self.format == "csv":
             dataset_write_format = pads.CsvFileFormat()
@@ -599,10 +600,6 @@ class Dataset:
             f"compression {self.compression} to {new_dataset.format}, "
             f"compression {new_dataset.compression}..."
         )
-        if new_dataset.format == "feather" and new_dataset.compression:
-            msg = "Compression not supported when converting to Feather format."
-            log.error(msg)
-            raise ValueError(msg)
 
         conv_start = time.perf_counter()
 
