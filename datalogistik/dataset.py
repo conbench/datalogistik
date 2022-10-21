@@ -300,8 +300,8 @@ class Dataset:
         schema = None
         if self.format == "parquet":
             dataset_read_format = pads.ParquetFileFormat()
-        if self.format == "feather":
-            dataset_read_format = pads.IpcFileFormat()
+        if self.format == "arrow":
+            dataset_read_format = "arrow"
         if self.format == "csv":
             dataset_read_format, schema = self.get_csv_dataset_spec(table)
         if self.format == "tpc-raw":
@@ -431,7 +431,7 @@ class Dataset:
                 allow_truncated_timestamps=True,
             )
 
-        if self.format == "feather":
+        if self.format == "arrow":
             dataset_write_format = pads.IpcFileFormat()
             write_options = dataset_write_format.make_write_options(
                 compression=self.compression
@@ -558,7 +558,7 @@ class Dataset:
                     f"metadata ({self.compression}, updating..."
                 )
                 self.compression = detected_compression
-        # There is no API for detecting feather's internal compression,
+        # There is no API for detecting Arrow IPC's internal compression,
         # so we need to rely on what the user specified in the repo file
 
         # TODO: add auto-detected csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
@@ -600,7 +600,6 @@ class Dataset:
             f"compression {self.compression} to {new_dataset.format}, "
             f"compression {new_dataset.compression}..."
         )
-
         conv_start = time.perf_counter()
 
         try:
