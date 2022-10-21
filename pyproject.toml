@@ -19,9 +19,15 @@ description = ""
 authors = ["Joost Hoozemans <joost@voltrondata.com>", "Austin Dickey <austin@voltrondata.com>"]
 include = ["repo.json"]
 
+[[tool.poetry.source]]
+name = "arrow-nightlies"
+url = "https://pypi.fury.io/arrow-nightlies/"
+default = false
+secondary = false
+
 [tool.poetry.dependencies]
 python = "^3.8"
-pyarrow = "^9.0.0"
+pyarrow = "^10.0.0dev497"
 urllib3 = "^1.26.9"
 
 [tool.poetry.dev-dependencies]
