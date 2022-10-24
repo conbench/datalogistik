@@ -136,7 +136,7 @@ def parse_args_and_get_dataset_info():
             format=opts.format,
             scale_factor=opts.scale_factor,
             compression=opts.compression,
-            remote=opts.remote,
+            _remote=opts.remote,
         )
 
         # Set defaults and perform sanity-check for the arguments:

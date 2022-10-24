@@ -41,7 +41,7 @@ def main(dataset=None):
         pyarrow.set_cpu_count(config.get_max_cpu_count())
         pyarrow.set_io_thread_count(config.get_max_cpu_count())
 
-    if dataset.remote:
+    if dataset._remote:
         matching_dataset = repo.search_repo(dataset.name, repo.get_repo())
         if matching_dataset is None:
             msg = (
@@ -60,7 +60,7 @@ def main(dataset=None):
             log.error(msg)
             raise ValueError(msg)
         else:
-            matching_dataset.remote = True
+            matching_dataset._remote = True
             print(matching_dataset.output_result())
             finish()
 

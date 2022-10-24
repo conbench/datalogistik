@@ -62,7 +62,6 @@ class Dataset:
     local_creation_date: Optional[str] = None
     scale_factor: Optional[float] = None
     delim: Optional[str] = None
-    remote: Optional[bool] = None
     metadata_file: Optional[pathlib.Path] = None
     homepage: Optional[str] = None
     # a list of strings that can be added when csv parsing to treat as if they were nulls
@@ -71,6 +70,7 @@ class Dataset:
     # To be filled in at run time only
     cache_location: Optional[pathlib.Path] = None
     dir_hash: Optional[str] = None
+    _remote: Optional[bool] = None
 
     # To be filled in programmatically when a dataset is created
     local_creation_date: Optional[str] = None
@@ -82,8 +82,6 @@ class Dataset:
             raise RuntimeError(msg)
         if self.scale_factor is None and self.name in tpc_info.tpc_datasets:
             self.scale_factor = 1.0
-        if self.remote is None:
-            self.remote = False
         if self.format == "parquet" and not self.compression:
             self.compression = "snappy"
 
@@ -143,6 +141,13 @@ class Dataset:
 
                 metadata = json_dump
 
+        if metadata.pop("_remote", None):
+            msg = (
+                "Found property `_remote` in dataset source, this is not supported."
+                "Please use the `--remote` command line option."
+            )
+            log.error(msg)
+            raise RuntimeError(msg)
         # Construct the tables, adding them back in
         # TODO: handle the case where there is a single file and no table attribute?
         tables = metadata.pop("tables", None)
@@ -457,7 +462,7 @@ class Dataset:
             )
             log.error(msg)
             raise ValueError(msg)
-        if self.remote:
+        if self._remote:
             msg = "Cannot download a remote dataset"
             log.error(msg)
             raise RuntimeError(msg)
@@ -588,7 +593,7 @@ class Dataset:
         return json.dumps(dict_repr, default=str)
 
     def convert(self, new_dataset):
-        if self.remote:
+        if self._remote:
             msg = "Cannot convert a remote dataset."
             log.error(msg)
             raise RuntimeError(msg)
@@ -710,7 +715,9 @@ class Dataset:
         tables = {}
         for table in self.tables:
             tables[table.table] = {
-                "path": table.url if self.remote else str(self.ensure_table_loc(table)),
+                "path": table.url
+                if self._remote
+                else str(self.ensure_table_loc(table)),
                 "dim": table.dim,
             }
         output["tables"] = tables

@@ -482,6 +482,7 @@ def test_output_result():
     )
     assert multi_table_ds.output_result() == expected
 
+    # Remote dataset
     expected = json.dumps(
         {
             "name": "remote",
@@ -496,7 +497,7 @@ def test_output_result():
     )
     assert (
         Dataset(
-            remote=True,
+            _remote=True,
             name="remote",
             format="parquet",
             tables=[Table(table="remote_table", url="s3://remote_table/")],
