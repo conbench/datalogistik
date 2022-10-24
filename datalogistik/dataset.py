@@ -589,6 +589,7 @@ class Dataset:
         )
 
         dict_repr = asdict(self, dict_factory=util.NoNoneDict)
+        dict_repr.pop("_remote", None)  # 'hidden' field, do not store
 
         return json.dumps(dict_repr, default=str)
 
