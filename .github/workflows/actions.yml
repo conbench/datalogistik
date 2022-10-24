@@ -115,6 +115,9 @@ jobs:
         run: |
           pip install pipx
           pipx ensurepath
+          pipx install --pip-args "--extra-index-url https://pypi.fury.io/arrow-nightlies/ --prefer-binary --pre" pyarrow
+        if: matrix.installer == 'pip'
+        run: pip install --extra-index-url https://pypi.fury.io/arrow-nightlies/ --prefer-binary --pre pyarrow
       - name: Download Wheel
         if: contains(matrix.installee, '.whl')
         uses: actions/download-artifact@v3
