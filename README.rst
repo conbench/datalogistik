@@ -9,14 +9,15 @@ generate some datasets such as TPC-H by calling their (external) generator progr
 
 Usage::
 
-    datalogistik <generate|cache>
+    datalogistik <get|cache>
 
-    datalogistik generate [-h] \
+    datalogistik get [-h] \
         -d DATASET \
         -f FORMAT \
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
-        [-c COMPRESSION]
+        [-c COMPRESSION] \
+        [-r | --remote]
 
     datalogistik cache [-h] \
         [--clean] \
@@ -41,6 +42,13 @@ Usage::
     Compression to be used for the dataset. For Parquet dataset, this value will be
     passed to the parquet writer.
     For CSV datasets, supported values are gz (for GZip) or none.
+
+``remote``
+    When set, the requested dataset will not be downloaded to the local filesystem.
+    Instead, ``datalogistik`` will return the url(s) to access the files directly via
+    the remote filesystem supported by Arrow (see https://arrow.apache.org/docs/python/filesystems.html).
+    Conversions cannot be performed on remote datasets; the user needs to upload the desired variant
+    manually and add a corresponding entry to their repo file.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
@@ -182,13 +190,6 @@ properties:
 
 
 In addition, entries can have the following optional properties:
-
-``remote``
-    When set to `True`, this dataset will not be downloaded to the local filesystem.
-    Instead, ``datalogistik`` will return the url(s) to access the files directly via
-    the remote filesystem supported by Arrow (see https://arrow.apache.org/docs/python/filesystems.html).
-    Conversions cannot be performed on remote datasets; the user needs to upload the desired variant
-    manually and add a corresponding entry to their repo file.
 
 ``delim``
     The character used as field delimiter (e.g. ",").
