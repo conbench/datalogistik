@@ -52,11 +52,14 @@ def main(dataset=None):
             )
             log.error(msg)
             raise ValueError(msg)
+        # TODO: repo.search_repo() only returns the first entry, we should check for other variants
         elif matching_dataset != dataset:
             msg = (
                 f"Dataset '{dataset.name}' found in repository"
                 "has different properties from those requested by the user, "
-                "but conversions are not supported for remote datasets.\n"
+                "but conversions are not supported for remote dataset.\n"
+                f"requested properties: \n{dataset} \n\n"
+                f"properties found in repo: \n{matching_dataset}"
             )
             log.error(msg)
             raise ValueError(msg)
