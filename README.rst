@@ -263,17 +263,23 @@ datalogistik_metadata.ini
         Schema of the table.
 
     ``url``
-        Download url in case this is a single-file table.
-
-    ``base_url``
-        Base download url in case this is a multi-file table. Each file will append
-        their `rel_path` to this to form the full download url.
+        Download url for the table. This can be: 
+        * A URL specifying the file to be downloaded for that table (which could be a 
+          single file, or a directory that contains many files to be downloaded)
+        * A base URL that is concatenated with ``rel_url_path``s in the ``files`` attribute 
+          if the table is a multi-file table and it is preferable to list out the files
 
     ``files``
         A list of files in this table. Each entry in the list has the following properties:
 
         ``rel_path``
-            Path to the file, relative to the directory of this table.
+            Path to the file(s), relative to the directory of this table. This is the 
+            location on disk in the cache.
+        
+        ``rel_url_path``
+            URL path to the file(s), relative to the directory of this table where it is stored 
+            remotely. This is used only when downloading the file. This is only necesary when a 
+            multi table file has the files that make up the table listed out individually. 
 
         ``file_size``
             Size of the file.

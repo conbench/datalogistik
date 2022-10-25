@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import json
 import os
 import pathlib
@@ -249,17 +250,71 @@ def test_validate():
     multi_file_ds.tables[0].files[0]["md5"] = orig_md5  # restore for following tests
 
 
-def test_download_dataset(monkeypatch):
+@pytest.mark.parametrize(
+    "table_url,rel_url_path,final_url",
+    [
+        (
+            "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
+            None,
+            "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
+        ),
+        # we can append rel_url_path
+        (
+            "https://ursa-qa.s3.amazonaws.com/chitraffic",
+            "chi_traffic_2020_Q1.parquet",
+            "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
+        ),
+        # we don't duplicate rel_url_path when it's there
+        (
+            "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
+            "chi_traffic_2020_Q1.parquet",
+            "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet",
+        ),
+        # we can have a tablename that is differnet from rel_url_path
+        (
+            "https://ursa-qa.s3.amazonaws.com/chitraffic",
+            "traffic.parquet",
+            "https://ursa-qa.s3.amazonaws.com/chitraffic/traffic.parquet",
+        ),
+    ],
+)
+def test_download_single_dataset(monkeypatch, table_url, rel_url_path, final_url):
     def _fake_download(url, output_path):
-        assert (
-            url
-            == "https://ursa-qa.s3.amazonaws.com/chitraffic/chi_traffic_2020_Q1.parquet"
-        )
+        assert url == final_url
+
         assert output_path == pathlib.Path(
             "tests/fixtures/test_cache/chi_traffic_2020_Q1/raw/chi_traffic_2020_Q1.parquet"
         )
 
     monkeypatch.setattr("datalogistik.util.download_file", _fake_download)
+
+    # We probably should move write_metadata out from download, but let's mock it for now
+    def _fake_write_metadata(self):
+        return True
+
+    monkeypatch.setattr(Dataset, "write_metadata", _fake_write_metadata)
+
+    # This probably also means that set_readonly isn't in the right place, but let's mock it away nonetheless
+    def _fake_set_readonly(path):
+        return True
+
+    monkeypatch.setattr("datalogistik.util.set_readonly", _fake_set_readonly)
+
+    # Don't even set rel_url_path if it's none:
+    if rel_url_path is None:
+        files_dict = {}
+    else:
+        files_dict = {"rel_url_path": rel_url_path}
+
+    ds_variant_available = Dataset(
+        name="chi_traffic_2020_Q1",
+        format="parquet",
+        compression=None,
+        tables=[Table(table="chi_traffic_2020_Q1", url=table_url, files=[files_dict])],
+    )
+    ds_variant_available.download()
+
+    # but errors as well
     ds_variant_not_available = Dataset(
         name="chi_traffic_2020_Q1",
         format="csv",
@@ -268,7 +323,46 @@ def test_download_dataset(monkeypatch):
     with pytest.raises(ValueError):
         ds_variant_not_available.download()
 
-    # download a dataset with wrong checksums, verify that validation fails
+
+def test_multi_file_download_dataset(monkeypatch):
+    def _fake_multi_download(url, output_path):
+        file_numbers = [1, 10, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9]
+        file_number = file_numbers[_fake_multi_download.file_index]
+        assert url == f"http://www.example.com/taxi_2013_{file_number}.csv.gz"
+        assert output_path == pathlib.Path(
+            f"tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013/taxi_2013_{file_number}.csv.gz"
+        )
+        _fake_multi_download.file_index += 1
+
+    _fake_multi_download.file_index = 0  # init "static variable"
+    monkeypatch.setattr("datalogistik.util.download_file", _fake_multi_download)
+
+    # We probably should move write_metadata out from download, but let's mock it for now
+    def _fake_write_metadata(self):
+        return True
+
+    monkeypatch.setattr(Dataset, "write_metadata", _fake_write_metadata)
+
+    # This probably also means that set_readonly isn't in the right place, but let's mock it away nonetheless
+    def _fake_set_readonly(path):
+        return True
+
+    monkeypatch.setattr("datalogistik.util.set_readonly", _fake_set_readonly)
+
+    # add rel_url_path as if this were coming from a repo file with that.
+    ds = copy.deepcopy(multi_file_ds)
+    files = ds.tables[0].files
+    # add rel_url_path
+    [fl.update({"rel_url_path": fl["rel_path"]}) for fl in files]
+    # remote rel_path
+    [fl.pop("rel_path") for fl in files]
+
+    ds.tables[0].files = files
+
+    ds.download()
+
+
+def test_failed_validation_download_dataset(monkeypatch):
     with tempfile.TemporaryDirectory() as tmpcachedir:
         tmpcachepath = pathlib.Path(tmpcachedir)
 
@@ -298,7 +392,8 @@ def test_download_dataset(monkeypatch):
             # Note that if we were not working in a tmp dir, the dir should have been deleted
             # and the exception message would be: "File integrity check for newly downloaded dataset failed."
 
-    # Test a succeeding download
+
+def test_validated_download_dataset(monkeypatch):
     with tempfile.TemporaryDirectory() as tmpcachedir:
         tmpcachepath = pathlib.Path(tmpcachedir)
         dataset = Dataset.from_json(
@@ -323,20 +418,6 @@ def test_download_dataset(monkeypatch):
         assert util.calculate_checksum(
             tmp_ds.ensure_table_loc()
         ) == util.calculate_checksum(dataset.ensure_table_loc())
-
-    # multi-file download
-    def _fake_multi_download(url, output_path):
-        file_numbers = [1, 10, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9]
-        file_number = file_numbers[_fake_multi_download.file_index]
-        assert url == f"http://www.example.com/taxi_2013_{file_number}.csv.gz"
-        assert output_path == pathlib.Path(
-            f"tests/fixtures/test_cache/taxi_2013/face7ed/taxi_2013/taxi_2013_{file_number}.csv.gz"
-        )
-        _fake_multi_download.file_index += 1
-
-    _fake_multi_download.file_index = 0  # init "static variable"
-    monkeypatch.setattr("datalogistik.util.download_file", _fake_multi_download)
-    multi_file_ds.download()
 
 
 def test_to_json():
@@ -496,21 +577,6 @@ def test_find_dataset():
         name="chi_traffic_sample", format="csv", compression="gzip"
     )
     assert dataset_search.find_exact_dataset(ds_variant_not_found) is None
-
-
-# def test_find_close_dataset():
-#     ds_variant_not_found = Dataset(
-#         name="chi_traffic_sample", format="csv", compression="gzip"
-#     )
-#     close = find_close_dataset(ds_variant_not_found)
-#     # We prefer Parquet if we have it
-#     assert close.format == "parquet"
-#     assert simple_parquet_ds == close
-
-#     ds_variant_not_found = Dataset(name="nyctaxi_sample", format="parquet")
-#     close = find_close_dataset(ds_variant_not_found)
-#     # But can fall back
-#     assert close.format == "csv"
 
 
 def test_find_close_dataset_sf_mismatch(monkeypatch):
