@@ -273,13 +273,13 @@ datalogistik_metadata.ini
         A list of files in this table. Each entry in the list has the following properties:
 
         ``rel_path``
-            Path to the file(s), relative to the directory of this table. This is the the 
+            Path to the file(s), relative to the directory of this table. This is the 
             location on disk in the cache.
         
         ``rel_url_path``
-            URL path to the file(s), relative to the directory of this table. This is used 
-            only when downloading the file. This is only necesary when a multi table file has
-            the files that make up the table listed out individually. 
+            URL path to the file(s), relative to the directory of this table where it is stored 
+            remotely. This is used only when downloading the file. This is only necesary when a 
+            multi table file has the files that make up the table listed out individually. 
 
         ``file_size``
             Size of the file.

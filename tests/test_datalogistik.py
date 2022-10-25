@@ -299,7 +299,6 @@ def test_compress(comp_string):
 # Integration-style tests
 def test_main(capsys):
     # This should be in the cache already, so no conversion needed
-    # import pdb; pdb.set_trace()
     exact_dataset = dataset.Dataset(
         name="fanniemae_sample", format="csv", delim="|", compression="gzip"
     )
