@@ -297,6 +297,7 @@ def test_compress(comp_string):
 
 
 # Integration-style tests
+@pytest.mark.skipif(sys.platform == "win32", reason="windows path seperator")
 def test_main(capsys):
     # This should be in the cache already, so no conversion needed
     exact_dataset = dataset.Dataset(
