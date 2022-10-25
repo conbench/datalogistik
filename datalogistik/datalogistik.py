@@ -34,14 +34,15 @@ def main(dataset=None):
     # dataset here should typically be None, so then we use parse_args_and_get_dataset_info() to
     # create the dataset to use. But it can be helpful in tests to construct ones own dataset
     # with Dataset(name="my dataset", format="very_fancy") and pass it as the dataset argument
+    remote = False
     if dataset is None:
-        dataset = cli.parse_args_and_get_dataset_info()
+        dataset, remote = cli.parse_args_and_get_dataset_info()
 
     if config.get_max_cpu_count() != 0:
         pyarrow.set_cpu_count(config.get_max_cpu_count())
         pyarrow.set_io_thread_count(config.get_max_cpu_count())
 
-    if dataset._remote:
+    if remote:
         matching_dataset = repo.search_repo(dataset.name, repo.get_repo())
         if matching_dataset is None:
             msg = (
@@ -60,8 +61,7 @@ def main(dataset=None):
             log.error(msg)
             raise ValueError(msg)
         else:
-            matching_dataset._remote = True
-            print(matching_dataset.output_result())
+            print(matching_dataset.output_result(url_only=True))
             finish()
 
     log.info(

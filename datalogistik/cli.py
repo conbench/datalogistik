@@ -136,7 +136,6 @@ def parse_args_and_get_dataset_info():
             format=opts.format,
             scale_factor=opts.scale_factor,
             compression=opts.compression,
-            _remote=opts.remote,
         )
 
         # Set defaults and perform sanity-check for the arguments:
@@ -152,7 +151,7 @@ def parse_args_and_get_dataset_info():
         if dataset_from_repo:
             dataset.fill_in_defaults(dataset_from_repo)
 
-        return dataset
+        return dataset, opts.remote
 
     else:
         msg = "Please specify a command"

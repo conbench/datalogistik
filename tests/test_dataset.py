@@ -497,11 +497,10 @@ def test_output_result():
     )
     assert (
         Dataset(
-            _remote=True,
             name="remote",
             format="parquet",
             tables=[Table(table="remote_table", url="s3://remote_table/")],
-        ).output_result()
+        ).output_result(url_only=True)
         == expected
     )
 
