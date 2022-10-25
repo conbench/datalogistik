@@ -145,38 +145,6 @@ complete_csv_schema = pa.schema(
         # pa.field("argh", pa.decimal128(7, 3)),
     ]
 )
-# complete_parquet_schema = pa.schema(
-#     [
-#         pa.field("a", pa.null()),
-#         pa.field("b", pa.bool_()),
-#         pa.field("c", pa.int8()),
-#         pa.field("d", pa.int16()),
-#         pa.field("e", pa.int32()),
-#         pa.field("f", pa.int64()),
-#         pa.field("g", pa.uint8()),
-#         pa.field("h", pa.uint16()),
-#         # pa.field("i", pa.uint32()), # not supported by parquet
-#         pa.field("j", pa.uint64()),
-#         # pa.field("k", pa.float16()), # not supported by parquet and csv
-#         pa.field("l", pa.float32()),
-#         pa.field("m", pa.float64()),
-#         pa.field("n", pa.date32()),
-#         # pa.field("o", pa.date64()), # not supported by parquet
-#         # pa.field("p", pa.month_day_nano_interval()), # not supported by parquet and csv
-#         pa.field("q", pa.string()),
-#         pa.field("r", pa.utf8()),
-#         pa.field("s", pa.large_binary()),
-#         pa.field("t", pa.large_string()),
-#         pa.field("u", pa.large_utf8()),
-#         # types with arguments
-#         pa.field("v", pa.time32("ms")),
-#         pa.field("w", pa.time64("us")),
-#         pa.field("x", pa.timestamp("us")),
-#         # pa.field("y", pa.duration("s")), # not supported by parquet and csv
-#         pa.field("z", pa.binary(10)),
-#         pa.field("argh", pa.decimal128(7, 3)),
-#     ]
-# )
 
 # This schema should be supported by all formats
 common_schema = pa.schema(
