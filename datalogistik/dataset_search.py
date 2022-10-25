@@ -65,15 +65,14 @@ def find_or_instantiate_close_dataset(dataset):
         log.error(msg)
         raise ValueError(msg)
 
-    else:
-        # order parquet first (since they should be fast(er) to convert from)
-        # when we support .arrow, those likely should be first, then parquet, et c.
-        # TODO: sort by compression too?
-        format_preference = {
-            "parquet": 0,
-            "csv": 1,
-            "tpc-raw": 3,
-        }
-        variants.sort(key=lambda c: format_preference[c.format])
+    # order parquet first (since they should be fast(er) to convert from)
+    # when we support .arrow, those likely should be first, then parquet, et c.
+    # TODO: sort by compression too?
+    format_preference = {
+        "parquet": 0,
+        "csv": 1,
+        "tpc-raw": 3,
+    }
+    variants.sort(key=lambda c: format_preference[c.format])
 
-        return variants[0]
+    return variants[0]
