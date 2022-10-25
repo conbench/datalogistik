@@ -376,6 +376,8 @@ def download_file(url, output_path):
 
     try:
         if url[0:2] == "s3":
+            # This performs a recursive download, so if the url points to a directory
+            # it will download all the contents
             pyarrow.fs.copy_files(url, output_path)
         else:
             http = urllib3.PoolManager()
