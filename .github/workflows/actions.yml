@@ -128,7 +128,7 @@ jobs:
       - name: Pipx install package
         if: matrix.installer == 'pipx'
         run: |
-          ${{ matrix.installer }} install --pip-args "--extra-index-url https://pypi.fury.io/arrow-nightlies/ --prefer-binary --pre" '${{ matrix.installee }}'
+          ${{ matrix.installer }} install --pip-args "--extra-index-url https://pypi.fury.io/arrow-nightlies/ --prefer-binary" '${{ matrix.installee }}>=10.0.0dev497'
       - name: Test downloading and converting a dataset
         run: datalogistik get -d type_floats -f csv
 
