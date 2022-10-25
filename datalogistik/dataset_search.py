@@ -67,7 +67,7 @@ def find_or_instantiate_close_dataset(dataset):
         raise ValueError(msg)
 
     # order parquet first (since they should be fast(er) to convert from)
-    # when we support .arrow, those likely should be first, then parquet, et c.
+    # Try Arrow first, as it has schema info and performs well, then parquet, et c.
     # TODO: sort by compression too?
     format_preference = {
         "arrow": 0,
