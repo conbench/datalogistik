@@ -481,6 +481,9 @@ class Dataset:
                     if rel_url_path and not table_url.endswith(rel_url_path):
                         table_url = table_url + "/" + rel_url_path
 
+                    # The table_path here is the name of the table (which is frequently the same as
+                    # the url path, but not always), though note: this will be over-ridden for multi-file
+                    # tables
                     download_path = table_path
 
                     # Set the rel_path
