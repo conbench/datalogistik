@@ -23,6 +23,7 @@ import uuid
 from collections.abc import Mapping
 
 import pyarrow as pa
+import pyarrow.fs
 import urllib3
 
 from . import config, tpc_info
@@ -374,11 +375,16 @@ def download_file(url, output_path):
         shutil.rmtree(output_path, ignore_errors=True)
 
     try:
-        http = urllib3.PoolManager()
-        with http.request("GET", url, preload_content=False) as r, open(
-            output_path, "wb"
-        ) as out_file:
-            shutil.copyfileobj(r, out_file)  # Performs a chunked copy
+        if url[0:2] == "s3":
+            # This performs a recursive download, so if the url points to a directory
+            # it will download all the contents
+            pyarrow.fs.copy_files(url, output_path)
+        else:
+            http = urllib3.PoolManager()
+            with http.request("GET", url, preload_content=False) as r, open(
+                output_path, "wb"
+            ) as out_file:
+                shutil.copyfileobj(r, out_file)  # Performs a chunked copy
     except Exception:
         log.error(f"Unable to download from '{url}'")
         # TODO: cleanup

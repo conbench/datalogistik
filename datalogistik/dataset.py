@@ -81,6 +81,9 @@ class Dataset:
             raise RuntimeError(msg)
         if self.scale_factor is None and self.name in tpc_info.tpc_datasets:
             self.scale_factor = 1.0
+        # To specify uncompressed, use string "none or "uncompressed", not None
+        if self.format == "parquet" and not self.compression:
+            self.compression = "snappy"
 
         # Use None as the true default for uncompressed
         # the first comparison is a bit redundant, but None.lower() fails
@@ -89,6 +92,7 @@ class Dataset:
             or self.compression.lower() == "none"
             or self.compression.lower() == "uncompressed"
         ):
+            # TODO: This might result in a snappy-compressed result in case of parquet
             self.compression = None
 
         # munge gz to gzip
@@ -692,13 +696,13 @@ class Dataset:
 
         return new_dataset
 
-    def output_result(self):
+    def output_result(self, url_only=False):
         output = {"name": self.name, "format": self.format}
 
         tables = {}
         for table in self.tables:
             tables[table.table] = {
-                "path": str(self.ensure_table_loc(table)),
+                "path": table.url if url_only else str(self.ensure_table_loc(table)),
                 "dim": table.dim,
             }
         output["tables"] = tables
