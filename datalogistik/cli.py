@@ -16,7 +16,7 @@ import argparse
 import pathlib
 import sys
 
-from . import config, repo, util
+from . import config, repo, tpc_info, util
 from .dataset import Dataset
 from .log import log
 
@@ -77,6 +77,13 @@ def parse_args():
         default=None,
         help="Scale factor for TPC datasets",
     )
+    gen_parser.add_argument(
+        "-r",
+        "--remote",
+        action="store_true",
+        help="Remote dataset, output the url as-is. "
+        "Downloading and conversions are not supported.",
+    )
 
     return parser.parse_args()
 
@@ -136,14 +143,15 @@ def parse_args_and_get_dataset_info():
         #  * compression (in particular: test supported file-compression)
         #  * partitioning (later)
 
+        if dataset.name in tpc_info.tpc_datasets and opts.remote:
+            msg = "TPC datasets cannot be remote"
+            log.error(msg)
+            raise RuntimeError(msg)
         dataset_from_repo = repo.search_repo(opts.dataset, repo.get_repo())
-        # Parquet's default compression snappy overrules a compression set in the repo file
-        if dataset.compression is None and dataset.format == "parquet":
-            dataset.compression = "snappy"
         if dataset_from_repo:
             dataset.fill_in_defaults(dataset_from_repo)
 
-        return dataset
+        return dataset, opts.remote
 
     else:
         msg = "Please specify a command"

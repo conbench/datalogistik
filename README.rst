@@ -9,14 +9,15 @@ generate some datasets such as TPC-H by calling their (external) generator progr
 
 Usage::
 
-    datalogistik <generate|cache>
+    datalogistik <get|cache>
 
-    datalogistik generate [-h] \
+    datalogistik get [-h] \
         -d DATASET \
         -f FORMAT \
         [-s SCALE_FACTOR] \
         [-g GENERATOR_PATH] \
-        [-c COMPRESSION]
+        [-c COMPRESSION] \
+        [-r | --remote]
 
     datalogistik cache [-h] \
         [--clean] \
@@ -41,6 +42,13 @@ Usage::
     Compression to be used for the dataset. For Parquet dataset, this value will be
     passed to the parquet writer.
     For CSV datasets, supported values are gz (for GZip) or none.
+
+``remote``
+    When set, the requested dataset will not be downloaded to the local filesystem.
+    Instead, ``datalogistik`` will return the url(s) to access the files directly via
+    the remote filesystem supported by Arrow (see https://arrow.apache.org/docs/python/filesystems.html).
+    Conversions cannot be performed on remote datasets; the user needs to upload the desired variant
+    manually and add a corresponding entry to their repo file.
 
 ``clean``
     Perform a clean-up of the cache, checking whether all of the subdirectories 
@@ -160,9 +168,9 @@ Repositories
 ------------
 
 ``datalogistik`` uses a metadata repository file for finding downloadable datasets. By
-default, it searches for a file ``./repo.json`` in the working directory, but you can
+default, it downloads the repo file from the datalogistik github repository, but you can
 override this by setting the ``DATALOGISTIK_REPO`` environment variable. You can also
-point it to a JSON file accessible online via http.
+point it to a JSON file on your local filesystem.
 
 The default ``repo.json`` file included is based on sources taken from `the arrowbench
 repo <https://github.com/ursacomputing/arrowbench/blob/main/R/known-sources.R>`_.
@@ -174,7 +182,7 @@ properties:
     A string to identify the dataset.
 
 ``url``
-    Location where this dataset can be downloaded (for now, http(s). Support for S3 and
+    Location where this dataset can be downloaded (for now, http(s). Support for
     GCS may follow later).
 
 ``format``
@@ -245,7 +253,6 @@ datalogistik_metadata.ini
 ``local_creation_date``
     Date and time when this dataset was downloaded or generated to the cache.
 
-
 ``url``
     The location where this dataset was downloaded.
 
@@ -263,17 +270,23 @@ datalogistik_metadata.ini
         Schema of the table.
 
     ``url``
-        Download url in case this is a single-file table.
-
-    ``base_url``
-        Base download url in case this is a multi-file table. Each file will append
-        their `rel_path` to this to form the full download url.
+        Download url for the table. This can be: 
+        * A URL specifying the file to be downloaded for that table (which could be a 
+          single file, or a directory that contains many files to be downloaded)
+        * A base URL that is concatenated with ``rel_url_path``s in the ``files`` attribute 
+          if the table is a multi-file table and it is preferable to list out the files
 
     ``files``
         A list of files in this table. Each entry in the list has the following properties:
 
         ``rel_path``
-            Path to the file, relative to the directory of this table.
+            Path to the file(s), relative to the directory of this table. This is the 
+            location on disk in the cache.
+        
+        ``rel_url_path``
+            URL path to the file(s), relative to the directory of this table where it is stored 
+            remotely. This is used only when downloading the file. This is only necesary when a 
+            multi table file has the files that make up the table listed out individually. 
 
         ``file_size``
             Size of the file.

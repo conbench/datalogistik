@@ -36,7 +36,6 @@ def find_or_instantiate_close_dataset(dataset):
 
     # If no variants are available, ensure that one is
     if variants == []:
-        # N. B. this will raise an error for unrecognized datasets
         dataset_to_fetch = repo.search_repo(dataset.name, repo.get_repo())
         if dataset_to_fetch:
             # we found a dataset, so we can use it
