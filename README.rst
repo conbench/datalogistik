@@ -33,7 +33,7 @@ Usage::
 ``FORMAT``
     File format to instantiate the dataset in. If the original dataset specified in the
     repository has a different format, it will be converted. Supported formats:
-    ``parquet``, ``csv``.
+    ``parquet``, ``csv``, ``arrow``.
 
 ``SCALE_FACTOR``
     Scale factor for generating TPC data. Default 1.
@@ -73,8 +73,8 @@ Installing using ``pipx`` (recommended)
 `pipx <https://pypa.github.io/pipx/>`_ is a CLI tool installer that keeps each tool's
 dependencies isolated from your working python session and from other tools. This means
 you won't have to deal with any dependency version conflicts with ``datalogistik``, and
-if you change one of ``datalogistik``'s dependencies (like ``pyarrow``), the tool will
-still work.
+if you change one of ``datalogistik``'s dependencies (like ``pyarrow``) in your working
+python session, the tool will still work.
 
 Install ``pipx``::
 
@@ -85,7 +85,10 @@ Install ``pipx``::
 
 Install ``datalogistik``::
 
-    pipx install git+https://github.com/conbench/datalogistik.git
+A nightly build of pyarrow is needed, so we need to add a repo to the install command::
+
+    pipx install --pip-args "--extra-index-url https://pypi.fury.io/arrow-nightlies/ \
+    --prefer-binary" git+https://github.com/conbench/datalogistik.git
 
 Run ``datalogistik``::
 
@@ -97,7 +100,8 @@ Installing using ``pip``
 If you are okay with dealing with potential dependency problems, you may install the
 package with ``pip``::
 
-    pip install git+https://github.com/conbench/datalogistik.git
+    pip install --extra-index-url https://pypi.fury.io/arrow-nightlies/ \
+                    --prefer-binary git+https://github.com/conbench/datalogistik.git
 
 Run ``datalogistik``::
 
