@@ -161,7 +161,7 @@ common_schema = pa.schema(
         pa.field("h", pa.uint16()),
         # pa.field("i", pa.uint32()), # not supported by parquet
         pa.field("j", pa.uint64()),
-        # pa.field("k", pa.float16()), # not supported by parquet and csv
+        # pa.field("k", pa.float16()), # not supported by parquet, csv and ndjson
         pa.field("l", pa.float32()),
         pa.field("m", pa.float64()),
         # pa.field("n", pa.date32()), # not supported by ndjson
