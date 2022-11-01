@@ -642,9 +642,13 @@ class Dataset:
                     # so we need to compress as an extra step and then we'll add the extension.
                     output_file = output_file.parent / output_file.stem
 
+                schema = util.get_arrow_schema(old_table.schema)
                 if new_dataset.format == "ndjson":
                     if self.format == "ndjson":
-                        table = pajson.read_json(self.ensure_table_loc(old_table))
+                        table = pajson.read_json(
+                            self.ensure_table_loc(old_table),
+                            parse_options=pajson.ParseOptions(explicit_schema=schema),
+                        )
                     else:
                         table = table_pads.to_table()
                     nrows = table.num_rows
@@ -659,7 +663,10 @@ class Dataset:
                         new_table
                     )
                     if self.format == "ndjson":
-                        source = pajson.read_json(self.ensure_table_loc(old_table))
+                        source = pajson.read_json(
+                            self.ensure_table_loc(old_table),
+                            parse_options=pajson.ParseOptions(explicit_schema=schema),
+                        )
                         nrows = source.num_rows
                         ncols = len(source.schema.names)
                     else:
