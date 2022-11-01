@@ -27,6 +27,7 @@ import ndjson
 import pyarrow as pa
 from pyarrow import csv
 from pyarrow import dataset as pads
+from pyarrow import json as pajson
 from pyarrow import parquet as pq
 
 from . import config, tpc_info, util
@@ -306,6 +307,8 @@ class Dataset:
             dataset_read_format, schema = self.get_csv_dataset_spec(table)
         if self.format == "tpc-raw":
             dataset_read_format, schema = self.get_raw_tpc_dataset_spec(table)
+        if self.format == "ndjson":  # not supported by pyarrow.dataset
+            return None
 
         return pads.dataset(
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
@@ -614,10 +617,8 @@ class Dataset:
             # convert each table
             new_dataset.tables = []  # ensure this is empty before we start appending
             for old_table in self.tables:
-
                 # TODO: possible schema changes here at the table level
                 table_pads = self.get_table_dataset(old_table)
-
                 # Make a copy of the original table object. we should overwrite any
                 # properties changed by the conversion
                 new_table = replace(old_table)
@@ -632,18 +633,9 @@ class Dataset:
                 # in case this dataset will be converted to csv later (otherwise the user-specified
                 # JSON schema would be lost)
 
-                if not new_table.dim:
-                    # TODO: we should check if these are still valid after conversion
-                    nrows = table_pads.count_rows()
-                    ncols = len(table_pads.schema.names)
-                    new_table.dim = [nrows, ncols]
-                else:
-                    nrows = new_table.dim[0]
-
-                new_dataset.tables.append(new_table)
-                dataset_write_format, write_options = new_dataset.get_write_format(
+                new_dataset.tables.append(
                     new_table
-                )
+                )  # not complete yet, but needed for ensure_table_loc
                 output_file = new_dataset.ensure_table_loc(new_table.table)
                 if new_dataset.format in ["csv", "ndjson"] and new_dataset.compression:
                     # Remove compression extension from filename, pads cannot compress on the fly
@@ -651,11 +643,30 @@ class Dataset:
                     output_file = output_file.parent / output_file.stem
 
                 if new_dataset.format == "ndjson":
+                    if self.format == "ndjson":
+                        table = pajson.read_json(self.ensure_table_loc(old_table))
+                    else:
+                        table = table_pads.to_table()
+                    nrows = table.num_rows
+                    ncols = len(table.schema.names)
+
                     with open(output_file, "w") as f:
                         writer = ndjson.writer(f)
-                        for row in table_pads.to_table().to_pylist():
+                        for row in table.to_pylist():
                             writer.writerow(row)
                 else:
+                    dataset_write_format, write_options = new_dataset.get_write_format(
+                        new_table
+                    )
+                    if self.format == "ndjson":
+                        source = pajson.read_json(self.ensure_table_loc(old_table))
+                        nrows = source.num_rows
+                        ncols = len(source.schema.names)
+                    else:
+                        source = table_pads
+                        nrows = table_pads.count_rows()
+                        ncols = len(table_pads.schema.names)
+
                     # Find a reasonable number to set our rows per row group.
                     # and then make sure that max rows per group is less than new_nrows
                     # TODO: This should actually be something that takes into account the
@@ -673,7 +684,7 @@ class Dataset:
                         minrpg = None
 
                     pads.write_dataset(
-                        table_pads,
+                        source,
                         output_file,
                         format=dataset_write_format,
                         file_options=write_options,
@@ -694,6 +705,13 @@ class Dataset:
                             output_file,
                         )
                         tmp_dir_name.rmdir()
+
+                if not new_table.dim:
+                    # TODO: we should check if these are still valid after conversion
+                    new_table.dim = [
+                        nrows,
+                        ncols,
+                    ]  # TODO: does the entry in new_dataset.tables get updated?
 
                 # TODO: this probably isn't quite right, we should do something else (use arrow?)
                 if new_dataset.format in ["csv", "ndjson"] and new_dataset.compression:
