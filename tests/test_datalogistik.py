@@ -349,8 +349,6 @@ def test_compress(comp_string):
 @pytest.mark.parametrize("source_format", ["csv", "parquet", "arrow", "ndjson"])
 @pytest.mark.parametrize("dest_format", ["csv", "parquet", "arrow", "ndjson"])
 def test_convert_parquet(monkeypatch, source_format, dest_format):
-    if source_format == dest_format:
-        pytest.skip()
     name = "data_to_be_converted"
     file_name = name + "." + source_format
     data = generate_complete_schema_data(100, "common")
