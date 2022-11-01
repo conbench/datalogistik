@@ -23,6 +23,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, fields, replace
 from typing import List, Optional
 
+import ndjson
 import pyarrow as pa
 from pyarrow import csv
 from pyarrow import dataset as pads
@@ -444,6 +445,8 @@ class Dataset:
                 include_header=False if table.header_line is False else True,
                 delimiter=self.delim,
             )
+        if self.format == "ndjson":
+            return None, None
         return dataset_write_format, write_options
 
     def download(self):
@@ -642,52 +645,58 @@ class Dataset:
                     new_table
                 )
                 output_file = new_dataset.ensure_table_loc(new_table.table)
-                if new_dataset.format == "csv" and new_dataset.compression:
+                if new_dataset.format in ["csv", "ndjson"] and new_dataset.compression:
                     # Remove compression extension from filename, pads cannot compress on the fly
                     # so we need to compress as an extra step and then we'll add the extension.
                     output_file = output_file.parent / output_file.stem
 
-                # Find a reasonable number to set our rows per row group.
-                # and then make sure that max rows per group is less than new_nrows
-                # TODO: This should actually be something that takes into account the
-                # number of cells by default (rows * cols), and then _also_ be configurable like
-                # it is in arrowbench
-                # alternatively, when pyarrow exposes size per row group options use that instead.
-                if 15625000 <= nrows:
-                    maxrpg = 15625000
+                if new_dataset.format == "ndjson":
+                    with open(output_file, "w") as f:
+                        writer = ndjson.writer(f)
+                        for row in table_pads.to_table().to_pylist():
+                            writer.writerow(row)
                 else:
-                    maxrpg = nrows
-                minrpg = maxrpg - 1
-                # but if that's 0, set it to None
-                if maxrpg == 0:
-                    maxrpg = None
-                    minrpg = None
+                    # Find a reasonable number to set our rows per row group.
+                    # and then make sure that max rows per group is less than new_nrows
+                    # TODO: This should actually be something that takes into account the
+                    # number of cells by default (rows * cols), and then _also_ be configurable like
+                    # it is in arrowbench
+                    # alternatively, when pyarrow exposes size per row group options use that instead.
+                    if 15625000 <= nrows:
+                        maxrpg = 15625000
+                    else:
+                        maxrpg = nrows
+                    minrpg = maxrpg - 1
+                    # but if that's 0, set it to None
+                    if maxrpg == 0:
+                        maxrpg = None
+                        minrpg = None
 
-                pads.write_dataset(
-                    table_pads,
-                    output_file,
-                    format=dataset_write_format,
-                    file_options=write_options,
-                    min_rows_per_group=minrpg,
-                    max_rows_per_group=maxrpg,
-                    file_visitor=util.file_visitor if config.debug else None,
-                )
-
-                # TODO: this partitioning flag isn't quite right, we should make a new attribute that encodes whether this is a multi-file table
-                if new_table.partitioning is None:
-                    # Convert from name.format/part-0.format to simply a file name.format
-                    # To stay consistent with downloaded/generated datasets (without partitioning)
-                    # TODO: do we want to change this in accordance to tpc-raw?
-                    tmp_dir_name = pathlib.Path(f"{output_file}.tmp")
-                    os.rename(output_file, tmp_dir_name)
-                    os.rename(
-                        pathlib.Path(tmp_dir_name, f"part-0.{new_dataset.format}"),
+                    pads.write_dataset(
+                        table_pads,
                         output_file,
+                        format=dataset_write_format,
+                        file_options=write_options,
+                        min_rows_per_group=minrpg,
+                        max_rows_per_group=maxrpg,
+                        file_visitor=util.file_visitor if config.debug else None,
                     )
-                    tmp_dir_name.rmdir()
+
+                    # TODO: this partitioning flag isn't quite right, we should make a new attribute that encodes whether this is a multi-file table
+                    if new_table.partitioning is None:
+                        # Convert from name.format/part-0.format to simply a file name.format
+                        # To stay consistent with downloaded/generated datasets (without partitioning)
+                        # TODO: do we want to change this in accordance to tpc-raw?
+                        tmp_dir_name = pathlib.Path(f"{output_file}.tmp")
+                        os.rename(output_file, tmp_dir_name)
+                        os.rename(
+                            pathlib.Path(tmp_dir_name, f"part-0.{new_dataset.format}"),
+                            output_file,
+                        )
+                        tmp_dir_name.rmdir()
 
                 # TODO: this probably isn't quite right, we should do something else (use arrow?)
-                if new_dataset.format == "csv" and new_dataset.compression:
+                if new_dataset.format in ["csv", "ndjson"] and new_dataset.compression:
                     util.compress(
                         output_file, output_file.parent, new_dataset.compression
                     )

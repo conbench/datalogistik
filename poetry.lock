@@ -152,6 +152,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "ndjson"
+version = "0.3.1"
+description = "JsonDecoder for ndjson"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "nodeenv"
 version = "1.7.0"
 description = "Node.js virtual environment builder"
@@ -380,6 +388,7 @@ iniconfig = []
 isort = []
 mccabe = []
 mypy-extensions = []
+ndjson = []
 nodeenv = []
 numpy = []
 packaging = []
