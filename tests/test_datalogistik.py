@@ -23,10 +23,12 @@ import string
 import sys
 import tempfile
 
+import ndjson
 import numpy as np
 import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.feather as feather  # arrow format
+import pyarrow.json as pa_json
 import pyarrow.parquet as pq
 import pytest
 
@@ -162,7 +164,7 @@ common_schema = pa.schema(
         # pa.field("k", pa.float16()), # not supported by parquet and csv
         pa.field("l", pa.float32()),
         pa.field("m", pa.float64()),
-        pa.field("n", pa.date32()),
+        # pa.field("n", pa.date32()), # not supported by ndjson
         # pa.field("o", pa.date64()), # not supported by parquet
         # pa.field("p", pa.month_day_nano_interval()), # not supported by parquet and csv
         pa.field("q", pa.string()),
@@ -171,9 +173,9 @@ common_schema = pa.schema(
         pa.field("t", pa.large_string()),
         pa.field("u", pa.large_utf8()),
         # types with arguments
-        pa.field("v", pa.time32("ms")),
-        pa.field("w", pa.time64("us")),
-        pa.field("x", pa.timestamp("us")),
+        # pa.field("v", pa.time32("ms")),  # not supported by ndjson
+        # pa.field("w", pa.time64("us")),  # not supported by ndjson
+        # pa.field("x", pa.timestamp("us")),  # not supported by ndjson
         # pa.field("y", pa.duration("s")), # not supported by parquet and csv
         # pa.field("z", pa.binary(10)),  # not supported by csv
         # pa.field("argh", pa.decimal128(7, 3)),  # not supported by csv
@@ -191,14 +193,10 @@ common_schema_json_input = """{
     "j": "uint64",
     "l": "float",
     "m": "double",
-    "n": "date32",
     "q": "string",
     "r": "string",
     "t": "large_string",
-    "u": "large_string",
-    "v": {"type_name": "time32", "arguments": "ms"},
-    "w": {"type_name": "time64", "arguments": "us"},
-    "x": {"type_name": "timestamp", "arguments": {"unit": "us"}}
+    "u": "large_string"
     }"""
 
 
@@ -227,7 +225,14 @@ def generate_complete_schema_data(num_rows, format):
         "j": [random.randint(0, 2**64 - 1) for _ in range(k)],
         "l": [random.random() for _ in range(k)],
         "m": [random.random() for _ in range(k)],
-        "n": [
+        "q": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "r": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "t": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "u": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+    }
+
+    if format in ["csv", "parquet", "arrow"]:
+        data["n"] = [
             (
                 datetime.datetime(
                     random.randint(1970, 2270),
@@ -238,40 +243,43 @@ def generate_complete_schema_data(num_rows, format):
             )
             // datetime.timedelta(days=1)
             for _ in range(k)
-        ],
-        "q": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "r": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "t": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "u": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        ]
+
         # types with arguments
-        "v": [
-            datetime.timedelta(
-                hours=random.randint(0, 23),
-                minutes=random.randint(0, 59),
-                seconds=random.randint(0, 59),
-            )
-            // datetime.timedelta(milliseconds=1)
-            for _ in range(k)
-        ],
-        "w": [
-            datetime.timedelta(
-                hours=random.randint(0, 23),
-                minutes=random.randint(0, 59),
-                seconds=random.randint(0, 59),
-            )
-            // datetime.timedelta(microseconds=1)
-            for _ in range(k)
-        ],
-        "x": [
-            datetime.timedelta(
-                hours=random.randint(0, 23),
-                minutes=random.randint(0, 59),
-                seconds=random.randint(0, 59),
-            )
-            // datetime.timedelta(microseconds=1)
-            for _ in range(k)
-        ],
-    }
+        data["v"] = (
+            [
+                datetime.timedelta(
+                    hours=random.randint(0, 23),
+                    minutes=random.randint(0, 59),
+                    seconds=random.randint(0, 59),
+                )
+                // datetime.timedelta(milliseconds=1)
+                for _ in range(k)
+            ],
+        )
+        data["w"] = (
+            [
+                datetime.timedelta(
+                    hours=random.randint(0, 23),
+                    minutes=random.randint(0, 59),
+                    seconds=random.randint(0, 59),
+                )
+                // datetime.timedelta(microseconds=1)
+                for _ in range(k)
+            ],
+        )
+        data["x"] = (
+            [
+                datetime.timedelta(
+                    hours=random.randint(0, 23),
+                    minutes=random.randint(0, 59),
+                    seconds=random.randint(0, 59),
+                )
+                // datetime.timedelta(microseconds=1)
+                for _ in range(k)
+            ],
+        )
+
     if format == "csv" or format == "arrow":
         data["i"] = [random.randint(0, 2**32 - 1) for _ in range(k)]
         data["o"] = [
@@ -338,8 +346,8 @@ def test_compress(comp_string):
     assert util.decompress("uncompressed_file_path", "output_dir", comp_string) is None
 
 
-@pytest.mark.parametrize("source_format", ["csv", "parquet", "arrow"])
-@pytest.mark.parametrize("dest_format", ["csv", "parquet", "arrow"])
+@pytest.mark.parametrize("source_format", ["csv", "parquet", "arrow", "ndjson"])
+@pytest.mark.parametrize("dest_format", ["csv", "parquet", "arrow", "ndjson"])
 def test_convert_parquet(monkeypatch, source_format, dest_format):
     if source_format == dest_format:
         pytest.skip()
@@ -349,6 +357,7 @@ def test_convert_parquet(monkeypatch, source_format, dest_format):
     orig_table = pa.table(data, schema=common_schema)
     with tempfile.TemporaryDirectory() as tmpdspath:
         monkeypatch.setenv("DATALOGISTIK_CACHE", tmpdspath)
+        jpo = pa_json.ParseOptions(explicit_schema=common_schema)
         complete_dataset_info = {
             "name": name,
             "format": source_format,
@@ -365,19 +374,35 @@ def test_convert_parquet(monkeypatch, source_format, dest_format):
         meta_file_path = rawdir / config.metadata_filename
         with open(meta_file_path, "w") as metafile:
             json.dump(complete_dataset_info, metafile)
+        source_file = rawdir / file_name
         if source_format == "csv":
             wo = csv.WriteOptions(include_header=False)
-            csv.write_csv(orig_table, rawdir / file_name, write_options=wo)
+            csv.write_csv(orig_table, source_file, write_options=wo)
         elif source_format == "parquet":
-            pq.write_table(orig_table, rawdir / file_name)
+            pq.write_table(orig_table, source_file)
         elif source_format == "arrow":
-            feather.write_feather(orig_table, rawdir / file_name)
+            feather.write_feather(orig_table, source_file)
+        elif source_format == "ndjson":
+            with open(source_file, "w") as f:
+                writer = ndjson.writer(f)
+                for row in orig_table.to_pylist():
+                    writer.writerow(row)
         dataset = Dataset.from_json(meta_file_path)
-        written_table = dataset.get_table_dataset().to_table()
+        if source_format == "ndjson":
+            written_table = pa_json.read_json(
+                dataset.ensure_table_loc(), parse_options=jpo
+            )
+        else:
+            written_table = dataset.get_table_dataset().to_table()
         assert written_table == orig_table
         target_dataset = Dataset(name=name, format=dest_format)
         converted_dataset = dataset.convert(target_dataset)
-        converted_table = converted_dataset.get_table_dataset().to_table()
+        if dest_format == "ndjson":
+            converted_table = pa_json.read_json(
+                converted_dataset.ensure_table_loc(), parse_options=jpo
+            )
+        else:
+            converted_table = converted_dataset.get_table_dataset().to_table()
         assert converted_table == orig_table
 
 
