@@ -34,7 +34,7 @@ def mock_settings_env_vars(monkeypatch):
 
 
 simple_parquet_ds = Dataset.from_json(
-    metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
+    "./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
 )
 # N. B. This entry differs from the contents of the metadata file. Those are wrong, to test validation failure.
 simple_parquet_listing = {
@@ -43,10 +43,10 @@ simple_parquet_listing = {
     "md5": "c5024f1a2542623f5deb4a3bf4951de9",
 }
 simple_csv_ds = Dataset.from_json(
-    metadata="./tests/fixtures/test_cache/chi_traffic_sample/babb1e5/datalogistik_metadata.ini"
+    "./tests/fixtures/test_cache/chi_traffic_sample/babb1e5/datalogistik_metadata.ini"
 )
 multi_file_ds = Dataset.from_json(
-    metadata="./tests/fixtures/test_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
+    "./tests/fixtures/test_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
 )
 multi_file_listing = [
     {
@@ -111,7 +111,7 @@ multi_file_listing = [
     },
 ]
 multi_table_ds = Dataset.from_json(
-    metadata="./tests/fixtures/test_cache/chi_taxi/dabb1e5/datalogistik_metadata.ini"
+    "./tests/fixtures/test_cache/chi_taxi/dabb1e5/datalogistik_metadata.ini"
 )
 
 
@@ -149,9 +149,10 @@ def test_ensure_dataset_loc():
     )
 
     # a dataset that has an overridden path
-    new_ds = Dataset(name="new_dataset", cache_location=pathlib.Path("foo/bar/baz"))
-    assert new_ds.ensure_dataset_loc() == pathlib.Path("foo/bar/baz")
-    # TODO: assert the dir is made?
+    with tempfile.TemporaryDirectory() as tmpdsdir:
+        dspath = pathlib.Path(tmpdsdir, "foo/bar/baz")
+        new_ds = Dataset(name="new_dataset", full_path=dspath)
+        assert new_ds.ensure_dataset_loc() == dspath
 
 
 def test_get_extension():
@@ -378,9 +379,7 @@ def test_failed_validation_download_dataset(monkeypatch):
             simple_parquet_ds.metadata_file,
             tmp_ds_dir / config.metadata_filename,
         )
-        tmp_simple_parquet_ds = Dataset.from_json(
-            metadata=tmp_ds_dir / config.metadata_filename
-        )
+        tmp_simple_parquet_ds = Dataset.from_json(tmp_ds_dir / config.metadata_filename)
         with pytest.raises(
             RuntimeError,
             match="Refusing to clean a directory outside of the local cache",
@@ -397,7 +396,7 @@ def test_validated_download_dataset(monkeypatch):
     with tempfile.TemporaryDirectory() as tmpcachedir:
         tmpcachepath = pathlib.Path(tmpcachedir)
         dataset = Dataset.from_json(
-            metadata="./tests/fixtures/test_cache/fanniemae_sample/a77e575/datalogistik_metadata.ini"
+            "./tests/fixtures/test_cache/fanniemae_sample/a77e575/datalogistik_metadata.ini"
         )
 
         def _simulate_download_by_copying(url, output_path):
@@ -413,7 +412,7 @@ def test_validated_download_dataset(monkeypatch):
             dataset.ensure_dataset_loc() / config.metadata_filename,
             tmp_ds_dir / config.metadata_filename,
         )
-        tmp_ds = Dataset.from_json(metadata=tmp_ds_dir / config.metadata_filename)
+        tmp_ds = Dataset.from_json(tmp_ds_dir / config.metadata_filename)
         tmp_ds.download()
         assert util.calculate_checksum(
             tmp_ds.ensure_table_loc()
