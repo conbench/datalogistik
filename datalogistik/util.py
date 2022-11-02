@@ -18,7 +18,6 @@ import json
 import os
 import pathlib
 import shutil
-import time
 import uuid
 from collections.abc import Mapping
 
@@ -276,7 +275,6 @@ def generate_dataset(dataset):
     """Generate a dataset by calling one of the supported external generators"""
 
     log.info(f"Generating {dataset.name} data to cache...")
-    gen_start = time.perf_counter()
     # This naming assumes the scale factor is always peresent, which is true for TPC-H but possibly not all generated datasets
     dataset_path = dataset.ensure_dataset_loc(new_hash=f"raw_{dataset.scale_factor}")
     generators = {"tpc-h": DBGen, "tpc-ds": DSDGen}
@@ -311,9 +309,7 @@ def generate_dataset(dataset):
             )
         dataset.tables = metadata_table_list
 
-        gen_time = time.perf_counter() - gen_start
         log.info("Finished generating.")
-        log.debug(f"generation took {gen_time:0.2f} s")
         dataset.write_metadata()
 
     except Exception:

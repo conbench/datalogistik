@@ -17,7 +17,6 @@ import datetime
 import json
 import os
 import pathlib
-import time
 import warnings
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, fields, replace
@@ -488,7 +487,6 @@ class Dataset:
         are available in the metadata."""
 
         log.info("Downloading to cache...")
-        down_start = time.perf_counter()
 
         if not self.tables:
             msg = (
@@ -564,8 +562,6 @@ class Dataset:
             util.clean_cache_dir(dataset_path)
             raise
 
-        down_time = time.perf_counter() - down_start
-        log.debug(f"download took {down_time:0.2f} s")
         log.info("Finished downloading.")
 
     def fill_metadata_from_files(self):
@@ -651,7 +647,6 @@ class Dataset:
             f"compression {self.compression} to {new_dataset.format}, "
             f"compression {new_dataset.compression}..."
         )
-        conv_start = time.perf_counter()
 
         try:
             # ensure that we have a new dataset location
@@ -745,9 +740,7 @@ class Dataset:
                     output_file.unlink()
 
             # Cleanup, write metadata
-            conv_time = time.perf_counter() - conv_start
             log.info("Finished conversion.")
-            log.debug(f"conversion took {conv_time:0.2f} s")
 
             new_dataset.write_metadata()
             util.set_readonly_recurse(new_dataset_path)
