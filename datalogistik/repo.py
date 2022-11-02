@@ -21,7 +21,9 @@ from .dataset import Dataset
 from .log import log
 
 
-def get_repo():
+def get_repo() -> [Dataset]:
+    """Returns a list of all Datasets found in the repo file"""
+
     repo_location = config.get_repo_file_path()
     if repo_location[0:4] == "http":
         log.debug(f"Fetching repo from {repo_location}")
@@ -39,9 +41,11 @@ def get_repo():
     return [Dataset.from_json(one) for one in repository_json]
 
 
-def search_repo(name, repo):
+def search_repo(name, repo) -> Dataset:
+    """Returns the first dataset with the given name in the given repo"""
+
     if name in tpc_info.tpc_datasets:
-        return []
+        return None
 
     index = [x.name for x in repo]
 

@@ -18,7 +18,7 @@ from . import Dataset, config, repo, tpc_info, util
 from .log import log
 
 
-def find_exact_dataset(dataset):
+def find_exact_dataset(dataset) -> Dataset:
     variants = dataset.list_variants()
     # find exact
     try:
@@ -28,8 +28,12 @@ def find_exact_dataset(dataset):
         return None
 
 
-# Will also download if no close variant is found (is this right? should this happen higher up?)
-def find_or_instantiate_close_dataset(dataset):
+def find_or_instantiate_close_dataset(dataset: Dataset) -> Dataset:
+    """Search the cache for an instance of the given Dataset (which can be used
+    to convert to an instance that has the requested properties),
+    or create one if none was found. This can be done by downloading it (dataset
+    must be present in the repo file), or by calling a generator."""
+
     # make a copy so we don't alter the dataset passed
     dataset = copy.deepcopy(dataset)
     variants = dataset.list_variants()

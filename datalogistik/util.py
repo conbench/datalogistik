@@ -32,26 +32,26 @@ from .table import Table
 from .tpc_builders import DBGen, DSDGen
 
 
-# Set file permissions of given path to readonly
 def set_readonly(path):
+    """Set file permissions of given path to readonly"""
     os.chmod(path, 0o444)
 
 
-# Set file permissions of given path to readonly
 def set_readwrite(path):
+    """Set file permissions of given path to read/write"""
     os.chmod(path, 0o666)
 
 
-# Recursively set file permissions of given path to readonly
 def set_readonly_recurse(path):
+    """Recursively set file permissions of given path to readonly"""
     for dirpath, dirnames, filenames in os.walk(path):
         os.chmod(dirpath, 0o555)
         for filename in filenames:
             set_readonly(os.path.join(dirpath, filename))
 
 
-# Recursively set file permissions of given path to readonly
 def set_readwrite_recurse(path):
+    """Recursively set file permissions of given path to read/write"""
     if os.path.isfile(path):
         set_readwrite(path)
     for dirpath, dirnames, filenames in os.walk(path):
@@ -66,6 +66,7 @@ def file_visitor(written_file):
 
 
 def calculate_checksum(file_path):
+    """Calculate an md5 checksum of the file at given path"""
     with open(file_path, "rb") as f:
         file_hash = hashlib.md5()
         chunk = f.read(config.hashing_chunk_size)
@@ -76,9 +77,11 @@ def calculate_checksum(file_path):
     return file_hash.hexdigest()
 
 
-# Returns true if the given path contains a dataset with a metadata file that contains
-# a file listing.
-def contains_dataset(path):
+def contains_dataset(path) -> bool:
+    """Returns true if the given path contains a dataset with a metadata file that
+    contains a `table` entry (in which case it is assumed to be defined well enough
+    to be used). No file validation is performed."""
+
     if not path.exists():
         msg = f"Path '{path}' does not exist"
         log.error(msg)
@@ -97,9 +100,11 @@ def contains_dataset(path):
     return False
 
 
-# Walk up the directory tree up to the root of the cache to find a metadata file.
-# Return true if a metadata file is found
-def valid_metadata_in_parent_dirs(dirpath):
+def valid_metadata_in_parent_dirs(dirpath) -> bool:
+    """Walk up the directory tree up to the root of the cache to find a metadata file.
+    Return true if a metadata file is found, meaning that the given path is a subdir
+    of a dataset."""
+
     walking_path = pathlib.Path(dirpath)
     cache_root = config.get_cache_location()
     while walking_path != cache_root:
@@ -109,8 +114,9 @@ def valid_metadata_in_parent_dirs(dirpath):
     return False
 
 
-# Performs cleanup if something happens while creating an entry in the cache
 def clean_cache_dir(path):
+    """Performs cleanup if something happens while creating an entry in the cache"""
+
     path = pathlib.Path(path)
     log.debug(f"Cleaning cache directory '{path}'")
     cache_root = config.get_cache_location()
@@ -133,9 +139,10 @@ def clean_cache_dir(path):
             os.rmdir(path)
 
 
-# Search the cache for directories that are not part of a dataset, and remove them.
-# Also removes directories that do not have any datasets underneath them.
 def clean_cache():
+    """Search the cache for directories that are not part of a dataset, and remove them.
+    Also removes directories that do not have any datasets underneath them."""
+
     cache_root = config.get_cache_location()
     log.info(f"Cleaning cache at {cache_root}")
     cleaned_leaf_dir = True
@@ -150,8 +157,10 @@ def clean_cache():
                     cleaned_leaf_dir = True
 
 
-# Remove an entry from the cache by the given subdir.
 def prune_cache_entry(sub_path):
+    """Remove an entry from the cache by the given sub_path
+    (a relative path, inside the cache)."""
+
     log.debug(f"Pruning cache entry '{sub_path}'")
     cache_root = config.get_cache_location()
     path = pathlib.Path(cache_root, sub_path)
@@ -165,15 +174,19 @@ def prune_cache_entry(sub_path):
     clean_cache()
 
 
-# Convert a pyarrow.schema to a dict that can be serialized to JSON
-def schema_to_dict(schema):
+def schema_to_dict(schema: pyarrow.Schema) -> dict:
+    """Convert a pyarrow.schema to a dict that can be serialized to JSON"""
     field_dict = {}
     for field in schema:
         field_dict[field.name] = str(field.type)
     return field_dict
 
 
-def convert_arrow_alias(type_name):
+def convert_arrow_alias(type_name: str) -> str:
+    """Return the canonical name of the arrow type (or more precise: the name of the
+    function to create it) in case the given type_name is an alias.
+    Otherwise, return the type_name itself."""
+
     aliases = {
         "bool": "bool_",
         "halffloat": "float16",
@@ -184,8 +197,9 @@ def convert_arrow_alias(type_name):
     return aliases.get(type_name, type_name)
 
 
-# Create an instance of the pyarrow datatype with the given name
 def arrow_type_function_lookup(function_name):
+    """Return the function to create an instance of the pyarrow datatype with the given
+    name"""
     if isinstance(function_name, str):
         function_name = convert_arrow_alias(function_name)
         pa_type_func = getattr(pa, function_name)
@@ -195,8 +209,10 @@ def arrow_type_function_lookup(function_name):
     return None
 
 
-# Convert a given item (string or dict) to the corresponding Arrow datatype
 def arrow_type_from_json(input_type):
+    """Create and return an Arrow schema field for the given schema item
+    from a JSON representation (string or dict)"""
+
     arrow_nested_types = {
         "list_",
         "large_list",
@@ -238,8 +254,10 @@ def arrow_type_from_json(input_type):
         return arrow_type_function_lookup(type_name)(args)
 
 
-# Convert the given dict to a pyarrow.schema
-def get_arrow_schema(input_schema):
+def get_arrow_schema(input_schema: dict) -> pyarrow.Schema:
+    """Convert the given schema, parsed from a JSON representation,
+    to a pyarrow.schema"""
+
     if input_schema is None:
         return None
     log.debug("Converting schema to pyarrow.schema...")
@@ -254,10 +272,9 @@ def get_arrow_schema(input_schema):
     return output_schema
 
 
-# Generate a dataset by calling one of the supported external generators
-# TODO: Generator output cannot be used as dataset output directly, because of the
-# trailing columns.
 def generate_dataset(dataset):
+    """Generate a dataset by calling one of the supported external generators"""
+
     log.info(f"Generating {dataset.name} data to cache...")
     gen_start = time.perf_counter()
     # This naming assumes the scale factor is always peresent, which is true for TPC-H but possibly not all generated datasets
@@ -308,6 +325,10 @@ def generate_dataset(dataset):
 
 
 def compress(uncompressed_file_path, output_dir, compression):
+    """Compress the given file or the files in given directory into given output
+    directory, using given compression. The new file(s) will have a file extension
+    based on the compression."""
+
     if (
         compression is None
         or compression.lower() == "none"
@@ -339,6 +360,11 @@ def compress(uncompressed_file_path, output_dir, compression):
 
 
 def decompress(compressed_file_path, output_dir, compression):
+    """Decompress the given file or the files in the given directory using given
+    compression type. The last part of the file extension is removed to create the
+    names for the new file(s), to these are assumes to have a compression suffix
+    (e.g. .gz)."""
+
     if (
         compression is None
         or compression is None
@@ -369,9 +395,11 @@ def decompress(compressed_file_path, output_dir, compression):
 
 
 def download_file(url, output_path):
-    # If the dataset file already exists, remove it.
-    # It doesn't have a metadata file (otherwise, the cache would have hit),
-    # so something could have gone wrong while downloading/converting previously
+    """Download a given url to the fiven path. In case of a http url, this must be a
+    single file. In case of S3, this can be a directory (bucket), that will be
+    downloaded recursively. If the output path already exists, it will first be
+    removed."""
+
     if output_path.exists():
         log.debug(f"Removing existing path '{output_path}'")
         shutil.rmtree(output_path, ignore_errors=True)
