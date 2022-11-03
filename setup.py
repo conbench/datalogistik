@@ -55,7 +55,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: Apache 2 License",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.8,<3.11",
     maintainer="Voltron Data",
     url="https://github.com/conbench/datalogistik",
     install_requires=base_requirements,

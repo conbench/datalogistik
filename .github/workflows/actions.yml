@@ -22,6 +22,7 @@ on:
 
 env:
   NIGHTLY: https://pypi.fury.io/arrow-nightlies
+  PYTHON_VERSION: 3.10
 
 jobs:
   check-copyright:
@@ -30,9 +31,11 @@ jobs:
       RAT_JAR: https://repo1.maven.org/maven2/org/apache/rat/apache-rat/0.14/apache-rat-0.14.jar
     steps:
       - name: Check out repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -46,9 +49,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install package
         run: pip install --extra-index-url $NIGHTLY -e .[dev]
       - name: Lint
@@ -66,9 +71,11 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: microsoft/setup-msbuild@v1.1
       - name: Check out repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install package
         run: pip install --extra-index-url $NIGHTLY -e .[dev]
       - name: Run tests
@@ -77,9 +84,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install package
         run: pip install -e .
       - name: Build artifacts
@@ -110,9 +119,9 @@ jobs:
         DATALOGISTIK_REPO: https://raw.githubusercontent.com/conbench/datalogistik/${{ github.sha }}/repo.json
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install pipx
         if: matrix.installer == 'pipx'
         run: |
