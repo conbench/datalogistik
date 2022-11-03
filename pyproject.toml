@@ -26,7 +26,7 @@ secondary = false
 
 [tool.poetry.dependencies]
 python = "^3.8"
-pyarrow = "^10.0.0dev497"
+pyarrow = { version = ">=11.0.0dev1", source = "arrow-nightlies" }
 urllib3 = "^1.26.9"
 
 [tool.poetry.dev-dependencies]
