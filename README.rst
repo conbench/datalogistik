@@ -85,7 +85,9 @@ Install ``pipx``::
 
 Install ``datalogistik``::
 
-    pipx install git+https://github.com/conbench/datalogistik.git
+    pipx install \
+        --pip-args '--extra-index-url https://pypi.fury.io/arrow-nightlies' \
+        git+https://github.com/conbench/datalogistik.git
 
 Run ``datalogistik``::
 
@@ -97,7 +99,9 @@ Installing using ``pip``
 If you are okay with dealing with potential dependency problems, you may install the
 package with ``pip``::
 
-    pip install git+https://github.com/conbench/datalogistik.git
+    pip install \
+        --extra-index-url https://pypi.fury.io/arrow-nightlies \
+        git+https://github.com/conbench/datalogistik.git
 
 Run ``datalogistik``::
 

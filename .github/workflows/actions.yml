@@ -90,8 +90,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install package
-        run: pip install -e .
       - name: Build artifacts
         run: |
           pip install build
@@ -138,7 +136,9 @@ jobs:
         run: echo "WHEEL=$(find . -name '*.whl')" >> $GITHUB_ENV
         shell: bash
       - name: Install package
-        run: ${{ matrix.installer }} install ${{ matrix.installee }}
+        run: |
+          pip config set global.extra-index-url=$NIGHTLY
+          ${{ matrix.installer }} install ${{ matrix.installee }}
         shell: bash
       - name: Test downloading and converting a dataset
         run: datalogistik get -d type_floats -f csv

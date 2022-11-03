@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
---extra-index-url https://pypi.fury.io/arrow-nightlies
-
 black==22.6.0
 flake8==4.0.1
 isort==5.10.1
 pre-commit>=2.20
-# test the nightly pyarrow
-pyarrow>=11.0.0.dev0
 pytest>=7
