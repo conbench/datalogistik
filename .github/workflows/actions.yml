@@ -78,6 +78,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install package
         run: pip install --extra-index-url $NIGHTLY -e .[dev]
+        shell: bash
       - name: Run tests
         run: pytest -vv
   build-wheel:
@@ -136,7 +137,7 @@ jobs:
         if: matrix.installee == '$WHEEL'
         run: echo "WHEEL=$(find . -name '*.whl')" >> $GITHUB_ENV
       - name: Install package
-        run: |
-          ${{ matrix.installer }} install '${{ matrix.installee }}'
+        run: ${{ matrix.installer }} install ${{ matrix.installee }}
+        shell: bash
       - name: Test downloading and converting a dataset
         run: datalogistik get -d type_floats -f csv
