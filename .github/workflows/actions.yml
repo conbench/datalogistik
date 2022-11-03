@@ -137,7 +137,7 @@ jobs:
         shell: bash
       - name: Install package
         run: |
-          pip config set global.extra-index-url=$NIGHTLY
+          pip config set global.extra-index-url $NIGHTLY
           ${{ matrix.installer }} install ${{ matrix.installee }}
         shell: bash
       - name: Test downloading and converting a dataset
