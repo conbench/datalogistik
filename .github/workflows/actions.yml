@@ -136,6 +136,7 @@ jobs:
       - name: Figure out wheel name
         if: matrix.installee == '$WHEEL'
         run: echo "WHEEL=$(find . -name '*.whl')" >> $GITHUB_ENV
+        shell: bash
       - name: Install package
         run: ${{ matrix.installer }} install ${{ matrix.installee }}
         shell: bash
