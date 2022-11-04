@@ -228,7 +228,7 @@ class Dataset:
         else:
             return dataset_path
 
-    def get_one_table(self, table=None):
+    def get_one_table(self, table: Table = None) -> Table:
         """Return a Table object. If a `table` argument is passed, it is used
         to look up that particular table in the dataset, Otherwise, the first
         table is returned."""
@@ -285,7 +285,7 @@ class Dataset:
 
         return dataset_read_format, schema
 
-    def get_raw_tpc_dataset_spec(self, table: Table):
+    def get_raw_tpc_dataset_spec(self, table: Table) -> Tuple[pads.CsvFileFormat, pa.schema]:
         """Get the pyarrow.dataset CSV ReadOptions and schema needed to read
         the given TPC table."""
 
@@ -337,7 +337,7 @@ class Dataset:
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
         )
 
-    def file_listing_item(self, file_path: pathlib.Path, table: Table = None):
+    def file_listing_item(self, file_path: pathlib.Path, table: Table = None) -> Dict[str, Any]:
         """Create an item for the given file for use in a file listing"""
 
         rel_path = file_path.relative_to(self.get_table_dir(table))
@@ -349,7 +349,7 @@ class Dataset:
             "md5": file_md5,
         }
 
-    def create_file_listing(self, table: Table):
+    def create_file_listing(self, table: Table) -> List[Dict[str, Any]:
         """Create a file listing for the given table with relative paths, file sizes and md5 checksums."""
 
         path = self.ensure_table_loc(table)
@@ -378,7 +378,7 @@ class Dataset:
 
         return table.table, self.create_file_listing(table)
 
-    def validate_table_files(self, table: Table):
+    def validate_table_files(self, table: Table) -> bool:
         """Validate the files of the given table in this dataset using the file metadata attached to it.
         Returns true if the files passed the integrity check or if there are no checksums attached.
         If files or checksums are missing in the metadata, they are assumed to be ok."""
@@ -482,7 +482,7 @@ class Dataset:
             )
         return dataset_write_format, write_options
 
-    def download(self):
+    def download(self) -> None:
         """Download this dataset to the cache and perform validation if checksums
         are available in the metadata."""
 
@@ -564,7 +564,7 @@ class Dataset:
 
         log.info("Finished downloading.")
 
-    def fill_metadata_from_files(self):
+    def fill_metadata_from_files(self) -> None:
         """Add file listings with checksums and properties that can be detected
         from the files in this dataset to the metadata."""
 
@@ -603,7 +603,7 @@ class Dataset:
         # TODO: add auto-detected csv schemas? I'm not actually sure this is a good idea, but this is how we did it:
         # https://github.com/conbench/datalogistik/blob/027169a4194ba2eb27ff37889ad7e541bb4b4036/datalogistik/util.py#L895-L911
 
-    def write_metadata(self):
+    def write_metadata(self) -> None:
         """Write this dataset's metadata to the metadata file,
         overwriting an existing file."""
 
@@ -627,7 +627,7 @@ class Dataset:
         util.set_readonly(metadata_file_path)
         pass
 
-    def to_json(self):
+    def to_json(self) -> str:
         """Create a JSON representation of this Dataset, removing empty fields."""
 
         self.local_creation_date = (
@@ -751,7 +751,7 @@ class Dataset:
 
         return new_dataset
 
-    def output_result(self, url_only=False):
+    def output_result(self, url_only=False) -> str:
         """Write the key properties of this dataset to stdout.
         In case of a remote dataset, `url_only` should be set, so that the
         remote url(s) are printed instead of local file paths."""

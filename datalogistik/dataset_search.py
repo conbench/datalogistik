@@ -18,7 +18,7 @@ from . import Dataset, config, repo, tpc_info, util
 from .log import log
 
 
-def find_exact_dataset(dataset) -> Dataset:
+def find_exact_dataset(dataset: Dataset) -> Dataset:
     variants = dataset.list_variants()
     # find exact
     try:

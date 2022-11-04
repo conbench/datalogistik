@@ -271,7 +271,7 @@ def get_arrow_schema(input_schema: dict) -> pyarrow.Schema:
     return output_schema
 
 
-def generate_dataset(dataset):
+def generate_dataset(dataset: Dataset) -> Dataset:
     """Generate a dataset by calling one of the supported external generators"""
 
     log.info(f"Generating {dataset.name} data to cache...")
