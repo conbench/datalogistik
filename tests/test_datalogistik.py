@@ -372,7 +372,7 @@ def test_convert_parquet(monkeypatch, source_format, dest_format):
             pq.write_table(orig_table, rawdir / file_name)
         elif source_format == "arrow":
             feather.write_feather(orig_table, rawdir / file_name)
-        dataset = Dataset.from_json(meta_file_path)
+        dataset = Dataset.from_json_file(meta_file_path)
         written_table = dataset.get_table_dataset().to_table()
         assert written_table == orig_table
         target_dataset = Dataset(name=name, format=dest_format)

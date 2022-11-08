@@ -33,8 +33,8 @@ def mock_settings_env_vars(monkeypatch):
     monkeypatch.setenv("DATALOGISTIK_CACHE", "./tests/fixtures/test_cache")
 
 
-simple_parquet_ds = Dataset.from_json(
-    metadata="./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
+simple_parquet_ds = Dataset.from_json_file(
+    "./tests/fixtures/test_cache/chi_traffic_sample/a1fa1fa/datalogistik_metadata.ini"
 )
 # N. B. This entry differs from the contents of the metadata file. Those are wrong, to test validation failure.
 simple_parquet_listing = {
@@ -42,11 +42,11 @@ simple_parquet_listing = {
     "file_size": 116984,
     "md5": "c5024f1a2542623f5deb4a3bf4951de9",
 }
-simple_csv_ds = Dataset.from_json(
-    metadata="./tests/fixtures/test_cache/chi_traffic_sample/babb1e5/datalogistik_metadata.ini"
+simple_csv_ds = Dataset.from_json_file(
+    "./tests/fixtures/test_cache/chi_traffic_sample/babb1e5/datalogistik_metadata.ini"
 )
-multi_file_ds = Dataset.from_json(
-    metadata="./tests/fixtures/test_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
+multi_file_ds = Dataset.from_json_file(
+    "./tests/fixtures/test_cache/taxi_2013/face7ed/datalogistik_metadata.ini"
 )
 multi_file_listing = [
     {
@@ -110,8 +110,8 @@ multi_file_listing = [
         "rel_path": "taxi_2013_9.csv.gz",
     },
 ]
-multi_table_ds = Dataset.from_json(
-    metadata="./tests/fixtures/test_cache/chi_taxi/dabb1e5/datalogistik_metadata.ini"
+multi_table_ds = Dataset.from_json_file(
+    "./tests/fixtures/test_cache/chi_taxi/dabb1e5/datalogistik_metadata.ini"
 )
 
 
@@ -378,8 +378,8 @@ def test_failed_validation_download_dataset(monkeypatch):
             simple_parquet_ds.metadata_file,
             tmp_ds_dir / config.metadata_filename,
         )
-        tmp_simple_parquet_ds = Dataset.from_json(
-            metadata=tmp_ds_dir / config.metadata_filename
+        tmp_simple_parquet_ds = Dataset.from_json_file(
+            tmp_ds_dir / config.metadata_filename
         )
         with pytest.raises(
             RuntimeError,
@@ -396,8 +396,8 @@ def test_failed_validation_download_dataset(monkeypatch):
 def test_validated_download_dataset(monkeypatch):
     with tempfile.TemporaryDirectory() as tmpcachedir:
         tmpcachepath = pathlib.Path(tmpcachedir)
-        dataset = Dataset.from_json(
-            metadata="./tests/fixtures/test_cache/fanniemae_sample/a77e575/datalogistik_metadata.ini"
+        dataset = Dataset.from_json_file(
+            "./tests/fixtures/test_cache/fanniemae_sample/a77e575/datalogistik_metadata.ini"
         )
 
         def _simulate_download_by_copying(url, output_path):
@@ -413,7 +413,7 @@ def test_validated_download_dataset(monkeypatch):
             dataset.ensure_dataset_loc() / config.metadata_filename,
             tmp_ds_dir / config.metadata_filename,
         )
-        tmp_ds = Dataset.from_json(metadata=tmp_ds_dir / config.metadata_filename)
+        tmp_ds = Dataset.from_json_file(tmp_ds_dir / config.metadata_filename)
         tmp_ds.download()
         assert util.calculate_checksum(
             tmp_ds.ensure_table_loc()
@@ -455,7 +455,7 @@ def test_write_metadata():
     assert metadata_out.exists()
 
     # and we can read it in!
-    read_dataset = Dataset.from_json(metadata_out)
+    read_dataset = Dataset.from_json_file(metadata_out)
     assert read_dataset.name == "penguins"
 
     # cleanup all files that weren't there to start with

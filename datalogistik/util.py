@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import gzip
 import hashlib
 import json
@@ -31,17 +33,17 @@ from .table import Table
 from .tpc_builders import DBGen, DSDGen
 
 
-def set_readonly(path):
+def set_readonly(path: str | pathlib.Path) -> None:
     """Set file permissions of given path to readonly"""
     os.chmod(path, 0o444)
 
 
-def set_readwrite(path):
+def set_readwrite(path: str | pathlib.Path) -> None:
     """Set file permissions of given path to read/write"""
     os.chmod(path, 0o666)
 
 
-def set_readonly_recurse(path):
+def set_readonly_recurse(path: str | pathlib.Path) -> None:
     """Recursively set file permissions of given path to readonly"""
     for dirpath, dirnames, filenames in os.walk(path):
         os.chmod(dirpath, 0o555)
@@ -49,7 +51,7 @@ def set_readonly_recurse(path):
             set_readonly(os.path.join(dirpath, filename))
 
 
-def set_readwrite_recurse(path):
+def set_readwrite_recurse(path: str | pathlib.Path) -> None:
     """Recursively set file permissions of given path to read/write"""
     if os.path.isfile(path):
         set_readwrite(path)
@@ -64,7 +66,7 @@ def file_visitor(written_file):
     log.debug(f"metadata={written_file.metadata}")
 
 
-def calculate_checksum(file_path):
+def calculate_checksum(file_path: str | pathlib.Path) -> str:
     """Calculate an md5 checksum of the file at given path"""
     with open(file_path, "rb") as f:
         file_hash = hashlib.md5()
@@ -76,7 +78,7 @@ def calculate_checksum(file_path):
     return file_hash.hexdigest()
 
 
-def contains_dataset(path) -> bool:
+def contains_dataset(path: str | pathlib.Path) -> bool:
     """Returns true if the given path contains a dataset with a metadata file that
     contains a `table` entry (in which case it is assumed to be defined well enough
     to be used). No file validation is performed."""
@@ -99,7 +101,7 @@ def contains_dataset(path) -> bool:
     return False
 
 
-def valid_metadata_in_parent_dirs(dirpath) -> bool:
+def valid_metadata_in_parent_dirs(dirpath: str | pathlib.Path) -> bool:
     """Walk up the directory tree up to the root of the cache to find a metadata file.
     Return true if a metadata file is found, meaning that the given path is a subdir
     of a dataset."""
@@ -113,7 +115,7 @@ def valid_metadata_in_parent_dirs(dirpath) -> bool:
     return False
 
 
-def clean_cache_dir(path):
+def clean_cache_dir(path: str | pathlib.Path) -> None:
     """Performs cleanup if something happens while creating an entry in the cache"""
 
     path = pathlib.Path(path)
@@ -138,7 +140,7 @@ def clean_cache_dir(path):
             os.rmdir(path)
 
 
-def clean_cache():
+def clean_cache() -> None:
     """Search the cache for directories that are not part of a dataset, and remove them.
     Also removes directories that do not have any datasets underneath them."""
 
@@ -156,7 +158,7 @@ def clean_cache():
                     cleaned_leaf_dir = True
 
 
-def prune_cache_entry(sub_path):
+def prune_cache_entry(sub_path: str | pathlib.Path) -> None:
     """Remove an entry from the cache by the given sub_path
     (a relative path, inside the cache)."""
 
@@ -196,7 +198,7 @@ def convert_arrow_alias(type_name: str) -> str:
     return aliases.get(type_name, type_name)
 
 
-def arrow_type_function_lookup(function_name):
+def arrow_type_function_lookup(function_name: str):
     """Return the function to create an instance of the pyarrow datatype with the given
     name"""
     if isinstance(function_name, str):
@@ -208,7 +210,7 @@ def arrow_type_function_lookup(function_name):
     return None
 
 
-def arrow_type_from_json(input_type):
+def arrow_type_from_json(input_type: str | dict):
     """Create and return an Arrow schema field for the given schema item
     from a JSON representation (string or dict)"""
 
@@ -271,7 +273,7 @@ def get_arrow_schema(input_schema: dict) -> pyarrow.Schema:
     return output_schema
 
 
-def generate_dataset(dataset: Dataset) -> Dataset:
+def generate_dataset(dataset):
     """Generate a dataset by calling one of the supported external generators"""
 
     log.info(f"Generating {dataset.name} data to cache...")
@@ -320,7 +322,11 @@ def generate_dataset(dataset: Dataset) -> Dataset:
     return dataset
 
 
-def compress(uncompressed_file_path, output_dir, compression):
+def compress(
+    uncompressed_file_path: str | pathlib.Path,
+    output_dir: str | pathlib.Path,
+    compression: str,
+) -> None:
     """Compress the given file or the files in given directory into given output
     directory, using given compression. The new file(s) will have a file extension
     based on the compression."""
@@ -355,7 +361,11 @@ def compress(uncompressed_file_path, output_dir, compression):
         raise ValueError(msg)
 
 
-def decompress(compressed_file_path, output_dir, compression):
+def decompress(
+    compressed_file_path: str | pathlib.Path,
+    output_dir: str | pathlib.Path,
+    compression: str,
+):
     """Decompress the given file or the files in the given directory using given
     compression type. The last part of the file extension is removed to create the
     names for the new file(s), to these are assumes to have a compression suffix
@@ -390,7 +400,7 @@ def decompress(compressed_file_path, output_dir, compression):
         raise ValueError(msg)
 
 
-def download_file(url, output_path):
+def download_file(url: str, output_path: pathlib.Path):
     """Download a given url to the fiven path. In case of a http url, this must be a
     single file. In case of S3, this can be a directory (bucket), that will be
     downloaded recursively. If the output path already exists, it will first be
@@ -419,7 +429,7 @@ def download_file(url, output_path):
     return output_path
 
 
-def short_hash():
+def short_hash() -> str:
     return uuid.uuid4().hex[1:8]
 
 

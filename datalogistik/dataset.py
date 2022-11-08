@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import concurrent
 import datetime
 import json
@@ -20,7 +22,7 @@ import pathlib
 import warnings
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, fields, replace
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import pyarrow as pa
 from pyarrow import csv
@@ -102,7 +104,7 @@ class Dataset:
         if type(self.cache_location) is str:
             self.cache_location = pathlib.Path(self.cache_location)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Dataset) -> bool:
         if not isinstance(other, Dataset):
             return NotImplemented
         matching_fields = ["name", "format", "compression", "scale_factor", "delim"]
@@ -131,18 +133,9 @@ class Dataset:
         return self_dict == other_dict
 
     @classmethod
-    def from_json(cls, metadata):
+    def from_json(cls, metadata: Dict):
         """Create a Dataset object based on the given metadata.
         This can be a dictionary or a path pointing to a metadata file."""
-
-        if isinstance(metadata, str) or isinstance(metadata, pathlib.Path):
-            with open(metadata) as f:
-                json_dump = json.load(f, object_pairs_hook=OrderedDict)
-
-                # Add the metadata file itself too.
-                json_dump["metadata_file"] = pathlib.Path(metadata)
-
-                metadata = json_dump
 
         # Construct the tables, adding them back in
         # TODO: handle the case where there is a single file and no table attribute?
@@ -152,6 +145,17 @@ class Dataset:
             metadata["tables"] = tables
 
         return cls(**metadata)
+
+    @staticmethod
+    def from_json_file(metadata_file_path: pathlib.Path | str):
+        with open(metadata_file_path) as f:
+            json_dump = json.load(f, object_pairs_hook=OrderedDict)
+
+            # Add the metadata file itself too.
+            json_dump["metadata_file"] = pathlib.Path(metadata_file_path)
+
+            metadata = json_dump
+        return Dataset.from_json(metadata)
 
     def list_variants(self):
         """Returns a list of all datasets with this name in the cache"""
@@ -165,9 +169,9 @@ class Dataset:
             f"**/{self.name}/**/{config.metadata_filename}"
         )
 
-        return [Dataset.from_json(ds) for ds in metadata_files]
+        return [Dataset.from_json_file(ds) for ds in metadata_files]
 
-    def ensure_dataset_loc(self, new_hash: str = "raw"):
+    def ensure_dataset_loc(self, new_hash: str = "raw") -> pathlib.Path:
         """Return the full path to this dataset, and create the directory if it does
         not exist yet."""
 
@@ -191,7 +195,7 @@ class Dataset:
 
         return self.cache_location
 
-    def get_extension(self):
+    def get_extension(self) -> str:
         """Return the file extension for this dataset based on
         the format and compression"""
 
@@ -200,7 +204,7 @@ class Dataset:
             ext = ext + os.extsep + "gz"
         return ext
 
-    def ensure_table_loc(self, table=None):
+    def ensure_table_loc(self, table: Table = None) -> pathlib.Path:
         """This function will get the location of a table to be used + passed to
         a pyarrow dataset. It will ensure that all the directories leading up to
         the files that contain the data all exist (but will not create the data
@@ -218,7 +222,7 @@ class Dataset:
             table_path = dataset_path / (table.table + self.get_extension())
         return table_path
 
-    def get_table_dir(self, table=None):
+    def get_table_dir(self, table: Table = None) -> pathlib.Path:
         dataset_path = self.ensure_dataset_loc()
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
         table = self.get_one_table(table)
@@ -252,7 +256,7 @@ class Dataset:
             )
         return all_tables[index]
 
-    def get_csv_dataset_spec(self, table: Table):
+    def get_csv_dataset_spec(self, table: Table) -> (pads.CsvFileFormat, pa.Schema):
         """Get the pyarrow.dataset CSV ReadOptions and schema needed to read
         the given table. The schema is parsed from the JSON representation in
         the metadata file (if present)."""
@@ -285,7 +289,7 @@ class Dataset:
 
         return dataset_read_format, schema
 
-    def get_raw_tpc_dataset_spec(self, table: Table) -> Tuple[pads.CsvFileFormat, pa.schema]:
+    def get_raw_tpc_dataset_spec(self, table: Table) -> (pads.CsvFileFormat, pa.schema):
         """Get the pyarrow.dataset CSV ReadOptions and schema needed to read
         the given TPC table."""
 
@@ -317,7 +321,7 @@ class Dataset:
         # does not have the extra column at the end here)
         return dataset_read_format, pa.schema(column_types.copy())
 
-    def get_table_dataset(self, table: Table = None):
+    def get_table_dataset(self, table: Table = None) -> pads.Dataset:
         """Create and return a pyarrow.dataset instance for the given table."""
 
         # Defaults to the 0th table, which for single-table datasets is exactly what we want
@@ -337,7 +341,9 @@ class Dataset:
             self.ensure_table_loc(table), schema=schema, format=dataset_read_format
         )
 
-    def file_listing_item(self, file_path: pathlib.Path, table: Table = None) -> Dict[str, Any]:
+    def file_listing_item(
+        self, file_path: pathlib.Path, table: Table = None
+    ) -> Dict[str, Any]:
         """Create an item for the given file for use in a file listing"""
 
         rel_path = file_path.relative_to(self.get_table_dir(table))
@@ -349,7 +355,7 @@ class Dataset:
             "md5": file_md5,
         }
 
-    def create_file_listing(self, table: Table) -> List[Dict[str, Any]:
+    def create_file_listing(self, table: Table) -> List[Dict[str, Any]]:
         """Create a file listing for the given table with relative paths, file sizes and md5 checksums."""
 
         path = self.ensure_table_loc(table)
@@ -372,9 +378,11 @@ class Dataset:
                 file_list.append(f.result())
         return sorted(file_list, key=lambda item: item["rel_path"])
 
-    def get_file_listing_tuple(self, table):
+    def get_file_listing_tuple(
+        self, table: Table = None
+    ) -> (str, List[Dict[str, Any]]):
         """Helper function for parallel creation of listings;
-        returns both the file listing and the table it belongs to."""
+        returns a tuple with both the name of a table and its file listing."""
 
         return table.table, self.create_file_listing(table)
 
@@ -424,7 +432,7 @@ class Dataset:
         )
         return listings_are_equal
 
-    def validate(self):
+    def validate(self) -> bool:
         """Validate that the integrity of the files in this dataset is ok, using the metadata.
         Returns true if the dataset passed the integrity check or if there are no checksums attached.
         If tables or checksums of files are missing in the metadata, they are assumed to be ok.
@@ -452,7 +460,9 @@ class Dataset:
         log.info(f"Dataset is{'' if dataset_valid else ' NOT'} valid")
         return dataset_valid
 
-    def get_write_format(self, table: Table):
+    def get_write_format(
+        self, table: Table
+    ) -> (pads.FileFormat, pads.FileWriteOptions):
         """Create and return a pyarrow.dataset write_options instance for the given
         table with the proper options for this dataset."""
 
@@ -638,7 +648,7 @@ class Dataset:
 
         return json.dumps(dict_repr, default=str)
 
-    def convert(self, new_dataset):
+    def convert(self, new_dataset: Dataset) -> Dataset:
         """Convert this dataset to a new instance with the properties of the given
         Dataset object. This will create a new directory in the cache.
         The original is kept unchanged."""
@@ -752,7 +762,7 @@ class Dataset:
         return new_dataset
 
     def output_result(self, url_only=False) -> str:
-        """Write the key properties of this dataset to stdout.
+        """Return the key properties of this dataset as a JSON string.
         In case of a remote dataset, `url_only` should be set, so that the
         remote url(s) are printed instead of local file paths."""
 
@@ -768,7 +778,7 @@ class Dataset:
 
         return json.dumps(output)
 
-    def fill_in_defaults(self, dataset_for_defaults):
+    def fill_in_defaults(self, dataset_for_defaults: Dataset) -> None:
         """overwrites fields that are none with values from the given dataset"""
 
         for dataset_field in fields(self):

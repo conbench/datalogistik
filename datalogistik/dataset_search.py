@@ -47,7 +47,7 @@ def find_or_instantiate_close_dataset(dataset: Dataset) -> Dataset:
             # Read in the JSON after downloading, because it could contain more metadata
             # that was detected from the file(s), like format and compression
             variants = [
-                Dataset.from_json(
+                Dataset.from_json_file(
                     dataset_to_fetch.ensure_dataset_loc() / config.metadata_filename
                 )
             ]

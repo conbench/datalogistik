@@ -41,7 +41,7 @@ def get_repo() -> [Dataset]:
     return [Dataset.from_json(one) for one in repository_json]
 
 
-def search_repo(name, repo) -> Dataset:
+def search_repo(name: str, repo: [Dataset]) -> Dataset:
     """Returns the first dataset with the given name in the given repo"""
 
     if name in tpc_info.tpc_datasets:
