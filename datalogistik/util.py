@@ -32,18 +32,28 @@ from .table import Table
 from .tpc_builders import DBGen, DSDGen
 
 
+def getenv_bool(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).lower() in ("true", "t", "yes", "y", "1")
+
+
 # Set file permissions of given path to readonly
 def set_readonly(path):
+    if getenv_bool("DATALOGISTIK_NO_PERMISSIONS_CHANGE"):
+        return
     os.chmod(path, 0o444)
 
 
 # Set file permissions of given path to readonly
 def set_readwrite(path):
+    if getenv_bool("DATALOGISTIK_NO_PERMISSIONS_CHANGE"):
+        return
     os.chmod(path, 0o666)
 
 
 # Recursively set file permissions of given path to readonly
 def set_readonly_recurse(path):
+    if getenv_bool("DATALOGISTIK_NO_PERMISSIONS_CHANGE"):
+        return
     for dirpath, dirnames, filenames in os.walk(path):
         os.chmod(dirpath, 0o555)
         for filename in filenames:
@@ -52,6 +62,8 @@ def set_readonly_recurse(path):
 
 # Recursively set file permissions of given path to readonly
 def set_readwrite_recurse(path):
+    if getenv_bool("DATALOGISTIK_NO_PERMISSIONS_CHANGE"):
+        return
     if os.path.isfile(path):
         set_readwrite(path)
     for dirpath, dirnames, filenames in os.walk(path):
