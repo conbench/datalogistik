@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,9 @@ def test_file(tmp_path_factory):
     return path
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="windows doesn't have the same permissions"
+)
 def test_set_readonly(test_file):
     new_file = test_file
     assert oct(os.stat(new_file).st_mode) == "0o100777"
@@ -35,6 +39,9 @@ def test_set_readonly(test_file):
     assert oct(os.stat(new_file).st_mode) == "0o100444"
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="windows doesn't have the same permissions"
+)
 def test_set_readonly_with_envvar(test_file, monkeypatch):
     monkeypatch.setenv("DATALOGISTIK_NO_PERMISSIONS_CHANGE", "True")
     new_file = test_file
