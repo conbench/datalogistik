@@ -656,8 +656,9 @@ class Dataset:
 
                     with open(output_file, "w") as f:
                         writer = ndjson.writer(f)
-                        for row in table.to_pylist():
-                            writer.writerow(row)
+                        for batch in table.to_batches():
+                            for row in batch.to_pylist():
+                                writer.writerow(row)
                 else:
                     dataset_write_format, write_options = new_dataset.get_write_format(
                         new_table
