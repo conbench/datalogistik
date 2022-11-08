@@ -22,8 +22,7 @@ on:
 
 env:
   NIGHTLY: https://pypi.fury.io/arrow-nightlies
-  OLDEST_PYTHON_VERSION: '3.8'
-  NEWEST_PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.10'
 
 jobs:
   check-copyright:
@@ -36,7 +35,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.NEWEST_PYTHON_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -54,7 +53,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.NEWEST_PYTHON_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install package
         run: pip install --extra-index-url $NIGHTLY -e .[dev]
       - name: Lint
@@ -67,8 +66,8 @@ jobs:
           - windows-latest
           - macos-latest
         python-version:
-          - ${{ env.OLDEST_PYTHON_VERSION }}
-          - ${{ env.NEWEST_PYTHON_VERSION }}
+          - '3.8'
+          - '3.10'
     runs-on: ${{ matrix.os }}
     steps:
       - name: Add msbuild to PATH
@@ -93,7 +92,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.NEWEST_PYTHON_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Build artifacts
         run: |
           pip install build
@@ -124,7 +123,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.NEWEST_PYTHON_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install pipx
         if: matrix.installer == 'pipx'
         run: |
