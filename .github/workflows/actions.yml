@@ -22,7 +22,8 @@ on:
 
 env:
   NIGHTLY: https://pypi.fury.io/arrow-nightlies
-  PYTHON_VERSION: '3.10'
+  OLDEST_PYTHON_VERSION: '3.8'
+  NEWEST_PYTHON_VERSION: '3.10'
 
 jobs:
   check-copyright:
@@ -35,7 +36,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.NEWEST_PYTHON_VERSION }}
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -53,7 +54,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.NEWEST_PYTHON_VERSION }}
       - name: Install package
         run: pip install --extra-index-url $NIGHTLY -e .[dev]
       - name: Lint
@@ -65,6 +66,9 @@ jobs:
           - ubuntu-latest
           - windows-latest
           - macos-latest
+        python-version:
+          - ${{ env.OLDEST_PYTHON_VERSION }}
+          - ${{ env.NEWEST_PYTHON_VERSION }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Add msbuild to PATH
@@ -75,7 +79,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ matrix.python-version }}
       - name: Install package
         run: pip install --extra-index-url $NIGHTLY -e .[dev]
         shell: bash
@@ -89,7 +93,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.NEWEST_PYTHON_VERSION }}
       - name: Build artifacts
         run: |
           pip install build
@@ -120,7 +124,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.NEWEST_PYTHON_VERSION }}
       - name: Install pipx
         if: matrix.installer == 'pipx'
         run: |
