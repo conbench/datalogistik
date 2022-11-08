@@ -14,7 +14,6 @@
 
 import abc
 import concurrent.futures
-import os
 import pathlib
 import platform
 import shutil
@@ -24,6 +23,7 @@ from typing import List, Optional
 from .config import get_thread_count
 from .log import log
 from .tpc_info import tpc_table_names
+from .util import set_readonly_recurse
 
 local_package_root = pathlib.Path(__file__).parent.resolve()
 
@@ -173,10 +173,9 @@ class _TPCBuilder(abc.ABC):
                 # Not all tables will have enough rows for the full nr of partitions
                 if old_file.exists():
                     shutil.move(old_file, new_file)
-                    # reset permissions to read-only
-                    os.chmod(new_file, 0o444)
                     log.debug(f"Created {new_file}")
-            os.chmod(table_output_dir, 0o555)
+            # reset permissions to read-only
+            set_readonly_recurse(table_output_dir)
             log.debug(f"Created all partitions for {table_name}")
 
     def _make_executable(self):
