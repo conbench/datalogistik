@@ -607,7 +607,9 @@ def test_find_close_dataset_sf_mismatch(monkeypatch):
     def _fake_generate(dataset):
         return good_return
 
-    monkeypatch.setattr("datalogistik.util.generate_dataset", _fake_generate)
+    monkeypatch.setattr(
+        "datalogistik.generate_dataset.generate_dataset", _fake_generate
+    )
 
     # but some properties don't constitute a match:
     ds_diff_scale_factor = Dataset(name="tpc-h", scale_factor=10)
