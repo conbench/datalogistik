@@ -63,13 +63,12 @@ class Dataset:
     local_creation_date: Optional[str] = None
     scale_factor: Optional[float] = None
     delim: Optional[str] = None
-    metadata_file: Optional[pathlib.Path] = None
     homepage: Optional[str] = None
     # a list of strings that can be added when csv parsing to treat as if they were nulls
     extra_nulls: Optional[List] = field(default_factory=list)
 
-    # To be filled in at run time only
-    cache_location: Optional[pathlib.Path] = None
+    # Path to this dataset, to be filled in at run time only
+    full_path: Optional[pathlib.Path] = None
     dir_hash: Optional[str] = None
 
     # To be filled in programmatically when a dataset is created
@@ -99,10 +98,6 @@ class Dataset:
         # munge gz to gzip
         if self.compression is not None and self.compression.lower().startswith("gz"):
             self.compression = "gzip"
-
-        # Parse back to a pathlib, because we write paths out to JSON as strings
-        if type(self.cache_location) is str:
-            self.cache_location = pathlib.Path(self.cache_location)
 
     def __eq__(self, other: Dataset) -> bool:
         if not isinstance(other, Dataset):
@@ -148,11 +143,13 @@ class Dataset:
 
     @staticmethod
     def from_json_file(metadata_file_path: pathlib.Path | str):
+        metadata_file_path = pathlib.Path(metadata_file_path)
         with open(metadata_file_path) as f:
             json_dump = json.load(f, object_pairs_hook=OrderedDict)
 
             # Add the metadata file itself too.
-            json_dump["metadata_file"] = pathlib.Path(metadata_file_path)
+            json_dump["metadata_file"] = metadata_file_path
+            json_dump["full_path"] = metadata_file_path.parent
 
             metadata = json_dump
         return Dataset.from_json(metadata)
@@ -176,24 +173,24 @@ class Dataset:
         not exist yet."""
 
         # If this is set, return (if this is set, the dir should exist already)
-        if self.cache_location is not None:
-            return self.cache_location
+        if self.full_path is not None:
+            return self.full_path
 
-        # otherwise, look for a metadata_file and if that's not there, create a new one
+        # otherwise, look for a metadata_file and if that's not there, create a new dir
         if self.metadata_file is not None:
             # TODO: fill in the hash too? Is that even needed?
-            self.cache_location = self.metadata_file.parent
+            self.full_path = self.metadata_file.parent
         else:
             self.hash = new_hash
 
-            self.cache_location = pathlib.Path(
+            self.full_path = pathlib.Path(
                 config.get_cache_location(), self.name, self.hash
             )
 
-        if not self.cache_location.exists():
-            self.cache_location.mkdir(parents=True, exist_ok=True)
+        if not self.full_path.exists():
+            self.full_path.mkdir(parents=True, exist_ok=True)
 
-        return self.cache_location
+        return self.full_path
 
     def get_extension(self) -> str:
         """Return the file extension for this dataset based on
@@ -596,7 +593,7 @@ class Dataset:
 
         # Find parquet compression
         if self.format == "parquet":
-            first_file = self.cache_location / self.tables[0].files[0]["rel_path"]
+            first_file = self.full_path / self.tables[0].files[0]["rel_path"]
             file_metadata = pq.ParquetFile(first_file).metadata
             detected_compression = (
                 file_metadata.row_group(0).column(0).compression.lower()
@@ -624,7 +621,7 @@ class Dataset:
         json_string = self.to_json()
 
         # establish the metadata_file path
-        metadata_file_path = self.cache_location / config.metadata_filename
+        metadata_file_path = self.ensure_dataset_loc() / config.metadata_filename
         self.metadata_file = metadata_file_path
 
         # write

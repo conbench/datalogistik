@@ -149,9 +149,10 @@ def test_ensure_dataset_loc():
     )
 
     # a dataset that has an overridden path
-    new_ds = Dataset(name="new_dataset", cache_location=pathlib.Path("foo/bar/baz"))
-    assert new_ds.ensure_dataset_loc() == pathlib.Path("foo/bar/baz")
-    # TODO: assert the dir is made?
+    with tempfile.TemporaryDirectory() as tmpdsdir:
+        dspath = pathlib.Path(tmpdsdir, "foo/bar/baz")
+        new_ds = Dataset(name="new_dataset", full_path=dspath)
+        assert new_ds.ensure_dataset_loc() == dspath
 
 
 def test_get_extension():
