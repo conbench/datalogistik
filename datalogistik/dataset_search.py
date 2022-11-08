@@ -14,7 +14,8 @@
 
 import copy
 
-from . import Dataset, config, repo, tpc_info, util
+from . import Dataset, config, repo, tpc_info
+from .generate_dataset import generate_dataset
 from .log import log
 
 
@@ -53,7 +54,7 @@ def find_or_instantiate_close_dataset(dataset):
         variants = [x for x in variants if x.scale_factor == dataset.scale_factor]
         if variants == []:
             # this is generatable + must be generated
-            variants = [util.generate_dataset(dataset)]
+            variants = [generate_dataset(dataset)]
 
     if variants == []:
         msg = (
