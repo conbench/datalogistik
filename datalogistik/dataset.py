@@ -307,7 +307,9 @@ class Dataset:
             dataset_read_format, schema = self.get_csv_dataset_spec(table)
         if self.format == "tpc-raw":
             dataset_read_format, schema = self.get_raw_tpc_dataset_spec(table)
-        if self.format == "ndjson":  # not supported by pyarrow.dataset
+        if self.format == "ndjson":
+            # not supported by pyarrow.dataset, so we'll take care of this higher up
+            # in the code, by using the non-dataset pyarrow.json writer
             return None
 
         return pads.dataset(
