@@ -602,6 +602,99 @@ class Dataset:
 
         return json.dumps(dict_repr, default=str)
 
+    def write_table(
+        self,
+        table: Table,
+        table_pads: pads.Dataset,
+        source_format: str,
+        source_table_loc: pathlib.Path,
+    ):
+        output_file = self.ensure_table_loc(table.table)
+        if self.format in ["csv", "ndjson"] and self.compression:
+            # Remove compression extension from filename, pads cannot compress on the fly
+            # so we need to compress as an extra step and then we'll add the extension.
+            output_file = output_file.parent / output_file.stem
+
+        schema = util.get_arrow_schema(table.schema)
+        if self.format == "ndjson":
+            if source_format == "ndjson":
+                patable = pajson.read_json(
+                    source_table_loc,
+                    parse_options=pajson.ParseOptions(explicit_schema=schema),
+                )
+            else:
+                patable = table_pads.to_table()
+            nrows = patable.num_rows
+            ncols = len(patable.schema.names)
+
+            with open(output_file, "w") as f:
+                writer = ndjson.writer(f)
+                for batch in patable.to_batches():
+                    for row in batch.to_pylist():
+                        writer.writerow(row)
+        else:
+            dataset_write_format, write_options = self.get_write_format(table)
+            if source_format == "ndjson":
+                source = pajson.read_json(
+                    source_table_loc,
+                    parse_options=pajson.ParseOptions(explicit_schema=schema),
+                )
+                nrows = source.num_rows
+                ncols = len(source.schema.names)
+            else:
+                source = table_pads
+                nrows = table_pads.count_rows()
+                ncols = len(table_pads.schema.names)
+
+            # Find a reasonable number to set our rows per row group.
+            # and then make sure that max rows per group is less than new_nrows
+            # TODO: This should actually be something that takes into account the
+            # number of cells by default (rows * cols), and then _also_ be configurable like
+            # it is in arrowbench
+            # alternatively, when pyarrow exposes size per row group options use that instead.
+            if 15625000 <= nrows:
+                maxrpg = 15625000
+            else:
+                maxrpg = nrows
+            minrpg = maxrpg - 1
+            # but if that's 0, set it to None
+            if maxrpg == 0:
+                maxrpg = None
+                minrpg = None
+
+            pads.write_dataset(
+                source,
+                output_file,
+                format=dataset_write_format,
+                file_options=write_options,
+                min_rows_per_group=minrpg,
+                max_rows_per_group=maxrpg,
+                file_visitor=util.file_visitor if config.debug else None,
+            )
+
+            # TODO: this partitioning flag isn't quite right, we should make a new attribute that encodes whether this is a multi-file table
+            if table.partitioning is None:
+                # Convert from name.format/part-0.format to simply a file name.format
+                # To stay consistent with downloaded/generated datasets (without partitioning)
+                # TODO: do we want to change this in accordance to tpc-raw?
+                tmp_dir_name = pathlib.Path(f"{output_file}.tmp")
+                os.rename(output_file, tmp_dir_name)
+                os.rename(
+                    pathlib.Path(tmp_dir_name, f"part-0.{self.format}"),
+                    output_file,
+                )
+                tmp_dir_name.rmdir()
+        if not table.dim:
+            # TODO: we should check if these are still valid after conversion
+            table.dim = [
+                nrows,
+                ncols,
+            ]  # TODO: does the entry in new_dataset.tables in convert() get updated?
+        # TODO: this probably isn't quite right, we should do something else (use arrow?)
+        if self.format in ["csv", "ndjson"] and self.compression:
+            util.compress(output_file, output_file.parent, self.compression)
+            output_file.unlink()
+
     def convert(self, new_dataset):
         log.info(
             f"Converting and caching dataset from {self.format}, "
@@ -635,100 +728,11 @@ class Dataset:
                 # in case this dataset will be converted to csv later (otherwise the user-specified
                 # JSON schema would be lost)
 
-                new_dataset.tables.append(
-                    new_table
-                )  # not complete yet, but needed for ensure_table_loc
-                output_file = new_dataset.ensure_table_loc(new_table.table)
-                if new_dataset.format in ["csv", "ndjson"] and new_dataset.compression:
-                    # Remove compression extension from filename, pads cannot compress on the fly
-                    # so we need to compress as an extra step and then we'll add the extension.
-                    output_file = output_file.parent / output_file.stem
-
-                schema = util.get_arrow_schema(old_table.schema)
-                if new_dataset.format == "ndjson":
-                    if self.format == "ndjson":
-                        table = pajson.read_json(
-                            self.ensure_table_loc(old_table),
-                            parse_options=pajson.ParseOptions(explicit_schema=schema),
-                        )
-                    else:
-                        table = table_pads.to_table()
-                    nrows = table.num_rows
-                    ncols = len(table.schema.names)
-
-                    with open(output_file, "w") as f:
-                        writer = ndjson.writer(f)
-                        for batch in table.to_batches():
-                            for row in batch.to_pylist():
-                                writer.writerow(row)
-                else:
-                    dataset_write_format, write_options = new_dataset.get_write_format(
-                        new_table
-                    )
-                    if self.format == "ndjson":
-                        source = pajson.read_json(
-                            self.ensure_table_loc(old_table),
-                            parse_options=pajson.ParseOptions(explicit_schema=schema),
-                        )
-                        nrows = source.num_rows
-                        ncols = len(source.schema.names)
-                    else:
-                        source = table_pads
-                        nrows = table_pads.count_rows()
-                        ncols = len(table_pads.schema.names)
-
-                    # Find a reasonable number to set our rows per row group.
-                    # and then make sure that max rows per group is less than new_nrows
-                    # TODO: This should actually be something that takes into account the
-                    # number of cells by default (rows * cols), and then _also_ be configurable like
-                    # it is in arrowbench
-                    # alternatively, when pyarrow exposes size per row group options use that instead.
-                    if 15625000 <= nrows:
-                        maxrpg = 15625000
-                    else:
-                        maxrpg = nrows
-                    minrpg = maxrpg - 1
-                    # but if that's 0, set it to None
-                    if maxrpg == 0:
-                        maxrpg = None
-                        minrpg = None
-
-                    pads.write_dataset(
-                        source,
-                        output_file,
-                        format=dataset_write_format,
-                        file_options=write_options,
-                        min_rows_per_group=minrpg,
-                        max_rows_per_group=maxrpg,
-                        file_visitor=util.file_visitor if config.debug else None,
-                    )
-
-                    # TODO: this partitioning flag isn't quite right, we should make a new attribute that encodes whether this is a multi-file table
-                    if new_table.partitioning is None:
-                        # Convert from name.format/part-0.format to simply a file name.format
-                        # To stay consistent with downloaded/generated datasets (without partitioning)
-                        # TODO: do we want to change this in accordance to tpc-raw?
-                        tmp_dir_name = pathlib.Path(f"{output_file}.tmp")
-                        os.rename(output_file, tmp_dir_name)
-                        os.rename(
-                            pathlib.Path(tmp_dir_name, f"part-0.{new_dataset.format}"),
-                            output_file,
-                        )
-                        tmp_dir_name.rmdir()
-
-                if not new_table.dim:
-                    # TODO: we should check if these are still valid after conversion
-                    new_table.dim = [
-                        nrows,
-                        ncols,
-                    ]  # TODO: does the entry in new_dataset.tables get updated?
-
-                # TODO: this probably isn't quite right, we should do something else (use arrow?)
-                if new_dataset.format in ["csv", "ndjson"] and new_dataset.compression:
-                    util.compress(
-                        output_file, output_file.parent, new_dataset.compression
-                    )
-                    output_file.unlink()
+                # new_table is not complete yet, but needed for ensure_table_loc
+                new_dataset.tables.append(new_table)
+                new_dataset.write_table(
+                    new_table, table_pads, self.format, self.ensure_table_loc(old_table)
+                )
 
             # Cleanup, write metadata
             conv_time = time.perf_counter() - conv_start
