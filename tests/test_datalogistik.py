@@ -87,73 +87,79 @@ arrow_types_arguments = {
 }
 # These schema's should be equivalent
 complete_schema_json_input = """{
-    "a": "null",
-    "b": "bool",
-    "c": "int8",
-    "d": "int16",
-    "e": "int32",
-    "f": "int64",
-    "g": "uint8",
-    "h": "uint16",
-    "i": "uint32",
-    "j": "uint64",
-    "k": "float16",
-    "l": "float",
-    "m": "double",
-    "n": "date32",
-    "o": "date64",
-    "p": "month_day_nano_interval",
-    "q": "string",
-    "r": "string",
-    "s": "large_binary",
-    "t": "large_string",
-    "u": "large_string",
-    "v": {"type_name": "time32", "arguments": "ms"},
-    "w": {"type_name": "time64", "arguments": "us"},
-    "x": {"type_name": "timestamp", "arguments": {"unit": "us"}},
-    "y": {"type_name": "duration", "arguments": "us"},
-    "z": {"type_name": "binary", "arguments": {"length": 10}},
-    "argh": {"type_name": "decimal", "arguments": {"precision": 7, "scale": 3}}
+    "null": "null",
+    "bool": "bool",
+    "int8": "int8",
+    "int16": "int16",
+    "int32": "int32",
+    "int64": "int64",
+    "uint8": "uint8",
+    "uint16": "uint16",
+    "uint32": "uint32",
+    "uint64": "uint64",
+    "float16": "float16",
+    "float32": "float",
+    "float64": "double",
+    "date32": "date32",
+    "date64": "date64",
+    "month_day_nano_interval": "month_day_nano_interval",
+    "string": "string",
+    "utf8": "string",
+    "large_binary": "large_binary",
+    "large_string": "large_string",
+    "large_utf8": "large_string",
+    "time32": {"type_name": "time32", "arguments": "ms"},
+    "time64": {"type_name": "time64", "arguments": "us"},
+    "timestamp": {"type_name": "timestamp", "arguments": {"unit": "us"}},
+    "duration": {"type_name": "duration", "arguments": "us"},
+    "binary": {"type_name": "binary", "arguments": {"length": 10}},
+    "decimal": {"type_name": "decimal", "arguments": {"precision": 7, "scale": 3}}
 }"""
 complete_schema_json_output = (
-    "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', "
-    "'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'k': 'halffloat', 'l': "
-    "'float', 'm': 'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'p': "
-    "'month_day_nano_interval', 'q': 'string', 'r': 'string', 's': 'large_binary', 't':"
-    " 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', 'x': "
-    "'timestamp[us]', 'y': 'duration[us]', 'z': 'fixed_size_binary[10]', 'argh': "
-    "'decimal128(7, 3)'}"
+    "{'null': 'null', 'bool': 'bool', 'int8': 'int8', 'int16': 'int16', "
+    "'int32': 'int32', 'int64': 'int64', 'uint8': 'uint8', 'uint16': 'uint16', "
+    "'uint32': 'uint32', 'uint64': 'uint64', 'float16': 'halffloat', 'float32': "
+    "'float', 'float64': 'double', 'date32': 'date32[day]', 'date64': 'date64[ms]', "
+    "'month_day_nano_interval': 'month_day_nano_interval', 'string': 'string', "
+    "'utf8': 'string', 'large_binary': 'large_binary', 'large_string': 'large_string', "
+    "'large_utf8': 'large_string', 'time32': 'time32[ms]', 'time64': 'time64[us]', "
+    "'timestamp': 'timestamp[us]', 'duration': 'duration[us]', "
+    "'binary': 'fixed_size_binary[10]', 'decimal': 'decimal128(7, 3)'}"
 )
 complete_schema = pa.schema(
     [
-        pa.field("a", pa.null()),
-        pa.field("b", pa.bool_()),
-        pa.field("c", pa.int8()),
-        pa.field("d", pa.int16()),
-        pa.field("e", pa.int32()),
-        pa.field("f", pa.int64()),
-        pa.field("g", pa.uint8()),
-        pa.field("h", pa.uint16()),
-        pa.field("i", pa.uint32()),  # not supported by parquet
-        pa.field("j", pa.uint64()),
-        pa.field("k", pa.float16()),  # not supported by parquet, csv and ndjson
-        pa.field("l", pa.float32()),
-        pa.field("m", pa.float64()),
-        pa.field("n", pa.date32()),  # not supported by ndjson
-        pa.field("o", pa.date64()),  # not supported by parquet and ndjson
-        pa.field("p", pa.month_day_nano_interval()),  # N.S. by parquet, csv and ndjson
-        pa.field("q", pa.string()),
-        pa.field("r", pa.utf8()),
-        pa.field("s", pa.large_binary()),  # not supported by csv and ndjson
-        pa.field("t", pa.large_string()),
-        pa.field("u", pa.large_utf8()),
+        pa.field("null", pa.null()),
+        pa.field("bool", pa.bool_()),
+        pa.field("int8", pa.int8()),
+        pa.field("int16", pa.int16()),
+        pa.field("int32", pa.int32()),
+        pa.field("int64", pa.int64()),
+        pa.field("uint8", pa.uint8()),
+        pa.field("uint16", pa.uint16()),
+        pa.field("uint32", pa.uint32()),  # not supported by parquet
+        pa.field("uint64", pa.uint64()),
+        pa.field("float16", pa.float16()),  # not supported by parquet, csv and ndjson
+        pa.field("float32", pa.float32()),
+        pa.field("float64", pa.float64()),
+        pa.field("date32", pa.date32()),  # not supported by ndjson
+        pa.field("date64", pa.date64()),  # not supported by parquet and ndjson
+        pa.field(
+            "month_day_nano_interval", pa.month_day_nano_interval()
+        ),  # not supported by parquet, csv and ndjson
+        pa.field("string", pa.string()),
+        pa.field("utf8", pa.utf8()),
+        pa.field("large_binary", pa.large_binary()),  # not supported by csv and ndjson
+        pa.field("large_string", pa.large_string()),
+        pa.field("large_utf8", pa.large_utf8()),
         # types with arguments
-        pa.field("v", pa.time32("ms")),  # not supported by ndjson
-        pa.field("w", pa.time64("us")),  # not supported by ndjson
-        pa.field("x", pa.timestamp("us")),  # not supported by ndjson
-        pa.field("y", pa.duration("us")),  # not supported by parquet, csv and ndjson
-        pa.field("z", pa.binary(10)),  # not supported by csv and ndjson
-        pa.field("argh", pa.decimal128(7, 3)),  # not supported by csv and ndjson
+        pa.field("time32", pa.time32("ms")),  # not supported by ndjson
+        pa.field("time64", pa.time64("us")),  # not supported by ndjson
+        pa.field("timestamp", pa.timestamp("us")),  # not supported by ndjson
+        pa.field(
+            "duration", pa.duration("us")
+        ),  # not supported by parquet, csv and ndjson
+        pa.field("binary", pa.binary(10)),  # not supported by csv and ndjson
+        pa.field("decimal", pa.decimal128(7, 3)),  # not supported by csv and ndjson
     ]
 )
 
@@ -177,20 +183,20 @@ def generate_complete_schema_data(num_rows):
     k = num_rows
 
     data = {
-        "a": pa.nulls(k),
-        "b": random.choices([True, False], k=k),
-        "c": [random.randint(-(2**8 / 2), 2**8 / 2 - 1) for _ in range(k)],
-        "d": [random.randint(-(2**16 / 2), 2**16 / 2 - 1) for _ in range(k)],
-        "e": [random.randint(-(2**32 / 2), 2**32 / 2 - 1) for _ in range(k)],
-        "f": [random.randint(-(2**64 / 2), 2**64 / 2 - 1) for _ in range(k)],
-        "g": [random.randint(0, 2**8 - 1) for _ in range(k)],
-        "h": [random.randint(0, 2**16 - 1) for _ in range(k)],
-        "i": [random.randint(0, 2**32 - 1) for _ in range(k)],
-        "j": [random.randint(0, 2**64 - 1) for _ in range(k)],
-        "k": [np.float16(random.random()) for _ in range(k)],
-        "l": [random.random() for _ in range(k)],
-        "m": [random.random() for _ in range(k)],
-        "n": [
+        "null": pa.nulls(k),
+        "bool": random.choices([True, False], k=k),
+        "int8": [random.randint(-(2**8 / 2), 2**8 / 2 - 1) for _ in range(k)],
+        "int16": [random.randint(-(2**16 / 2), 2**16 / 2 - 1) for _ in range(k)],
+        "int32": [random.randint(-(2**32 / 2), 2**32 / 2 - 1) for _ in range(k)],
+        "int64": [random.randint(-(2**64 / 2), 2**64 / 2 - 1) for _ in range(k)],
+        "uint8": [random.randint(0, 2**8 - 1) for _ in range(k)],
+        "uint16": [random.randint(0, 2**16 - 1) for _ in range(k)],
+        "uint32": [random.randint(0, 2**32 - 1) for _ in range(k)],
+        "uint64": [random.randint(0, 2**64 - 1) for _ in range(k)],
+        "float16": [np.float16(random.random()) for _ in range(k)],
+        "float32": [random.random() for _ in range(k)],
+        "float64": [random.random() for _ in range(k)],
+        "date32": [
             (
                 datetime.datetime(
                     random.randint(1970, 2270),
@@ -202,7 +208,7 @@ def generate_complete_schema_data(num_rows):
             // datetime.timedelta(days=1)
             for _ in range(k)
         ],
-        "o": [
+        "date64": [
             datetime.datetime(
                 random.randint(1970, 2270),
                 random.randint(1, 12),
@@ -212,7 +218,7 @@ def generate_complete_schema_data(num_rows):
             * 1000
             for _ in range(k)
         ],
-        "p": [
+        "month_day_nano_interval": [
             pa.MonthDayNano(
                 [
                     random.randint(1, 12),
@@ -222,13 +228,15 @@ def generate_complete_schema_data(num_rows):
             )
             for _ in range(k)
         ],
-        "q": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "r": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "s": [randbytes(random.randint(1, 64)) for _ in range(k)],
-        "t": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "u": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "string": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "utf8": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "large_binary": [randbytes(random.randint(1, 64)) for _ in range(k)],
+        "large_string": [
+            generate_random_string(random.randint(1, 8)) for _ in range(k)
+        ],
+        "large_utf8": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
         # types with arguments
-        "v": [
+        "time32": [
             datetime.timedelta(
                 hours=random.randint(0, 23),
                 minutes=random.randint(0, 59),
@@ -237,7 +245,7 @@ def generate_complete_schema_data(num_rows):
             // datetime.timedelta(milliseconds=1)
             for _ in range(k)
         ],
-        "w": [
+        "time64": [
             datetime.timedelta(
                 hours=random.randint(0, 23),
                 minutes=random.randint(0, 59),
@@ -246,7 +254,7 @@ def generate_complete_schema_data(num_rows):
             // datetime.timedelta(microseconds=1)
             for _ in range(k)
         ],
-        "x": [
+        "timestamp": [
             datetime.timedelta(
                 hours=random.randint(0, 23),
                 minutes=random.randint(0, 59),
@@ -255,9 +263,9 @@ def generate_complete_schema_data(num_rows):
             // datetime.timedelta(microseconds=1)
             for _ in range(k)
         ],
-        "y": [random.randint(0, 10e6) for _ in range(k)],
-        "z": [randbytes(10) for _ in range(k)],
-        "argh": [
+        "duration": [random.randint(0, 10e6) for _ in range(k)],
+        "binary": [randbytes(10) for _ in range(k)],
+        "decimal": [
             decimal.Decimal(f"{random.randint(0, 9999)}.{random.randint(0,999)}")
             for _ in range(k)
         ],
@@ -298,12 +306,35 @@ def remove_unsupported_types(data, source_format, dest_format):
     subset_json_schema = complete_schema_json_input
     unsupported_columns = []
     if "csv" in [source_format, dest_format]:
-        unsupported_columns.extend(["k", "p", "s", "y", "z", "argh"])
+        unsupported_columns.extend(
+            [
+                "float16",
+                "month_day_nano_interval",
+                "large_binary",
+                "duration",
+                "binary",
+                "decimal",
+            ]
+        )
     if "parquet" in [source_format, dest_format]:
-        unsupported_columns.extend(["i", "k", "o", "p", "y"])
+        unsupported_columns.extend(
+            ["uint32", "float16", "date64", "month_day_nano_interval", "duration"]
+        )
     if "ndjson" in [source_format, dest_format]:
         unsupported_columns.extend(
-            ["k", "n", "o", "p", "s", "v", "w", "x", "y", "z", "argh"]
+            [
+                "float16",
+                "date32",
+                "date64",
+                "month_day_nano_interval",
+                "large_binary",
+                "time32",
+                "time64",
+                "timestamp",
+                "duration",
+                "binary",
+                "decimal",
+            ]
         )
 
     # remove duplicates
