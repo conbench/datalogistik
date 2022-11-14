@@ -395,7 +395,7 @@ def test_convert_parquet(monkeypatch, source_format, dest_format):
                 writer = ndjson.writer(f)
                 for row in orig_table.to_pylist():
                     writer.writerow(row)
-        dataset = Dataset.from_json(meta_file_path)
+        dataset = Dataset.from_json_file(meta_file_path)
         if source_format == "ndjson":
             written_table = pa_json.read_json(
                 dataset.ensure_table_loc(), parse_options=jpo

@@ -15,16 +15,17 @@
 import time
 
 from . import config, tpc_info
+from .dataset import Dataset
 from .log import log
 from .table import Table
 from .tpc_builders import DBGen, DSDGen
 from .util import clean_cache_dir
 
 
-# Generate a dataset by calling one of the supported external generators
 # TODO: Generator output cannot be used as dataset output directly, because of the
 # trailing columns.
-def generate_dataset(dataset):
+def generate_dataset(dataset: Dataset) -> None:
+    """Generate a dataset by calling one of the supported external generators"""
     log.info(f"Generating {dataset.name} data to cache...")
     gen_start = time.perf_counter()
     # This naming assumes the scale factor is always peresent, which is true for TPC-H but possibly not all generated datasets
