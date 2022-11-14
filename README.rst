@@ -51,8 +51,8 @@ Usage::
     manually and add a corresponding entry to their repo file.
 
 ``clean``
-    Perform a clean-up of the cache, checking whether all of the subdirectories 
-    are part of a dataset that contains a valid metadata file. 
+    Perform a clean-up of the cache, checking whether all of the subdirectories
+    are part of a dataset that contains a valid metadata file.
     Otherwise, they will be removed.
     This option is helpful after manually removing directories from the cache.
 
@@ -85,10 +85,9 @@ Install ``pipx``::
 
 Install ``datalogistik``::
 
-A nightly build of pyarrow is needed, so we need to add a repo to the install command::
-
-    pipx install --pip-args "--extra-index-url https://pypi.fury.io/arrow-nightlies/ \
-    --prefer-binary" git+https://github.com/conbench/datalogistik.git
+    pipx install \
+        --pip-args '--extra-index-url https://pypi.fury.io/arrow-nightlies' \
+        git+https://github.com/conbench/datalogistik.git
 
 Run ``datalogistik``::
 
@@ -100,8 +99,9 @@ Installing using ``pip``
 If you are okay with dealing with potential dependency problems, you may install the
 package with ``pip``::
 
-    pip install --extra-index-url https://pypi.fury.io/arrow-nightlies/ \
-                    --prefer-binary git+https://github.com/conbench/datalogistik.git
+    pip install \
+        --extra-index-url https://pypi.fury.io/arrow-nightlies \
+        git+https://github.com/conbench/datalogistik.git
 
 Run ``datalogistik``::
 
@@ -112,19 +112,16 @@ Installing from source
 
 For local development of the package, you may install from source.
 
-First install `poetry <https://python-poetry.org/docs/master/#installing-with-pipx>`_.
-There are a few ways to do so (see the link), but ``pipx`` seems like the easiest and
-safest.
-
 Clone the repo::
 
     git clone https://github.com/conbench/datalogistik.git
     cd datalogistik
 
-Install ``datalogistik`` dependencies::
+Install ``datalogistik`` and its dependencies::
 
-    poetry install
-    source $(poetry env info --path)/bin/activate
+    pip install \
+        --extra-index-url https://pypi.fury.io/arrow-nightlies \
+        -e '.[dev]'
     pre-commit install
 
 Run the checks that will be run in CI::
@@ -275,23 +272,23 @@ datalogistik_metadata.ini
         Schema of the table.
 
     ``url``
-        Download url for the table. This can be: 
-        * A URL specifying the file to be downloaded for that table (which could be a 
+        Download url for the table. This can be:
+        * A URL specifying the file to be downloaded for that table (which could be a
           single file, or a directory that contains many files to be downloaded)
-        * A base URL that is concatenated with ``rel_url_path``s in the ``files`` attribute 
+        * A base URL that is concatenated with ``rel_url_path``s in the ``files`` attribute
           if the table is a multi-file table and it is preferable to list out the files
 
     ``files``
         A list of files in this table. Each entry in the list has the following properties:
 
         ``rel_path``
-            Path to the file(s), relative to the directory of this table. This is the 
+            Path to the file(s), relative to the directory of this table. This is the
             location on disk in the cache.
-        
+
         ``rel_url_path``
-            URL path to the file(s), relative to the directory of this table where it is stored 
-            remotely. This is used only when downloading the file. This is only necesary when a 
-            multi table file has the files that make up the table listed out individually. 
+            URL path to the file(s), relative to the directory of this table where it is stored
+            remotely. This is used only when downloading the file. This is only necesary when a
+            multi table file has the files that make up the table listed out individually.
 
         ``file_size``
             Size of the file.

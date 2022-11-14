@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__pycache__
-datalogistik/dbgen_tool
-datalogistik/dsdgen_tool
-.DS_Store
-*datalogistik_cache*
-*.egg-info/
-dist/
+
+# Please do not add anything else to this file except __version__
+
+__version__ = "0.1.0"
