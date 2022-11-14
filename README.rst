@@ -150,8 +150,9 @@ By default, ``datalogistik`` caches datasets to the local directory
 ``./datalogistik_cache``. This directory is created if it does not exist yet. The
 location is the current working directory, but that can be overridden by setting the
 ``DATALOGISTIK_CACHE`` environment variable. It stores each instance of a dataset that
-the user has requested to instantiate, in addition to different file formats. There is no manifest that lists what entries are in the cache.
-``datalogistik`` searches the cache by using its directory structure:
+the user has requested to instantiate, in addition to different file formats. There is 
+no manifest that lists what entries are in the cache. ``datalogistik`` searches the cache 
+by using its directory structure:
 
 TPC datasets
     ``datalogistik_cache/<name>/<scale-factor>/<format>/``
@@ -297,6 +298,14 @@ datalogistik_metadata.ini
 
         ``md5``
             MD5 checksum of the file.
+
+Filesystem permissions
+----------------------
+
+By default, ``datalogistik`` sets the files in its cache to read only. If this is
+not desired or helpful (e.g. when running datalogistik in CI where cleanup is helpful)
+set the environment variable ``DATALOGISTIK_NO_PERMISSIONS_CHANGE`` to a ``True`` value. 
+
 
 License info
 ------------

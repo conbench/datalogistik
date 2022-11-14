@@ -27,24 +27,34 @@ import pyarrow as pa
 import pyarrow.fs
 import urllib3
 
-from . import config, tpc_info
+from . import config
 from .log import log
-from .table import Table
-from .tpc_builders import DBGen, DSDGen
+
+
+def getenv_bool(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).lower() in ("true", "t", "yes", "y", "1")
 
 
 def set_readonly(path: str | pathlib.Path) -> None:
     """Set file permissions of given path to readonly"""
+    if getenv_bool("DATALOGISTIK_NO_PERMISSIONS_CHANGE"):
+        return
     os.chmod(path, 0o444)
 
 
 def set_readwrite(path: str | pathlib.Path) -> None:
     """Set file permissions of given path to read/write"""
+    if getenv_bool("DATALOGISTIK_NO_PERMISSIONS_CHANGE"):
+        return
     os.chmod(path, 0o666)
 
 
-def set_readonly_recurse(path: str | pathlib.Path) -> None:
+def set_readonly_recurse(path: str | pathlib.Path):
     """Recursively set file permissions of given path to readonly"""
+    if getenv_bool("DATALOGISTIK_NO_PERMISSIONS_CHANGE"):
+        return
+    if os.path.isfile(path):
+        set_readonly(path)
     for dirpath, dirnames, filenames in os.walk(path):
         os.chmod(dirpath, 0o555)
         for filename in filenames:
@@ -53,6 +63,8 @@ def set_readonly_recurse(path: str | pathlib.Path) -> None:
 
 def set_readwrite_recurse(path: str | pathlib.Path) -> None:
     """Recursively set file permissions of given path to read/write"""
+    if getenv_bool("DATALOGISTIK_NO_PERMISSIONS_CHANGE"):
+        return
     if os.path.isfile(path):
         set_readwrite(path)
     for dirpath, dirnames, filenames in os.walk(path):
@@ -271,55 +283,6 @@ def get_arrow_schema(input_schema: dict) -> pyarrow.Schema:
 
     output_schema = pa.schema(field_list)
     return output_schema
-
-
-def generate_dataset(dataset):
-    """Generate a dataset by calling one of the supported external generators"""
-
-    log.info(f"Generating {dataset.name} data to cache...")
-    # This naming assumes the scale factor is always peresent, which is true for TPC-H but possibly not all generated datasets
-    dataset_path = dataset.ensure_dataset_loc(new_hash=f"raw_{dataset.scale_factor}")
-    generators = {"tpc-h": DBGen, "tpc-ds": DSDGen}
-
-    # override the format, since we only know how to directly generate tpc-raw format
-    dataset.format = "tpc-raw"
-
-    try:
-        generator_class = generators[dataset.name]
-        # TODO: support executable_path as env var?
-        generator = generator_class(executable_path=config.get_gen_location())
-
-        dataset_path.mkdir(parents=True, exist_ok=True)
-        generator.create_dataset(
-            out_dir=dataset_path,
-            scale_factor=dataset.scale_factor,
-            partitions=config.get_thread_count(),
-        )
-
-        metadata_table_list = []
-        for table in tpc_info.tpc_table_names[dataset.name]:
-            metadata_table_list.append(
-                Table(
-                    table=table,
-                    # These will always be multi_file, so we should code that
-                    multi_file=True,
-                    # TODO: is this line necessary?
-                    # this schema is not inferred, but it does not have
-                    # the same structure of a user-specified schema either
-                    # "schema": schema_to_dict(dataset.schema),
-                )
-            )
-        dataset.tables = metadata_table_list
-
-        log.info("Finished generating.")
-        dataset.write_metadata()
-
-    except Exception:
-        log.error("An error occurred during generation.")
-        clean_cache_dir(dataset_path)
-        raise
-
-    return dataset
 
 
 def compress(
