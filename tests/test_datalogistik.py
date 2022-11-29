@@ -18,15 +18,18 @@ import json
 import os
 import pathlib
 import random
+import re
 import shutil
 import string
 import sys
 import tempfile
 
+import ndjson
 import numpy as np
 import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.feather as feather  # arrow format
+import pyarrow.json as pa_json
 import pyarrow.parquet as pq
 import pytest
 
@@ -83,123 +86,82 @@ arrow_types_arguments = {
     ),
 }
 # These schema's should be equivalent
-complete_csv_schema_json_input = """{
-    "a": "null",
-    "b": "bool",
-    "c": "int8",
-    "d": "int16",
-    "e": "int32",
-    "f": "int64",
-    "g": "uint8",
-    "h": "uint16",
-    "i": "uint32",
-    "j": "uint64",
-    "l": "float",
-    "m": "double",
-    "n": "date32",
-    "o": "date64",
-    "q": "string",
-    "r": "string",
-    "t": "large_string",
-    "u": "large_string",
-    "v": {"type_name": "time32", "arguments": "ms"},
-    "w": {"type_name": "time64", "arguments": "us"},
-    "x": {"type_name": "timestamp", "arguments": {"unit": "us"}}
-    }"""
-complete_csv_schema_json_output = (
-    "{'a': 'null', 'b': 'bool', 'c': 'int8', 'd': 'int16', 'e': 'int32', 'f': 'int64', "
-    "'g': 'uint8', 'h': 'uint16', 'i': 'uint32', 'j': 'uint64', 'l': 'float', 'm': "
-    "'double', 'n': 'date32[day]', 'o': 'date64[ms]', 'q': 'string', 'r': 'string', "
-    "'t': 'large_string', 'u': 'large_string', 'v': 'time32[ms]', 'w': 'time64[us]', "
-    "'x': 'timestamp[us]'}"
+complete_schema_json_input = """{
+    "null": "null",
+    "bool": "bool",
+    "int8": "int8",
+    "int16": "int16",
+    "int32": "int32",
+    "int64": "int64",
+    "uint8": "uint8",
+    "uint16": "uint16",
+    "uint32": "uint32",
+    "uint64": "uint64",
+    "float16": "float16",
+    "float32": "float",
+    "float64": "double",
+    "date32": "date32",
+    "date64": "date64",
+    "month_day_nano_interval": "month_day_nano_interval",
+    "string": "string",
+    "utf8": "string",
+    "large_binary": "large_binary",
+    "large_string": "large_string",
+    "large_utf8": "large_string",
+    "time32": {"type_name": "time32", "arguments": "ms"},
+    "time64": {"type_name": "time64", "arguments": "us"},
+    "timestamp": {"type_name": "timestamp", "arguments": {"unit": "us"}},
+    "duration": {"type_name": "duration", "arguments": "us"},
+    "binary": {"type_name": "binary", "arguments": {"length": 10}},
+    "decimal": {"type_name": "decimal", "arguments": {"precision": 7, "scale": 3}}
+}"""
+complete_schema_json_output = (
+    "{'null': 'null', 'bool': 'bool', 'int8': 'int8', 'int16': 'int16', "
+    "'int32': 'int32', 'int64': 'int64', 'uint8': 'uint8', 'uint16': 'uint16', "
+    "'uint32': 'uint32', 'uint64': 'uint64', 'float16': 'halffloat', 'float32': "
+    "'float', 'float64': 'double', 'date32': 'date32[day]', 'date64': 'date64[ms]', "
+    "'month_day_nano_interval': 'month_day_nano_interval', 'string': 'string', "
+    "'utf8': 'string', 'large_binary': 'large_binary', 'large_string': 'large_string', "
+    "'large_utf8': 'large_string', 'time32': 'time32[ms]', 'time64': 'time64[us]', "
+    "'timestamp': 'timestamp[us]', 'duration': 'duration[us]', "
+    "'binary': 'fixed_size_binary[10]', 'decimal': 'decimal128(7, 3)'}"
 )
-complete_csv_schema = pa.schema(
+complete_schema = pa.schema(
     [
-        pa.field("a", pa.null()),
-        pa.field("b", pa.bool_()),
-        pa.field("c", pa.int8()),
-        pa.field("d", pa.int16()),
-        pa.field("e", pa.int32()),
-        pa.field("f", pa.int64()),
-        pa.field("g", pa.uint8()),
-        pa.field("h", pa.uint16()),
-        pa.field("i", pa.uint32()),
-        pa.field("j", pa.uint64()),
-        # pa.field("k", pa.float16()), # not supported by parquet and csv
-        pa.field("l", pa.float32()),
-        pa.field("m", pa.float64()),
-        pa.field("n", pa.date32()),
-        pa.field("o", pa.date64()),
-        #  pa.field("p", pa.month_day_nano_interval()), # not supported by parquet and csv
-        pa.field("q", pa.string()),
-        pa.field("r", pa.utf8()),
-        # pa.field("s", pa.large_binary()), # not supported by csv
-        pa.field("t", pa.large_string()),
-        pa.field("u", pa.large_utf8()),
+        pa.field("null", pa.null()),
+        pa.field("bool", pa.bool_()),
+        pa.field("int8", pa.int8()),
+        pa.field("int16", pa.int16()),
+        pa.field("int32", pa.int32()),
+        pa.field("int64", pa.int64()),
+        pa.field("uint8", pa.uint8()),
+        pa.field("uint16", pa.uint16()),
+        pa.field("uint32", pa.uint32()),  # not supported by parquet
+        pa.field("uint64", pa.uint64()),
+        pa.field("float16", pa.float16()),  # not supported by parquet, csv and ndjson
+        pa.field("float32", pa.float32()),
+        pa.field("float64", pa.float64()),
+        pa.field("date32", pa.date32()),  # not supported by ndjson
+        pa.field("date64", pa.date64()),  # not supported by parquet and ndjson
+        pa.field(
+            "month_day_nano_interval", pa.month_day_nano_interval()
+        ),  # not supported by parquet, csv and ndjson
+        pa.field("string", pa.string()),
+        pa.field("utf8", pa.utf8()),
+        pa.field("large_binary", pa.large_binary()),  # not supported by csv and ndjson
+        pa.field("large_string", pa.large_string()),
+        pa.field("large_utf8", pa.large_utf8()),
         # types with arguments
-        pa.field("v", pa.time32("ms")),
-        pa.field("w", pa.time64("us")),
-        pa.field("x", pa.timestamp("us")),
-        # pa.field("y", pa.duration("ns")), # not supported by parquet and csv
-        # pa.field("z", pa.binary(10)), # not supported by csv
-        # pa.field("argh", pa.decimal128(7, 3)),
+        pa.field("time32", pa.time32("ms")),  # not supported by ndjson
+        pa.field("time64", pa.time64("us")),  # not supported by ndjson
+        pa.field("timestamp", pa.timestamp("us")),  # not supported by ndjson
+        pa.field(
+            "duration", pa.duration("us")
+        ),  # not supported by parquet, csv and ndjson
+        pa.field("binary", pa.binary(10)),  # not supported by csv and ndjson
+        pa.field("decimal", pa.decimal128(7, 3)),  # not supported by csv and ndjson
     ]
 )
-
-# This schema should be supported by all formats
-common_schema = pa.schema(
-    [
-        pa.field("a", pa.null()),
-        pa.field("b", pa.bool_()),
-        pa.field("c", pa.int8()),
-        pa.field("d", pa.int16()),
-        pa.field("e", pa.int32()),
-        pa.field("f", pa.int64()),
-        pa.field("g", pa.uint8()),
-        pa.field("h", pa.uint16()),
-        # pa.field("i", pa.uint32()), # not supported by parquet
-        pa.field("j", pa.uint64()),
-        # pa.field("k", pa.float16()), # not supported by parquet and csv
-        pa.field("l", pa.float32()),
-        pa.field("m", pa.float64()),
-        pa.field("n", pa.date32()),
-        # pa.field("o", pa.date64()), # not supported by parquet
-        # pa.field("p", pa.month_day_nano_interval()), # not supported by parquet and csv
-        pa.field("q", pa.string()),
-        pa.field("r", pa.utf8()),
-        # pa.field("s", pa.large_binary()),  # not supported by csv
-        pa.field("t", pa.large_string()),
-        pa.field("u", pa.large_utf8()),
-        # types with arguments
-        pa.field("v", pa.time32("ms")),
-        pa.field("w", pa.time64("us")),
-        pa.field("x", pa.timestamp("us")),
-        # pa.field("y", pa.duration("s")), # not supported by parquet and csv
-        # pa.field("z", pa.binary(10)),  # not supported by csv
-        # pa.field("argh", pa.decimal128(7, 3)),  # not supported by csv
-    ]
-)
-common_schema_json_input = """{
-    "a": "null",
-    "b": "bool",
-    "c": "int8",
-    "d": "int16",
-    "e": "int32",
-    "f": "int64",
-    "g": "uint8",
-    "h": "uint16",
-    "j": "uint64",
-    "l": "float",
-    "m": "double",
-    "n": "date32",
-    "q": "string",
-    "r": "string",
-    "t": "large_string",
-    "u": "large_string",
-    "v": {"type_name": "time32", "arguments": "ms"},
-    "w": {"type_name": "time64", "arguments": "us"},
-    "x": {"type_name": "timestamp", "arguments": {"unit": "us"}}
-    }"""
 
 
 def generate_random_string(length):
@@ -209,25 +171,32 @@ def generate_random_string(length):
     return random_string
 
 
+def randbytes(length):
+    return random.getrandbits(length * 8).to_bytes(length, "little")
+
+
 # Generate random data according to the complete schemas above.
 # Not all datatypes are supported by all formats.
 # Note that if format is not set to one of the 3 supported formats
 # (parquet, csv, arrow), the resulting data is supported by all 3.
-def generate_complete_schema_data(num_rows, format):
+def generate_complete_schema_data(num_rows):
     k = num_rows
+
     data = {
-        "a": pa.nulls(k),
-        "b": random.choices([True, False], k=k),
-        "c": [random.randint(-(2**8 / 2), 2**8 / 2 - 1) for _ in range(k)],
-        "d": [random.randint(-(2**16 / 2), 2**16 / 2 - 1) for _ in range(k)],
-        "e": [random.randint(-(2**32 / 2), 2**32 / 2 - 1) for _ in range(k)],
-        "f": [random.randint(-(2**64 / 2), 2**64 / 2 - 1) for _ in range(k)],
-        "g": [random.randint(0, 2**8 - 1) for _ in range(k)],
-        "h": [random.randint(0, 2**16 - 1) for _ in range(k)],
-        "j": [random.randint(0, 2**64 - 1) for _ in range(k)],
-        "l": [random.random() for _ in range(k)],
-        "m": [random.random() for _ in range(k)],
-        "n": [
+        "null": pa.nulls(k),
+        "bool": random.choices([True, False], k=k),
+        "int8": [random.randint(-(2**8 / 2), 2**8 / 2 - 1) for _ in range(k)],
+        "int16": [random.randint(-(2**16 / 2), 2**16 / 2 - 1) for _ in range(k)],
+        "int32": [random.randint(-(2**32 / 2), 2**32 / 2 - 1) for _ in range(k)],
+        "int64": [random.randint(-(2**64 / 2), 2**64 / 2 - 1) for _ in range(k)],
+        "uint8": [random.randint(0, 2**8 - 1) for _ in range(k)],
+        "uint16": [random.randint(0, 2**16 - 1) for _ in range(k)],
+        "uint32": [random.randint(0, 2**32 - 1) for _ in range(k)],
+        "uint64": [random.randint(0, 2**64 - 1) for _ in range(k)],
+        "float16": [np.float16(random.random()) for _ in range(k)],
+        "float32": [random.random() for _ in range(k)],
+        "float64": [random.random() for _ in range(k)],
+        "date32": [
             (
                 datetime.datetime(
                     random.randint(1970, 2270),
@@ -239,42 +208,7 @@ def generate_complete_schema_data(num_rows, format):
             // datetime.timedelta(days=1)
             for _ in range(k)
         ],
-        "q": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "r": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "t": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        "u": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
-        # types with arguments
-        "v": [
-            datetime.timedelta(
-                hours=random.randint(0, 23),
-                minutes=random.randint(0, 59),
-                seconds=random.randint(0, 59),
-            )
-            // datetime.timedelta(milliseconds=1)
-            for _ in range(k)
-        ],
-        "w": [
-            datetime.timedelta(
-                hours=random.randint(0, 23),
-                minutes=random.randint(0, 59),
-                seconds=random.randint(0, 59),
-            )
-            // datetime.timedelta(microseconds=1)
-            for _ in range(k)
-        ],
-        "x": [
-            datetime.timedelta(
-                hours=random.randint(0, 23),
-                minutes=random.randint(0, 59),
-                seconds=random.randint(0, 59),
-            )
-            // datetime.timedelta(microseconds=1)
-            for _ in range(k)
-        ],
-    }
-    if format == "csv" or format == "arrow":
-        data["i"] = [random.randint(0, 2**32 - 1) for _ in range(k)]
-        data["o"] = [
+        "date64": [
             datetime.datetime(
                 random.randint(1970, 2270),
                 random.randint(1, 12),
@@ -283,17 +217,8 @@ def generate_complete_schema_data(num_rows, format):
             ).timestamp()
             * 1000
             for _ in range(k)
-        ]
-    if format == "parquet" or format == "arrow":
-        data["s"] = [random.randbytes(random.randint(1, 64)) for _ in range(k)]
-        data["z"] = [random.randbytes(10) for _ in range(k)]
-        data["argh"] = [
-            decimal.Decimal(f"{random.randint(0, 9999)}.{random.randint(0,999)}")
-            for _ in range(k)
-        ]
-    if format == "arrow":
-        data["k"] = [np.float16(random.random()) for _ in range(k)]
-        data["p"] = [
+        ],
+        "month_day_nano_interval": [
             pa.MonthDayNano(
                 [
                     random.randint(1, 12),
@@ -302,9 +227,49 @@ def generate_complete_schema_data(num_rows, format):
                 ]
             )
             for _ in range(k)
-        ]
-        data["y"] = [random.randint(0, 10e6) for _ in range(k)]
-
+        ],
+        "string": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "utf8": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        "large_binary": [randbytes(random.randint(1, 64)) for _ in range(k)],
+        "large_string": [
+            generate_random_string(random.randint(1, 8)) for _ in range(k)
+        ],
+        "large_utf8": [generate_random_string(random.randint(1, 8)) for _ in range(k)],
+        # types with arguments
+        "time32": [
+            datetime.timedelta(
+                hours=random.randint(0, 23),
+                minutes=random.randint(0, 59),
+                seconds=random.randint(0, 59),
+            )
+            // datetime.timedelta(milliseconds=1)
+            for _ in range(k)
+        ],
+        "time64": [
+            datetime.timedelta(
+                hours=random.randint(0, 23),
+                minutes=random.randint(0, 59),
+                seconds=random.randint(0, 59),
+            )
+            // datetime.timedelta(microseconds=1)
+            for _ in range(k)
+        ],
+        "timestamp": [
+            datetime.timedelta(
+                hours=random.randint(0, 23),
+                minutes=random.randint(0, 59),
+                seconds=random.randint(0, 59),
+            )
+            // datetime.timedelta(microseconds=1)
+            for _ in range(k)
+        ],
+        "duration": [random.randint(0, 10e6) for _ in range(k)],
+        "binary": [randbytes(10) for _ in range(k)],
+        "decimal": [
+            decimal.Decimal(f"{random.randint(0, 9999)}.{random.randint(0,999)}")
+            for _ in range(k)
+        ],
+    }
     return data
 
 
@@ -321,14 +286,12 @@ def test_arrow_type_from_json():
 
 
 def test_get_arrow_schema():
-    parsed_schema = util.get_arrow_schema(json.loads(complete_csv_schema_json_input))
-    assert parsed_schema == complete_csv_schema
+    parsed_schema = util.get_arrow_schema(json.loads(complete_schema_json_input))
+    assert parsed_schema == complete_schema
 
 
 def test_schema_to_dict():
-    assert (
-        str(util.schema_to_dict(complete_csv_schema)) == complete_csv_schema_json_output
-    )
+    assert str(util.schema_to_dict(complete_schema)) == complete_schema_json_output
 
 
 @pytest.mark.parametrize("comp_string", [None, "none", "NoNe", "uncompressed"])
@@ -338,17 +301,71 @@ def test_compress(comp_string):
     assert util.decompress("uncompressed_file_path", "output_dir", comp_string) is None
 
 
-@pytest.mark.parametrize("source_format", ["csv", "parquet", "arrow"])
-@pytest.mark.parametrize("dest_format", ["csv", "parquet", "arrow"])
+def remove_unsupported_types(data, source_format, dest_format):
+    subset_schema = complete_schema
+    subset_json_schema = complete_schema_json_input
+    unsupported_columns = []
+    if "csv" in [source_format, dest_format]:
+        unsupported_columns.extend(
+            [
+                "float16",
+                "month_day_nano_interval",
+                "large_binary",
+                "duration",
+                "binary",
+                "decimal",
+            ]
+        )
+    if "parquet" in [source_format, dest_format]:
+        unsupported_columns.extend(
+            ["uint32", "float16", "date64", "month_day_nano_interval", "duration"]
+        )
+    if "ndjson" in [source_format, dest_format]:
+        unsupported_columns.extend(
+            [
+                "float16",
+                "date32",
+                "date64",
+                "month_day_nano_interval",
+                "large_binary",
+                "time32",
+                "time64",
+                "timestamp",
+                "duration",
+                "binary",
+                "decimal",
+            ]
+        )
+
+    # remove duplicates
+    unsupported_columns = list(dict.fromkeys(unsupported_columns))
+    for col in unsupported_columns:
+        if data.get(col, None):
+            del data[col]
+        subset_schema = subset_schema.remove(subset_schema.get_field_index(col))
+        regex = f'.*"{col}":.*\n'
+        subset_json_schema = re.sub(regex, "", subset_json_schema, re.MULTILINE)
+
+    # fix up the trailing comma in case we removed the last line
+    subset_json_schema = re.sub(",\n}", "\n}", subset_json_schema, re.MULTILINE)
+
+    return data, subset_schema, subset_json_schema
+
+
+@pytest.mark.parametrize("source_format", ["csv", "parquet", "arrow", "ndjson"])
+@pytest.mark.parametrize("dest_format", ["csv", "parquet", "arrow", "ndjson"])
 def test_convert_parquet(monkeypatch, source_format, dest_format):
-    if source_format == dest_format:
-        pytest.skip()
     name = "data_to_be_converted"
     file_name = name + "." + source_format
-    data = generate_complete_schema_data(100, "common")
-    orig_table = pa.table(data, schema=common_schema)
+    data = generate_complete_schema_data(100)
+    data, schema, schema_json = remove_unsupported_types(
+        data, source_format, dest_format
+    )
+
+    orig_table = pa.table(data, schema=schema)
     with tempfile.TemporaryDirectory() as tmpdspath:
         monkeypatch.setenv("DATALOGISTIK_CACHE", tmpdspath)
+        jpo = pa_json.ParseOptions(explicit_schema=schema)
         complete_dataset_info = {
             "name": name,
             "format": source_format,
@@ -356,7 +373,7 @@ def test_convert_parquet(monkeypatch, source_format, dest_format):
                 {
                     "table": name,
                     "header_line": False,
-                    "schema": json.loads(common_schema_json_input),
+                    "schema": json.loads(schema_json),
                 }
             ],
         }
@@ -365,19 +382,35 @@ def test_convert_parquet(monkeypatch, source_format, dest_format):
         meta_file_path = rawdir / config.metadata_filename
         with open(meta_file_path, "w") as metafile:
             json.dump(complete_dataset_info, metafile)
+        source_file = rawdir / file_name
         if source_format == "csv":
             wo = csv.WriteOptions(include_header=False)
-            csv.write_csv(orig_table, rawdir / file_name, write_options=wo)
+            csv.write_csv(orig_table, source_file, write_options=wo)
         elif source_format == "parquet":
-            pq.write_table(orig_table, rawdir / file_name)
+            pq.write_table(orig_table, source_file)
         elif source_format == "arrow":
-            feather.write_feather(orig_table, rawdir / file_name)
+            feather.write_feather(orig_table, source_file)
+        elif source_format == "ndjson":
+            with open(source_file, "w") as f:
+                writer = ndjson.writer(f)
+                for row in orig_table.to_pylist():
+                    writer.writerow(row)
         dataset = Dataset.from_json_file(meta_file_path)
-        written_table = dataset.get_table_dataset().to_table()
+        if source_format == "ndjson":
+            written_table = pa_json.read_json(
+                dataset.ensure_table_loc(), parse_options=jpo
+            )
+        else:
+            written_table = dataset.get_table_dataset().to_table()
         assert written_table == orig_table
         target_dataset = Dataset(name=name, format=dest_format)
         converted_dataset = dataset.convert(target_dataset)
-        converted_table = converted_dataset.get_table_dataset().to_table()
+        if dest_format == "ndjson":
+            converted_table = pa_json.read_json(
+                converted_dataset.ensure_table_loc(), parse_options=jpo
+            )
+        else:
+            converted_table = converted_dataset.get_table_dataset().to_table()
         assert converted_table == orig_table
 
 
