@@ -15,4 +15,5 @@
 --extra-index-url https://pypi.fury.io/arrow-nightlies
 
 pyarrow>=11.0.0.dev0
+ndjson>=0.3.1
 urllib3>=1.26.9
