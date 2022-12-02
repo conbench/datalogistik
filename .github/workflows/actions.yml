@@ -22,7 +22,7 @@ on:
 
 env:
   NIGHTLY: https://pypi.fury.io/arrow-nightlies
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.11'
 
 jobs:
   check-copyright:
@@ -67,7 +67,7 @@ jobs:
           - macos-latest
         python-version:
           - '3.8'
-          - '3.10'
+          - '3.11'
     runs-on: ${{ matrix.os }}
     steps:
       - name: Add msbuild to PATH
