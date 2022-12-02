@@ -22,6 +22,7 @@ on:
 
 env:
   NIGHTLY: https://pypi.fury.io/arrow-nightlies
+  PYTHON_VERSION: '3.11'
 
 jobs:
   check-copyright:
